@@ -136,5 +136,9 @@ python vrclog_mac.py          # run
 - API reference: [vrchat.community](https://vrchat.community)
 - Inspired by [VRCX](https://github.com/vrcx-team/VRCX)
 
+## License
+
+[MIT](LICENSE) © iriewiew
+
 > VRC Nook is a fan-made tool and is not affiliated with or endorsed by VRChat Inc.
 > It uses the VRChat API, which is not officially supported for third-party apps. Use it at your own risk and follow VRChat's Terms of Service.

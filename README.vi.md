@@ -125,5 +125,9 @@ Mô tả từng file có trong [README tiếng Anh](README.md#build-from-source)
 - Tài liệu API: [vrchat.community](https://vrchat.community)
 - Lấy cảm hứng từ [VRCX](https://github.com/vrcx-team/VRCX)
 
+## Giấy phép
+
+[MIT](LICENSE) © iriewiew
+
 > VRC Nook là công cụ do người hâm mộ làm, không liên kết và không được VRChat Inc. chứng thực.
 > Ứng dụng dùng VRChat API, vốn không được hỗ trợ chính thức cho ứng dụng bên thứ ba. Bạn tự chịu rủi ro khi sử dụng và cần tuân thủ Điều khoản dịch vụ của VRChat.
