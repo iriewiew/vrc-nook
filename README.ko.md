@@ -10,12 +10,24 @@
 
 ---
 
+<p align="center"><img src="docs/screenshots/friends.png" alt="친구" width="860"></p>
+
 ## 다운로드
 
 [최신 릴리스](https://github.com/iriewiew/vrc-nook/releases/latest)에서 `VRCNook.exe`를 받아 실행하면 됩니다. 설치는 필요 없습니다.
 문서 폴더처럼 쓰기 가능한 폴더에 두세요. 앱이 스스로 파일을 덮어써서 업데이트하므로 Program Files는 피하세요.
 
 **요구 사항:** Windows 10/11, Microsoft Edge WebView2 (Windows 11에는 기본 포함)
+
+## 스크린샷
+
+<table>
+<tr><td><img src="docs/screenshots/friends-dark.png" alt="다크 테마"><br><sub>다크 테마</sub></td><td><img src="docs/screenshots/log.png" alt="게임 로그"><br><sub>게임 로그</sub></td></tr>
+<tr><td><img src="docs/screenshots/chat.png" alt="채팅박스"><br><sub>채팅박스</sub></td><td><img src="docs/screenshots/keyboard.png" alt="VR 키보드"><br><sub>VR 키보드</sub></td></tr>
+<tr><td><img src="docs/screenshots/settings.png" alt="설정"><br><sub>설정</sub></td><td><img src="docs/screenshots/login.png" alt="언어 선택이 있는 로그인"><br><sub>언어 선택이 있는 로그인</sub></td></tr>
+</table>
+
+<sub>스크린샷은 가상의 데모 데이터입니다.</sub>
 
 ## 가벼움
 

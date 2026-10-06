@@ -10,12 +10,24 @@
 
 ---
 
+<p align="center"><img src="docs/screenshots/friends.png" alt="フレンド" width="860"></p>
+
 ## ダウンロード
 
 [最新リリース](https://github.com/iriewiew/vrc-nook/releases/latest)から `VRCNook.exe` をダウンロードして起動するだけです。インストールは不要です。
 ドキュメントなど書き込み可能なフォルダーに置いてください。アプリは自分自身を上書きして更新するため、Program Files は避けてください。
 
 **動作環境:** Windows 10/11 と Microsoft Edge WebView2(Windows 11 には標準搭載)
+
+## スクリーンショット
+
+<table>
+<tr><td><img src="docs/screenshots/friends-dark.png" alt="ダークテーマ"><br><sub>ダークテーマ</sub></td><td><img src="docs/screenshots/log.png" alt="ゲームログ"><br><sub>ゲームログ</sub></td></tr>
+<tr><td><img src="docs/screenshots/chat.png" alt="チャットボックス"><br><sub>チャットボックス</sub></td><td><img src="docs/screenshots/keyboard.png" alt="VR キーボード"><br><sub>VR キーボード</sub></td></tr>
+<tr><td><img src="docs/screenshots/settings.png" alt="設定"><br><sub>設定</sub></td><td><img src="docs/screenshots/login.png" alt="言語選択付きのサインイン"><br><sub>言語選択付きのサインイン</sub></td></tr>
+</table>
+
+<sub>スクリーンショットは架空のデモデータです。</sub>
 
 ## 軽量
 

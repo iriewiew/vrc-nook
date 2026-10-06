@@ -10,12 +10,24 @@
 
 ---
 
+<p align="center"><img src="docs/screenshots/friends.png" alt="Bạn bè" width="860"></p>
+
 ## Tải về
 
 Tải `VRCNook.exe` từ [bản phát hành mới nhất](https://github.com/iriewiew/vrc-nook/releases/latest) rồi chạy. Không cần cài đặt.
 Hãy đặt file trong thư mục có quyền ghi như Documents. Đừng dùng Program Files, vì ứng dụng tự ghi đè để cập nhật.
 
 **Yêu cầu:** Windows 10/11 có Microsoft Edge WebView2 (Windows 11 có sẵn).
+
+## Ảnh chụp màn hình
+
+<table>
+<tr><td><img src="docs/screenshots/friends-dark.png" alt="Giao diện tối"><br><sub>Giao diện tối</sub></td><td><img src="docs/screenshots/log.png" alt="Nhật ký game"><br><sub>Nhật ký game</sub></td></tr>
+<tr><td><img src="docs/screenshots/chat.png" alt="Chatbox"><br><sub>Chatbox</sub></td><td><img src="docs/screenshots/keyboard.png" alt="Bàn phím VR"><br><sub>Bàn phím VR</sub></td></tr>
+<tr><td><img src="docs/screenshots/settings.png" alt="Cài đặt"><br><sub>Cài đặt</sub></td><td><img src="docs/screenshots/login.png" alt="Đăng nhập có chọn ngôn ngữ"><br><sub>Đăng nhập có chọn ngôn ngữ</sub></td></tr>
+</table>
+
+<sub>Ảnh chụp dùng dữ liệu mẫu giả lập.</sub>
 
 ## Nhẹ
 

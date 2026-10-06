@@ -10,12 +10,24 @@
 
 ---
 
+<p align="center"><img src="docs/screenshots/friends.png" alt="Друзья" width="860"></p>
+
 ## Загрузка
 
 Скачайте `VRCNook.exe` из [последнего релиза](https://github.com/iriewiew/vrc-nook/releases/latest) и запустите. Установка не нужна.
 Положите файл в папку с правом записи, например в «Документы». Не используйте Program Files: приложение обновляет себя на месте.
 
 **Требования:** Windows 10/11 с Microsoft Edge WebView2 (в Windows 11 уже есть).
+
+## Скриншоты
+
+<table>
+<tr><td><img src="docs/screenshots/friends-dark.png" alt="Тёмная тема"><br><sub>Тёмная тема</sub></td><td><img src="docs/screenshots/log.png" alt="Игровой лог"><br><sub>Игровой лог</sub></td></tr>
+<tr><td><img src="docs/screenshots/chat.png" alt="Чатбокс"><br><sub>Чатбокс</sub></td><td><img src="docs/screenshots/keyboard.png" alt="VR-клавиатура"><br><sub>VR-клавиатура</sub></td></tr>
+<tr><td><img src="docs/screenshots/settings.png" alt="Настройки"><br><sub>Настройки</sub></td><td><img src="docs/screenshots/login.png" alt="Вход с выбором языка"><br><sub>Вход с выбором языка</sub></td></tr>
+</table>
+
+<sub>На скриншотах вымышленные демо-данные.</sub>
 
 ## Лёгкость
 

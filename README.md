@@ -10,12 +10,24 @@
 
 ---
 
+<p align="center"><img src="docs/screenshots/friends.png" alt="Friends" width="860"></p>
+
 ## Download
 
 Grab `VRCNook.exe` from the [latest release](https://github.com/iriewiew/vrc-nook/releases/latest) and run it. There's no installer.
 Put it in a folder you can write to, such as Documents. Don't use Program Files, because the app updates itself in place.
 
 **Requirements:** Windows 10/11 with Microsoft Edge WebView2 (already included in Windows 11).
+
+## Screenshots
+
+<table>
+<tr><td><img src="docs/screenshots/friends-dark.png" alt="Dark theme"><br><sub>Dark theme</sub></td><td><img src="docs/screenshots/log.png" alt="Game log"><br><sub>Game log</sub></td></tr>
+<tr><td><img src="docs/screenshots/chat.png" alt="Chatbox"><br><sub>Chatbox</sub></td><td><img src="docs/screenshots/keyboard.png" alt="VR keyboard"><br><sub>VR keyboard</sub></td></tr>
+<tr><td><img src="docs/screenshots/settings.png" alt="Settings"><br><sub>Settings</sub></td><td><img src="docs/screenshots/login.png" alt="Sign-in with language picker"><br><sub>Sign-in with language picker</sub></td></tr>
+</table>
+
+<sub>Screenshots use made-up demo data.</sub>
 
 ## Lightweight
 

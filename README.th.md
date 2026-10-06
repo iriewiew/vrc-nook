@@ -10,12 +10,24 @@
 
 ---
 
+<p align="center"><img src="docs/screenshots/friends.png" alt="เพื่อน" width="860"></p>
+
 ## ดาวน์โหลด
 
 โหลด `VRCNook.exe` จาก [Release ล่าสุด](https://github.com/iriewiew/vrc-nook/releases/latest) แล้วเปิดได้เลย ไม่ต้องติดตั้ง
 ควรวางไว้ในโฟลเดอร์ที่เขียนไฟล์ได้ เช่น Documents อย่าวางใน Program Files เพราะแอปอัปเดตตัวเองโดยเขียนทับไฟล์เดิม
 
 **ต้องใช้:** Windows 10/11 ที่มี Microsoft Edge WebView2 (Windows 11 มีอยู่แล้ว)
+
+## ภาพหน้าจอ
+
+<table>
+<tr><td><img src="docs/screenshots/friends-dark.png" alt="ธีมมืด"><br><sub>ธีมมืด</sub></td><td><img src="docs/screenshots/log.png" alt="Game Log"><br><sub>Game Log</sub></td></tr>
+<tr><td><img src="docs/screenshots/chat.png" alt="แชทขึ้น Chatbox"><br><sub>แชทขึ้น Chatbox</sub></td><td><img src="docs/screenshots/keyboard.png" alt="คีย์บอร์ด VR"><br><sub>คีย์บอร์ด VR</sub></td></tr>
+<tr><td><img src="docs/screenshots/settings.png" alt="ตั้งค่า"><br><sub>ตั้งค่า</sub></td><td><img src="docs/screenshots/login.png" alt="หน้าเข้าสู่ระบบพร้อมเลือกภาษา"><br><sub>หน้าเข้าสู่ระบบพร้อมเลือกภาษา</sub></td></tr>
+</table>
+
+<sub>ภาพหน้าจอใช้ข้อมูลตัวอย่างที่สมมติขึ้น</sub>
 
 ## น้ำหนักเบา
 

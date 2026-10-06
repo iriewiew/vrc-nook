@@ -10,12 +10,24 @@
 
 ---
 
+<p align="center"><img src="docs/screenshots/friends.png" alt="好友" width="860"></p>
+
 ## 下载
 
 从[最新版本](https://github.com/iriewiew/vrc-nook/releases/latest)下载 `VRCNook.exe` 直接运行,无需安装。
 请放在可写入的文件夹(例如"文档")中。应用会直接覆盖自身来更新,所以不要放在 Program Files。
 
 **系统要求:** Windows 10/11,并装有 Microsoft Edge WebView2(Windows 11 已内置)。
+
+## 截图
+
+<table>
+<tr><td><img src="docs/screenshots/friends-dark.png" alt="深色主题"><br><sub>深色主题</sub></td><td><img src="docs/screenshots/log.png" alt="游戏日志"><br><sub>游戏日志</sub></td></tr>
+<tr><td><img src="docs/screenshots/chat.png" alt="聊天框"><br><sub>聊天框</sub></td><td><img src="docs/screenshots/keyboard.png" alt="VR 键盘"><br><sub>VR 键盘</sub></td></tr>
+<tr><td><img src="docs/screenshots/settings.png" alt="设置"><br><sub>设置</sub></td><td><img src="docs/screenshots/login.png" alt="带语言选择的登录"><br><sub>带语言选择的登录</sub></td></tr>
+</table>
+
+<sub>截图使用的是虚构的演示数据。</sub>
 
 ## 轻量
 
