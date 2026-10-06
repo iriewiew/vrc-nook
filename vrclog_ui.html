@@ -879,7 +879,7 @@ Object.assign(I18N.ja, { emk_title: "絵文字を作成", emk_new: "絵文字を
 function t(key, ...args) { const v = L()[key] ?? I18N.en[key] ?? key; return typeof v === "function" ? v(...args) : v; }
 
 // ---------- Settings ----------
-const DEFAULTS = { lang: "th", theme: "auto", accent: "blue", wallpaper: "tahoe", glass: 40, size: "m",
+const DEFAULTS = { lang: "en", theme: "auto", accent: "blue", wallpaper: "tahoe", glass: 40, size: "m",
                    showDate: false, compact: false, onTop: false, inspector: true, showPics: true, showOffline: false, view: "friends", animFrames: false, autoUpdate: true };
 const ACCENTS = { blue: "#0a84ff", purple: "#bf5af2", pink: "#ff375f", red: "#ff453a", orange: "#ff9f0a",
                   yellow: "#ffcc00", green: "#30d158", graphite: "#8e8e93" };

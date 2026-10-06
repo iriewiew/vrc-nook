@@ -3224,6 +3224,8 @@ document.body.insertAdjacentHTML("beforeend", `<div class="gate show" id="gate">
     <button class="tl close" onclick="api('close')">${icon("x")}</button>
     <button class="tl min" onclick="api('minimize')">${icon("minus")}</button>
     <button class="tl max" onclick="api('zoom')">${icon("plus")}</button>
+    <label class="gate-lang" title="Language">${icon("languages")}<select class="fsel" id="gateLang" onchange="gateSetLang(this.value)">
+      ${Object.entries(LANGS).map(([k, n]) => `<option value="${k}">${n}</option>`).join("")}</select></label>
   </div>
   <div class="gate-card glass" id="gateCard"></div></div>`);
 let GATE = true;
@@ -3255,6 +3257,16 @@ buildLogin = function () {
     + (settingsView === "2fa" ? `<a href="#" class="gate-link" onclick="settingsView='login';login={};buildLogin();return false">${t("gate_back")}</a>` : "");
   setTimeout(() => $(settingsView === "2fa" ? "fCode" : "fUser")?.focus(), 50);
 };
+// Language picker on the lock screen (first run starts in English) — redraw the form but keep what was typed
+function gateSetLang(v) {
+  const keep = ["fUser", "fPass", "fCode"].map(id => [id, $(id)?.value]);
+  S.lang = v; save(); applyLang();
+  if (!authKnown) { GATE = false; updateGate(); }
+  else if (GATE) buildLogin();
+  for (const [id, val] of keep) if (val && $(id)) $(id).value = val;
+}
+const _applyLangG = applyLang;
+applyLang = function () { _applyLangG(); if ($("gateLang")) $("gateLang").value = S.lang; };
 // After login, doLogin/doVerify call buildSettings — don't open settings, just unlock (onAuth follows)
 const _onAuthG = window.onAuth;
 window.onAuth = a => { _onAuthG(a); updateGate(); };
@@ -3266,6 +3278,9 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .gate.show { display: grid; }
 .gate-bar { position: absolute; top: 0; left: 0; right: 0; height: 44px; display: flex; gap: 8px; padding: 16px 18px; }
 .gate-bar:hover .tl svg { opacity: 1; }
+.gate-lang { margin-left: auto; display: flex; align-items: center; gap: 6px; color: var(--text2); margin-top: -6px; }
+.gate-lang svg { width: 16px; height: 16px; }
+.gate-lang .fsel { background: color-mix(in srgb, var(--track) 80%, transparent); }
 .gate-card { width: min(380px, calc(100% - 40px)); padding: 28px 24px 22px; border-radius: 26px; text-align: center; }
 .gate-card h1 { margin: 6px 0 4px; font-size: 20px; }
 .gate-card > p { margin: 0 0 16px; color: var(--text2); font-size: 12.5px; }

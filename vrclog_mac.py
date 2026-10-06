@@ -31,7 +31,7 @@ from vrclog import KINDS, Room, parse_line
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w", encoding="utf-8")
 
-VERSION = "0.4.1"
+VERSION = "0.4.2"
 log = logging.getLogger("vrclog")
 UPLOAD_FIELDS = ("animationStyle", "maskTag", "frames", "framesOverTime", "loopStyle")
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
@@ -52,6 +52,12 @@ def _data_dir():
 
 DATA_DIR = _data_dir()
 SETTINGS = DATA_DIR / "settings.json"
+# Tray menu (Open, Quit) in the app language; read once at startup, English by default
+TRAY_LABELS = {
+    "en": ("Open VRC Nook", "Quit"), "th": ("เปิด VRC Nook", "ออกจากโปรแกรม"), "ja": ("VRC Nook を開く", "終了"),
+    "ko": ("VRC Nook 열기", "종료"), "ru": ("Открыть VRC Nook", "Выход"), "vi": ("Mở VRC Nook", "Thoát"),
+    "zh": ("打开 VRC Nook", "退出"),
+}
 LOCATION_RE = re.compile(r"^wrld_[\w-]+(:[\w~().,-]+)?$")
 
 
@@ -834,7 +840,7 @@ def main():
                                    background_color="#1c1c1e", hidden="--tray" in sys.argv)
     js.window = api._window = window
     try:  # System tray icon (also used for notifications)
-        api._tray = tray.Tray(api.show_window, api.quit, ("เปิด VRC Nook", "ออกจากโปรแกรม"))
+        api._tray = tray.Tray(api.show_window, api.quit, TRAY_LABELS.get(_setting("lang"), TRAY_LABELS["en"]))
     except Exception as e:
         log.warning("tray failed: %s", e)
     api._pump = Pump(api, js)
