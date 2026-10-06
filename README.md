@@ -2,7 +2,7 @@
 
 <h1 align="center">VRC Nook</h1>
 
-<p align="center">A cozy all-in-one VRChat companion for Windows: friends, game log, in-game chatbox, a VR-friendly keyboard and an animated emoji maker.</p>
+<p align="center">A lightweight, cozy all-in-one VRChat companion for Windows: friends, game log, in-game chatbox, a VR-friendly keyboard and an animated emoji maker.</p>
 
 <p align="center">
 <b>English</b> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.zh.md">中文</a>
@@ -16,6 +16,17 @@ Grab `VRCNook.exe` from the [latest release](https://github.com/iriewiew/vrc-noo
 Put it in a folder you can write to, such as Documents. Don't use Program Files, because the app updates itself in place.
 
 **Requirements:** Windows 10/11 with Microsoft Edge WebView2 (already included in Windows 11).
+
+## Lightweight
+
+- **One ~23 MB file.** No installer and nothing else to install, since Python is bundled inside.
+- **No bundled browser.** The UI runs on WebView2, which is already part of Windows, so the app doesn't ship its own copy of Chromium.
+- **Easy on VRChat's API.**
+  - Background requests go through a single rate-limited queue.
+  - Images are cached on disk and requested at small sizes.
+  - Pictures of offline friends load only when you open their profile.
+- **Quiet in the background.** The game log is read incrementally (new lines only), and the app can sit in the system tray.
+- **Self-contained data.** Everything lives in `%APPDATA%\VRCNook`. Delete `cache\` anytime to free space.
 
 ## Features
 

@@ -2,7 +2,7 @@
 
 <h1 align="center">VRC Nook</h1>
 
-<p align="center">Windows 用の居心地のいい VRChat コンパニオンアプリ。フレンド、ゲームログ、ゲーム内チャットボックス、VR 向けキーボード、アニメーション絵文字メーカーをひとつに。</p>
+<p align="center">Windows 用の軽量で居心地のいい VRChat コンパニオンアプリ。フレンド、ゲームログ、ゲーム内チャットボックス、VR 向けキーボード、アニメーション絵文字メーカーをひとつに。</p>
 
 <p align="center">
 <a href="README.md">English</a> · <a href="README.th.md">ไทย</a> · <b>日本語</b> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.zh.md">中文</a>
@@ -16,6 +16,17 @@
 ドキュメントなど書き込み可能なフォルダーに置いてください。アプリは自分自身を上書きして更新するため、Program Files は避けてください。
 
 **動作環境:** Windows 10/11 と Microsoft Edge WebView2(Windows 11 には標準搭載)
+
+## 軽量
+
+- **約 23 MB の単一ファイル:** インストーラーも追加のランタイムも不要です(Python は同梱済み)。
+- **ブラウザーを同梱しない:** UI は Windows に標準搭載の WebView2 で動くため、Chromium を丸ごと抱えていません。
+- **VRChat API にやさしい:**
+  - バックグラウンドの通信はすべて、頻度を制限したひとつのキューを通ります。
+  - 画像はディスクにキャッシュし、小さいサイズで取得します。
+  - オフラインのフレンドの画像は、プロフィールを開いたときだけ読み込みます。
+- **バックグラウンドで静か:** ゲームログは新しい行だけを読み込み、システムトレイに常駐できます。
+- **データは 1 か所に:** すべて `%APPDATA%\VRCNook` に保存されます。`cache\` はいつ削除しても大丈夫です。
 
 ## 機能
 

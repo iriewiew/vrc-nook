@@ -2,7 +2,7 @@
 
 <h1 align="center">VRC Nook</h1>
 
-<p align="center">Windows용 아늑한 올인원 VRChat 도우미 앱: 친구, 게임 로그, 게임 내 채팅박스, VR용 키보드, 움직이는 이모지 제작기를 한곳에.</p>
+<p align="center">Windows용 가볍고 아늑한 올인원 VRChat 도우미 앱: 친구, 게임 로그, 게임 내 채팅박스, VR용 키보드, 움직이는 이모지 제작기를 한곳에.</p>
 
 <p align="center">
 <a href="README.md">English</a> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <b>한국어</b> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.zh.md">中文</a>
@@ -16,6 +16,17 @@
 문서 폴더처럼 쓰기 가능한 폴더에 두세요. 앱이 스스로 파일을 덮어써서 업데이트하므로 Program Files는 피하세요.
 
 **요구 사항:** Windows 10/11, Microsoft Edge WebView2 (Windows 11에는 기본 포함)
+
+## 가벼움
+
+- **약 23 MB 파일 하나:** 설치 프로그램도, 따로 설치할 런타임도 없습니다(Python 내장).
+- **브라우저를 내장하지 않음:** UI가 Windows에 기본 포함된 WebView2에서 동작하므로 Chromium을 통째로 싣고 다니지 않습니다.
+- **VRChat API에 부담을 적게:**
+  - 백그라운드 요청은 모두 빈도를 제한한 하나의 대기열을 거칩니다.
+  - 이미지는 디스크에 캐시하고 작은 크기로 요청합니다.
+  - 오프라인 친구의 사진은 프로필을 열 때만 불러옵니다.
+- **백그라운드에서 조용히:** 게임 로그는 새 줄만 읽고, 시스템 트레이에 머물 수 있습니다.
+- **데이터는 한 곳에:** 모두 `%APPDATA%\VRCNook`에 있습니다. `cache\`는 언제든 지워도 됩니다.
 
 ## 기능
 

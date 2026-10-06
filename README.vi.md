@@ -2,7 +2,7 @@
 
 <h1 align="center">VRC Nook</h1>
 
-<p align="center">Ứng dụng đồng hành ấm cúng, tất cả trong một cho VRChat trên Windows: bạn bè, nhật ký game, Chatbox trong game, bàn phím cho VR và công cụ tạo emoji động.</p>
+<p align="center">Ứng dụng đồng hành nhẹ nhàng, ấm cúng, tất cả trong một cho VRChat trên Windows: bạn bè, nhật ký game, Chatbox trong game, bàn phím cho VR và công cụ tạo emoji động.</p>
 
 <p align="center">
 <a href="README.md">English</a> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <b>Tiếng Việt</b> · <a href="README.zh.md">中文</a>
@@ -16,6 +16,17 @@ Tải `VRCNook.exe` từ [bản phát hành mới nhất](https://github.com/iri
 Hãy đặt file trong thư mục có quyền ghi như Documents. Đừng dùng Program Files, vì ứng dụng tự ghi đè để cập nhật.
 
 **Yêu cầu:** Windows 10/11 có Microsoft Edge WebView2 (Windows 11 có sẵn).
+
+## Nhẹ
+
+- **Một file khoảng 23 MB.** Không cần cài đặt, không cần cài thêm runtime (đã kèm sẵn Python).
+- **Không kèm trình duyệt.** Giao diện chạy trên WebView2 có sẵn trong Windows, nên ứng dụng không phải mang theo cả Chromium.
+- **Nhẹ nhàng với VRChat API.**
+  - Mọi yêu cầu chạy nền đều đi qua một hàng đợi có giới hạn tần suất.
+  - Ảnh được lưu đệm trên đĩa và tải ở kích thước nhỏ.
+  - Ảnh của bạn bè ngoại tuyến chỉ tải khi mở hồ sơ.
+- **Êm khi chạy nền.** Nhật ký game chỉ đọc các dòng mới, và ứng dụng có thể nằm ở khay hệ thống.
+- **Dữ liệu ở một nơi:** tất cả nằm trong `%APPDATA%\VRCNook`. Có thể xóa `cache\` bất cứ lúc nào.
 
 ## Tính năng
 

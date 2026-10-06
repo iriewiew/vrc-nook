@@ -2,7 +2,7 @@
 
 <h1 align="center">VRC Nook</h1>
 
-<p align="center">温馨的 Windows 版 VRChat 一站式助手:好友、游戏日志、游戏内聊天框、VR 友好的键盘和动态表情制作器。</p>
+<p align="center">轻量又温馨的 Windows 版 VRChat 一站式助手:好友、游戏日志、游戏内聊天框、VR 友好的键盘和动态表情制作器。</p>
 
 <p align="center">
 <a href="README.md">English</a> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <b>中文</b>
@@ -16,6 +16,17 @@
 请放在可写入的文件夹(例如"文档")中。应用会直接覆盖自身来更新,所以不要放在 Program Files。
 
 **系统要求:** Windows 10/11,并装有 Microsoft Edge WebView2(Windows 11 已内置)。
+
+## 轻量
+
+- **单个约 23 MB 的文件:** 无需安装,也不用另装运行环境(已内置 Python)。
+- **不自带浏览器:** 界面运行在 Windows 自带的 WebView2 上,无需捆绑整套 Chromium。
+- **对 VRChat API 友好:**
+  - 所有后台请求都经过同一个限速队列。
+  - 图片缓存在本地并以小尺寸获取。
+  - 离线好友的图片只在打开资料时才加载。
+- **后台安静运行:** 游戏日志只读取新增的行,应用可常驻系统托盘。
+- **数据集中存放:** 全部位于 `%APPDATA%\VRCNook`,`cache\` 可随时删除以释放空间。
 
 ## 功能
 
