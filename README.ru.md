@@ -123,7 +123,7 @@ python vrclog_mac.py          # запуск
 - Иконки: [Lucide](https://lucide.dev) (ISC License)
 - Идея анимированных эмодзи: [VRCEmoji](https://github.com/Wakamu/VRCEmoji) от Wakamu
 - Справка по API: [vrchat.community](https://vrchat.community)
-- Вдохновлено [VRCX](https://github.com/vrcx-team/VRCX)
+- Идеи вдохновлены [VRCX](https://github.com/vrcx-team/VRCX). VRC Nook написан с нуля и не использует его код.
 
 ## Лицензия
 

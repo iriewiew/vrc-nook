@@ -123,7 +123,7 @@ python vrclog_mac.py          # 运行
 - 图标:[Lucide](https://lucide.dev) (ISC License)
 - 动态表情的灵感:Wakamu 的 [VRCEmoji](https://github.com/Wakamu/VRCEmoji)
 - API 参考:[vrchat.community](https://vrchat.community)
-- 灵感来自 [VRCX](https://github.com/vrcx-team/VRCX)
+- 创意灵感来自 [VRCX](https://github.com/vrcx-team/VRCX)。VRC Nook 从零编写,未使用其任何代码。
 
 ## 许可证
 

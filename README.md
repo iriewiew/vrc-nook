@@ -134,7 +134,7 @@ python vrclog_mac.py          # run
 - Icons: [Lucide](https://lucide.dev) (ISC License)
 - Animated emoji idea: [VRCEmoji](https://github.com/Wakamu/VRCEmoji) by Wakamu
 - API reference: [vrchat.community](https://vrchat.community)
-- Inspired by [VRCX](https://github.com/vrcx-team/VRCX)
+- Ideas inspired by [VRCX](https://github.com/vrcx-team/VRCX). VRC Nook is written from scratch and shares no code with it.
 
 ## License
 

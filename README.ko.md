@@ -123,7 +123,7 @@ python vrclog_mac.py          # 실행
 - 아이콘: [Lucide](https://lucide.dev) (ISC License)
 - 움직이는 이모지 아이디어: Wakamu의 [VRCEmoji](https://github.com/Wakamu/VRCEmoji)
 - API 참고: [vrchat.community](https://vrchat.community)
-- [VRCX](https://github.com/vrcx-team/VRCX)에서 영감을 받았습니다
+- 아이디어는 [VRCX](https://github.com/vrcx-team/VRCX)에서 영감을 받았습니다. VRC Nook은 처음부터 새로 작성되었으며 코드를 공유하지 않습니다.
 
 ## 라이선스
 
