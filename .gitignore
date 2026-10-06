@@ -1,0 +1,14 @@
+# Build output
+*.exe
+release/
+build/
+dist/
+*.spec
+__pycache__/
+*.pyc
+
+# Local tooling
+.claude/
+
+# Legacy Tk GUI (superseded by vrclog_mac.py)
+vrclog_gui.py

@@ -1,0 +1,268 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Keyboard</title>
+<style>
+:root {
+  --accent: #0a84ff; --bg: #1c1c1f; --key: rgba(255,255,255,.13); --key-hover: rgba(255,255,255,.2); --fn: rgba(255,255,255,.07);
+  --text: #f2f2f7; --text2: rgba(235,235,245,.55); --sep: rgba(255,255,255,.08); --red: #ff453a; --green: #30d158;
+  --font: "Segoe UI Variable Text", "Segoe UI", "Leelawadee UI", "Yu Gothic UI", "Malgun Gothic", "Microsoft YaHei UI", sans-serif;
+}
+:root.light { --bg: #f2f2f6; --key: rgba(0,0,0,.08); --key-hover: rgba(0,0,0,.14); --fn: rgba(0,0,0,.045); --text: #1c1c1e; --text2: rgba(60,60,67,.6); --sep: rgba(0,0,0,.07); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font); user-select: none; }
+body { display: flex; flex-direction: column; }
+.bar { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 6px 0 12px; flex-shrink: 0; font-size: 12px; color: var(--text2); }
+.bar .title { flex: 1; display: flex; align-items: center; gap: 7px; height: 100%; min-width: 0; white-space: nowrap; }
+.bar svg { width: 14px; height: 14px; flex-shrink: 0; }
+.modes { display: flex; background: var(--fn); border-radius: 8px; padding: 2px; gap: 2px; flex-shrink: 0; }
+.modes button { height: 24px; border: none; border-radius: 6px; padding: 0 10px; background: none; color: var(--text2); cursor: pointer;
+  font: 500 12px var(--font); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.modes button.on { background: var(--key-hover); color: var(--text); }
+.ib { width: 28px; height: 24px; border: none; border-radius: 7px; background: none; color: var(--text2); display: grid; place-items: center; cursor: pointer; flex-shrink: 0; }
+.ib:hover { background: var(--key); color: var(--text); }
+.ib.x:hover { background: var(--red); color: #fff; }
+/* Text box (in-game chat mode) */
+.chat { display: none; align-items: center; gap: 10px; margin: 0 7px 6px; padding: 6px 12px; min-height: 44px; flex-shrink: 0;
+  border-radius: 10px; background: var(--fn); border: 1px solid var(--sep); }
+body.chatmode .chat { display: flex; }
+.buf { flex: 1; min-width: 0; max-height: 64px; overflow-y: auto; font: 500 17px/1.35 var(--font); white-space: pre-wrap; overflow-wrap: anywhere; }
+.buf .ph { color: var(--text2); font-weight: 400; }
+.buf .sel { background: color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 3px; }
+.buf .caret { display: inline-block; width: 2px; height: 1.15em; margin: 0 -1px; vertical-align: text-bottom; background: var(--accent); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.cnt { font: 12px ui-monospace, Consolas, monospace; color: var(--text2); white-space: nowrap; }
+.cnt.over { color: var(--red); font-weight: 600; }
+.msg { font-size: 12px; white-space: nowrap; color: var(--text2); }
+.msg.ok { color: var(--green); } .msg.err { color: var(--red); }
+.kb { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 5px; padding: 0 7px 7px; }
+.row { flex: 1; min-height: 0; display: flex; gap: 5px; }
+.row.cmds { flex: .7; }  /* Command row on top, shorter than the letter rows */
+.row button { flex: 1 1 0; min-width: 0; border: none; border-radius: 9px; cursor: pointer; background: var(--key); color: var(--text);
+  font: 500 var(--fs, 22px)/1 var(--font); display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0;
+  transition: background .08s, transform .08s; overflow: hidden; }
+.row button:hover { background: var(--key-hover); }
+.row button.fn { background: var(--fn); }
+.row button svg { width: calc(var(--fs, 22px) * .9); height: calc(var(--fs, 22px) * .9); flex-shrink: 0; }
+.row button b { font-size: calc(var(--fs, 22px) * .62); font-weight: 600; white-space: nowrap; }
+.row button.cmd b { font-size: calc(var(--fs, 22px) * .52); overflow: hidden; text-overflow: ellipsis; }
+.row button small { font-size: calc(var(--fs, 22px) * .5); color: var(--text2); }
+.row button.on, .row button.send { background: var(--accent); color: #fff; }
+.row button.lock { box-shadow: inset 0 -3px 0 rgba(255,255,255,.85); }
+.row button.down { background: var(--accent); color: #fff; transform: scale(.94); }
+.w15 { flex-grow: 1.5 !important; } .sp { flex-grow: 5 !important; }
+.grip { position: fixed; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; z-index: 5;
+  background: linear-gradient(135deg, transparent 50%, var(--text2) 50%, var(--text2) 58%, transparent 58%, transparent 70%, var(--text2) 70%, var(--text2) 78%, transparent 78%); opacity: .6; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <div class="title pywebview-drag-region" id="title"></div>
+  <div class="modes" id="modes"></div>
+  <button class="ib x" id="close"></button>
+</div>
+<div class="chat"><div class="buf" id="buf"></div><span class="msg" id="msg"></span><span class="cnt" id="cnt"></span></div>
+<div class="kb" id="kb"></div>
+<div class="grip" id="grip"></div>
+<script>
+const CFG = /*CFG*/{};
+const ICONS = /*ICONS*/{};
+const icon = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n] || ""}</svg>`;
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const T_ALL = {
+  th: { title: "คีย์บอร์ด", close: "ปิดแล้วกลับไปอยู่ในโปรแกรม", space: "เว้นวรรค", copy: "คัดลอก", paste: "วาง", all: "เลือกทั้งหมด", task: "Task View",
+        chat: "แชทในเกม", win: "คีย์บอร์ด Windows", clear: "ล้าง", ph: "พิมพ์ข้อความ แล้วกด Enter เพื่อส่งขึ้น Chatbox ในเกม",
+        sent: "ส่งแล้ว", fail: "ส่งไม่สำเร็จ", wait: "รอสักครู่…", send: "ส่ง" },
+  en: { title: "Keyboard", close: "Close and dock back into the app", space: "space", copy: "Copy", paste: "Paste", all: "Select all", task: "Task View",
+        chat: "In-game chat", win: "Windows keyboard", clear: "Clear", ph: "Type, then press Enter to send to the in-game chatbox",
+        sent: "Sent", fail: "Couldn't send", wait: "Wait a moment…", send: "Send" },
+  ja: { title: "キーボード", close: "閉じてアプリに戻す", space: "スペース", copy: "コピー", paste: "貼り付け", all: "すべて選択", task: "タスクビュー",
+        chat: "ゲーム内チャット", win: "Windows キーボード", clear: "消去", ph: "入力して Enter でゲーム内チャットボックスに送信",
+        sent: "送信しました", fail: "送信できませんでした", wait: "少しお待ちください…", send: "送信" },
+  ko: { title: "키보드", close: "닫고 앱으로 되돌리기", space: "스페이스", copy: "복사", paste: "붙여넣기", all: "모두 선택", task: "작업 보기",
+        chat: "게임 채팅", win: "Windows 키보드", clear: "지우기", ph: "입력한 뒤 Enter를 눌러 게임 챗박스로 보내기", sent: "보냈습니다", fail: "보내지 못했습니다", wait: "잠시 기다리세요…", send: "보내기" },
+  ru: { title: "Клавиатура", close: "Закрыть и вернуть в приложение", space: "пробел", copy: "Копировать", paste: "Вставить", all: "Выделить всё", task: "Представление задач",
+        chat: "Чат в игре", win: "Клавиатура Windows", clear: "Очистить", ph: "Наберите текст и нажмите Enter, чтобы отправить в чатбокс", sent: "Отправлено", fail: "Не удалось отправить", wait: "Подождите…", send: "Отправить" },
+  vi: { title: "Bàn phím", close: "Đóng và gắn lại vào ứng dụng", space: "dấu cách", copy: "Sao chép", paste: "Dán", all: "Chọn tất cả", task: "Task View",
+        chat: "Chat trong game", win: "Bàn phím Windows", clear: "Xóa", ph: "Gõ rồi nhấn Enter để gửi lên chatbox trong game", sent: "Đã gửi", fail: "Gửi không thành công", wait: "Đợi một chút…", send: "Gửi" },
+  zh: { title: "键盘", close: "关闭并收回应用", space: "空格", copy: "复制", paste: "粘贴", all: "全选", task: "任务视图",
+        chat: "游戏聊天", win: "Windows 键盘", clear: "清除", ph: "输入后按 Enter 发送到游戏聊天框", sent: "已发送", fail: "发送失败", wait: "请稍候…", send: "发送" },
+};
+const T = T_ALL[CFG.lang] || T_ALL.en;
+/*LAYOUTS*/
+const MAX = 144, GAP = 1600;  // Chatbox max characters / send interval (VRChat rate-limits)
+const LANGS = kbEnabled(CFG.langs);
+let lang = LANGS.includes(CFG.kbLang) ? CFG.kbLang : LANGS[0], shift = 0, rep = 0, lastKo = "";  // lastKo = last Korean syllable sent (Windows mode)
+let mode = CFG.mode === "win" ? "win" : "chat";
+// Chat-mode text: stored as a list of code points + cursor position
+let buf = [], cur = 0, selAll = false, lastSend = 0, typing = false, keep = 0, idle = 0, msgTimer = 0;
+document.documentElement.classList.toggle("light", !CFG.dark);
+document.documentElement.style.setProperty("--accent", CFG.accent || "#0a84ff");
+document.getElementById("title").innerHTML = icon("keyboard") + `<span class="pywebview-drag-region">${T.title}</span>`;
+document.getElementById("close").innerHTML = icon("x");
+document.getElementById("close").title = T.close;
+const api = () => window.pywebview?.api;
+
+function renderModes() {
+  document.body.classList.toggle("chatmode", mode === "chat");
+  document.getElementById("modes").innerHTML = [["chat", "message-square", T.chat], ["win", "keyboard", T.win]]
+    .map(([k, ic, l]) => `<button class="${mode === k ? "on" : ""}" onclick="setMode('${k}')">${icon(ic)}${l}</button>`).join("");
+}
+function setMode(m) {
+  if (m === mode) return;
+  if (mode === "chat") stopTyping();
+  mode = m; selAll = false;
+  api()?.set_mode(m);
+  renderModes(); render(); renderBuf();
+}
+
+function render() {
+  const rows = kbRows(lang, shift), chat = mode === "chat", next = kbNext(lang, LANGS);
+  const key = ch => `<button data-k="${esc(ch)}">${esc(kbKeyLabel(ch))}</button>`;
+  const fn = (act, inner, cls = "") => `<button class="fn ${cls}" data-act="${act}">${inner}</button>`;
+  const sc = shift === 2 ? "on lock" : shift ? "on" : "";
+  const cmds = [["copy", "copy", T.copy], ["paste", "clipboard", T.paste], ["all", "text-select", T.all],
+    chat ? ["clear", "eraser", T.clear] : ["taskview", "layout-grid", T.task]];
+  document.getElementById("kb").innerHTML = `
+    <div class="row cmds">${cmds.map(([k, ic, l]) => fn(k, `${icon(ic)}<b>${l}</b>`, "cmd")).join("")}</div>
+    <div class="row">${[...rows[0]].map(key).join("")}${fn("bs", icon("delete"), "w15")}</div>
+    <div class="row">${chat ? "" : fn("tab", "<b>Tab</b>", "w15")}${[...rows[1]].map(key).join("")}</div>
+    <div class="row">${[...rows[2]].map(key).join("")}${fn("enter", chat ? `${icon("send")}<b>${T.send}</b>` : icon("corner-down-left"), "w15 send")}</div>
+    <div class="row">${fn("shift", icon("arrow-big-up"), "w15 " + sc)}${[...rows[3]].map(key).join("")}${fn("shift", icon("arrow-big-up"), "w15 " + sc)}</div>
+    <div class="row">${fn("lang", `${icon("languages")}<b>${KB_LANGS[next].key}</b>`, "w15")}
+      ${fn("space", `<small>${KB_LANGS[lang].name} · ${T.space}</small>`, "sp")}
+      ${fn("left", icon("chevron-left"))}${fn("right", icon("chevron-right"))}</div>`;
+  fit();
+}
+// Font size follows key height (scales with the window)
+function fit() {
+  const b = document.querySelector(".row:not(.cmds) button");
+  if (b) document.documentElement.style.setProperty("--fs", Math.max(11, Math.min(40, b.offsetHeight * .42)) + "px");
+}
+addEventListener("resize", fit);
+
+// ---------- In-game chat mode ----------
+function renderBuf() {
+  const el = document.getElementById("buf"), n = buf.length;
+  if (!n) el.innerHTML = `<span class="caret"></span><span class="ph">${T.ph}</span>`;
+  else if (selAll) el.innerHTML = `<span class="sel">${esc(buf.join(""))}</span>`;
+  else el.innerHTML = esc(buf.slice(0, cur).join("")) + `<span class="caret"></span>` + esc(buf.slice(cur).join(""));
+  el.scrollTop = el.scrollHeight;
+  const c = document.getElementById("cnt");
+  c.textContent = `${n} / ${MAX}`;
+  c.classList.toggle("over", n >= MAX);
+}
+function flash(text, cls) {
+  const m = document.getElementById("msg");
+  m.textContent = text; m.className = "msg " + (cls || "");
+  clearTimeout(msgTimer); msgTimer = setTimeout(() => { m.textContent = ""; }, 2200);
+}
+function insert(text) {
+  let chars = [...text.replace(/\r/g, "")];
+  if (selAll) { buf = []; cur = 0; selAll = false; }
+  chars = chars.slice(0, MAX - buf.length);
+  if (!chars.length) return renderBuf();
+  buf.splice(cur, 0, ...chars); cur += chars.length;
+  // VRChat shows at most 9 lines
+  while (buf.filter(c => c === "\n").length > 8) { const i = buf.lastIndexOf("\n"); buf.splice(i, 1); if (cur > i) cur--; }
+  changed();
+}
+// Korean syllable composition / Vietnamese + Pinyin tone marks on the character before the cursor
+function chatKey(ch) {
+  const r = !selAll && cur > 0 ? kbCompose(lang, buf[cur - 1], ch) : null;
+  if (r == null) return insert(ch);
+  buf.splice(cur - 1, 1, ...r); cur += [...r].length - 1;
+  changed();
+}
+// Windows mode: delete the syllable just typed and send the composed one instead
+function winKey(ch) {
+  const r = lastKo ? kbCompose(lang, lastKo, ch) : null;
+  if (r == null) { api()?.type(ch); lastKo = ["ko", "vi", "zh"].includes(lang) ? [...ch].pop() : ""; return; }
+  api()?.retype(r); lastKo = [...r].pop();  // Delete 1 character and retype in a single call (order can't swap)
+}
+function backspace() {
+  if (selAll) { buf = []; cur = 0; selAll = false; }
+  else if (cur > 0) { buf.splice(cur - 1, 1); cur--; }
+  changed();
+}
+function changed() {
+  renderBuf();
+  // In-game "typing…" dots: on while there's text, off when empty / sent / idle for 10 s
+  if (!buf.length || CFG.typing === false) return stopTyping();
+  if (!typing) { typing = true; api()?.chat_typing(true); keep = setInterval(() => api()?.chat_typing(true), 4000); }
+  clearTimeout(idle); idle = setTimeout(stopTyping, 10000);
+}
+function stopTyping() {
+  clearInterval(keep); clearTimeout(idle);
+  if (typing) { typing = false; api()?.chat_typing(false); }
+}
+async function send() {
+  const text = buf.join("").trim();
+  if (!text) return;
+  if (Date.now() - lastSend < GAP) return flash(T.wait);
+  lastSend = Date.now();
+  stopTyping();
+  const r = await api()?.chat_send(text, CFG.sound !== false);
+  if (!r || r.error) return flash(T.fail, "err");
+  buf = []; cur = 0; selAll = false;
+  renderBuf(); flash(T.sent, "ok");
+}
+function chatAct(a) {
+  if (a === "bs") return backspace();
+  if (a === "space") return insert(" ");
+  if (a === "enter") { if (shift) { insert("\n"); if (shift === 1) { shift = 0; render(); } } else send(); return; }
+  if (a === "left" || a === "right") { selAll = false; cur = Math.max(0, Math.min(buf.length, cur + (a === "left" ? -1 : 1))); return renderBuf(); }
+  if (a === "all") { if (buf.length) { selAll = true; renderBuf(); } return; }
+  if (a === "clear") { buf = []; cur = 0; selAll = false; return changed(); }
+  if (a === "copy") { if (buf.length) { api()?.clip_set(buf.join("")); flash(T.copy + " ✓", "ok"); } return; }
+  if (a === "paste") return api()?.clip_get().then(t => t && insert(String(t)));
+}
+
+// ---------- Keys ----------
+function act(a) {
+  if (a === "shift") { shift = (shift + 1) % 3; return render(); }
+  if (a === "lang") { lang = kbNext(lang, LANGS); shift = 0; lastKo = ""; api()?.set_lang(lang); return render(); }
+  lastKo = "";
+  if (mode === "chat") return chatAct(a);
+  if (a === "space") return api()?.type(" ");
+  if (a === "tab") return api()?.press("tab");
+  if (a === "enter") { api()?.press(shift ? "newline" : "enter"); if (shift === 1) { shift = 0; render(); } return; }
+  api()?.press(a);  // bs / copy / paste / all / taskview / left / right
+}
+document.addEventListener("pointerdown", e => {
+  const b = e.target.closest(".row button");
+  if (!b || e.button > 0) return;
+  e.preventDefault();
+  b.classList.add("down");
+  if (b.dataset.k !== undefined) {
+    if (mode === "chat") chatKey(b.dataset.k); else winKey(b.dataset.k);
+    if (shift === 1) { shift = 0; render(); }
+    return;
+  }
+  act(b.dataset.act);
+  if (b.dataset.act === "bs") rep = setTimeout(function again() { act("bs"); rep = setTimeout(again, 70); }, 450);
+});
+const up = () => { clearTimeout(rep); document.querySelectorAll(".row button.down").forEach(b => b.classList.remove("down")); };
+addEventListener("pointerup", up);
+addEventListener("pointercancel", up);
+document.getElementById("close").onclick = () => { stopTyping(); api()?.close(); };
+
+// Drag the bottom-right corner to resize
+const grip = document.getElementById("grip");
+grip.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  grip.setPointerCapture(e.pointerId);
+  const sx = e.screenX, sy = e.screenY, w0 = innerWidth, h0 = innerHeight;
+  let raf = 0;
+  const move = ev => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => api()?.resize(w0 + ev.screenX - sx, h0 + ev.screenY - sy));
+  };
+  grip.addEventListener("pointermove", move);
+  grip.addEventListener("pointerup", () => grip.removeEventListener("pointermove", move), { once: true });
+});
+renderModes(); render(); renderBuf();
+</script>
+</body>
+</html>

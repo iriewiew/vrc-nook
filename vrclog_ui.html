@@ -1,0 +1,2762 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>VRC Nook</title>
+<style>
+:root {
+  --font: -apple-system, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", "Leelawadee UI", "Yu Gothic UI", "Malgun Gothic", "Microsoft YaHei UI", sans-serif;
+  --mono: "SF Mono", "Cascadia Mono", Consolas, monospace;
+  --accent: #0a84ff;
+  --text: rgba(255,255,255,.92);
+  --text2: rgba(235,235,245,.6);
+  --text3: rgba(235,235,245,.32);
+  --glass-rgb: 40,40,46;
+  --glass-a: .43;
+  --glass: rgba(var(--glass-rgb), var(--glass-a));
+  --sheet: rgba(36,36,40,.82);
+  --card: rgba(255,255,255,.06);
+  --stroke: rgba(255,255,255,.14);
+  --stroke-in: rgba(255,255,255,.22);
+  --hover: rgba(255,255,255,.07);
+  --sep: rgba(255,255,255,.08);
+  --shadow: 0 10px 40px rgba(0,0,0,.35);
+  --track: rgba(120,120,128,.36);
+  --seg-on: rgba(99,99,102,.9);
+  --blue:#0a84ff; --green:#30d158; --red:#ff453a; --orange:#ff9f0a; --yellow:#ffd60a; --purple:#bf5af2;
+  --pink:#ff375f; --teal:#40c8e0; --indigo:#5e5ce6; --gray:#8e8e93; --mint:#00c7be; --brown:#ac8e68;
+  --wall-1:#1a2a6c; --wall-2:#6a3093; --wall-3:#b21f66; --wall-4:#0f4c75; --wall-base:#101018;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --text: rgba(0,0,0,.88);
+  --text2: rgba(60,60,67,.62);
+  --text3: rgba(60,60,67,.32);
+  --glass-rgb: 255,255,255;
+  --sheet: rgba(246,246,248,.86);
+  --card: rgba(255,255,255,.7);
+  --stroke: rgba(255,255,255,.7);
+  --stroke-in: rgba(255,255,255,.95);
+  --hover: rgba(0,0,0,.05);
+  --sep: rgba(0,0,0,.07);
+  --shadow: 0 10px 40px rgba(30,40,80,.18);
+  --track: rgba(120,120,128,.2);
+  --seg-on: #fff;
+  --blue:#007aff; --green:#28cd41; --red:#ff3b30; --orange:#ff9500; --yellow:#ffcc00; --purple:#af52de;
+  --pink:#ff2d55; --teal:#30b0c7; --indigo:#5856d6; --gray:#8e8e93; --mint:#00c7be; --brown:#a2845e;
+  --wall-base:#eef1f8;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  font: 13px/1.45 var(--font); color: var(--text); background: var(--wall-base);
+  -webkit-font-smoothing: antialiased; user-select: none; cursor: default;
+  /* Font size: zoom the whole page, then divide sizes by the zoom so it fits the window without overflowing */
+  zoom: var(--z, 1); width: calc(100vw / var(--z, 1)); height: calc(100vh / var(--z, 1));
+}
+svg.i { display: block; flex-shrink: 0; }
+/* Tahoe-style gradient wallpaper behind the glass */
+.wallpaper {
+  position: fixed; inset: -10%; z-index: 0; filter: blur(60px) saturate(140%); transition: background .4s;
+  background:
+    radial-gradient(40% 50% at 15% 20%, var(--wall-1), transparent 70%),
+    radial-gradient(45% 55% at 85% 15%, var(--wall-2), transparent 70%),
+    radial-gradient(50% 50% at 70% 90%, var(--wall-3), transparent 70%),
+    radial-gradient(45% 60% at 10% 95%, var(--wall-4), transparent 70%),
+    var(--wall-base);
+}
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow), inset 0 1px 0 var(--stroke-in);
+}
+.app { position: relative; z-index: 1; display: flex; height: 100%; padding: 10px; gap: 10px; }
+
+/* Icons in rounded-square tiles, like System Settings */
+.tile { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; flex-shrink: 0;
+        color: #fff; background: var(--c);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.3), inset 0 -1px 0 rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.18); }
+.tile svg { width: 15px; height: 15px; stroke-width: 2.2; }
+
+/* ---------- Sidebar ---------- */
+.sidebar { width: 280px; border-radius: 22px; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+.traffic { display: flex; gap: 8px; padding: 16px 18px 10px; }
+.tl { width: 13px; height: 13px; border-radius: 50%; border: none; padding: 0; display: grid; place-items: center;
+      color: rgba(0,0,0,.55); box-shadow: inset 0 0 0 .5px rgba(0,0,0,.25); }
+.tl svg { width: 9px; height: 9px; stroke-width: 3.2; opacity: 0; }
+.traffic:hover .tl svg { opacity: 1; }
+.tl.close { background: #ff5f57; } .tl.min { background: #febc2e; } .tl.max { background: #28c840; }
+.side-title { font-size: 11px; font-weight: 600; color: var(--text2); padding: 8px 20px 4px; }
+.side-scroll { flex: 1; overflow-y: auto; padding: 0 10px 10px; }
+.group { margin: 4px 0 12px; }
+.group-title { font-size: 11px; font-weight: 600; color: var(--text3); padding: 6px 10px 4px; letter-spacing: .02em; }
+.toggle-row { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 10px; }
+.toggle-row:hover { background: var(--hover); }
+.toggle-row .label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; }
+/* macOS-style switch */
+.switch { position: relative; width: 32px; height: 19px; flex-shrink: 0; display: block; }
+.switch input { appearance: none; margin: 0; width: 100%; height: 100%; border-radius: 99px; display: block;
+                background: var(--track); transition: background .2s; }
+.switch input:checked { background: var(--accent); }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%;
+                 background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .22s cubic-bezier(.3,1.4,.5,1);
+                 pointer-events: none; }
+.switch:has(input:checked)::after { transform: translateX(13px); }
+.side-footer { padding: 10px 12px 14px; border-top: 1px solid var(--sep); }
+.segmented { display: flex; background: var(--track); border-radius: 9px; padding: 2px; gap: 2px; }
+.segmented button { flex: 1; border: none; background: transparent; color: var(--text); font: 500 12px var(--font);
+                    padding: 4px 10px; border-radius: 7px; white-space: nowrap; }
+.segmented button:hover { background: var(--hover); }
+.segmented button.on, .segmented button:active { background: var(--seg-on); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+
+/* ---------- Main ---------- */
+main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.toolbar { display: flex; align-items: center; gap: 10px; padding: 6px 4px 0 8px; min-height: 52px; }
+.titles { min-width: 0; flex: 1; pointer-events: none; }
+.world { font-size: 19px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.subtitle { font-size: 11.5px; color: var(--text2); white-space: nowrap; }
+.capsule { display: flex; align-items: center; border-radius: 99px; padding: 3px; gap: 2px; }
+.icon-btn { border: none; background: transparent; color: var(--text); width: 34px; height: 30px; border-radius: 99px;
+            display: grid; place-items: center; }
+.icon-btn svg { width: 16px; height: 16px; }
+.icon-btn:hover { background: var(--hover); }
+.icon-btn.on { background: var(--accent); color: #fff; }
+.search { display: flex; align-items: center; gap: 6px; border-radius: 99px; padding: 0 12px; height: 36px; width: 230px; color: var(--text2); }
+.search svg { width: 14px; height: 14px; }
+.search input { flex: 1; border: none; outline: none; background: transparent; color: var(--text); font: 13px var(--font); min-width: 0; }
+.search input::placeholder { color: var(--text3); }
+
+.content { flex: 1; min-height: 0; border-radius: 22px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+.log { flex: 1; overflow-y: auto; padding: 6px 10px 14px; user-select: text; }
+.row { display: flex; align-items: center; gap: 10px; padding: 4px 10px; border-radius: 10px; min-height: 32px; }
+.row:hover { background: var(--hover); }
+.row .time { font: 11.5px var(--mono); color: var(--text3); flex-shrink: 0; white-space: nowrap; }
+.row .tile { width: 22px; height: 22px; border-radius: 6px; }
+.row .tile svg { width: 13px; height: 13px; }
+.row .val { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.row .pill { font-size: 11px; color: var(--text2); background: var(--track); border-radius: 99px; padding: 1px 8px; flex-shrink: 0; white-space: nowrap; }
+.row.dim .val { color: var(--text2); font-size: 12px; }
+.row.mono .val { font-family: var(--mono); font-size: 11.5px; color: var(--text2); }
+body.compact .row { min-height: 25px; padding: 1px 10px; }
+body.compact .row .tile { width: 18px; height: 18px; border-radius: 5px; }
+body.compact .row .tile svg { width: 11px; height: 11px; }
+.world-head { position: sticky; top: 0; z-index: 2; margin: 14px 0 4px; padding: 10px 14px; border-radius: 14px;
+              display: flex; align-items: center; gap: 12px; }
+.world-head:first-child { margin-top: 4px; }
+.world-head .tile { width: 30px; height: 30px; border-radius: 9px; }
+.world-head .tile svg { width: 18px; height: 18px; }
+.world-head .name { font-size: 15px; font-weight: 650; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.world-head .when { font: 11.5px var(--mono); color: var(--text2); }
+.empty { height: 100%; display: grid; place-items: center; color: var(--text3); font-size: 14px; text-align: center; }
+.jump { position: absolute; right: 26px; bottom: 22px; border: none; border-radius: 99px; padding: 7px 14px 7px 10px;
+        color: var(--text); font: 600 12px var(--font); display: none; z-index: 3; align-items: center; gap: 6px; }
+.jump svg { width: 14px; height: 14px; }
+.jump.show { display: flex; }
+
+/* ---------- Inspector ---------- */
+.inspector { width: 250px; border-radius: 22px; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+             transition: width .25s, opacity .2s, margin .25s; }
+.inspector.hidden { width: 0; opacity: 0; margin-left: -10px; border-width: 0; }
+.insp-head { padding: 18px 18px 8px; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.insp-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.insp-head .count { color: var(--text2); font-size: 12px; }
+.players { flex: 1; overflow-y: auto; padding: 4px 10px 10px; }
+.player { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; white-space: nowrap; }
+.player:hover { background: var(--hover); }
+.avatar { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #fff;
+          font-weight: 700; font-size: 12px; flex-shrink: 0; box-shadow: inset 0 1px 0 rgba(255,255,255,.35); }
+.player .pname { overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; flex: 1; }
+.player .fr { color: var(--accent); flex-shrink: 0; }
+.player .fr svg { width: 13px; height: 13px; }
+.avatar { overflow: visible; position: relative; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
+.avatar img.frame-img { position: absolute; inset: 0; object-fit: contain; border-radius: 0; transform: scale(1.3); pointer-events: none; z-index: 1; }
+.avatar.has-frame { background: transparent !important; }
+.avatar.mini { width: 20px; height: 20px; font-size: 9px; }
+body.compact .avatar.mini { width: 16px; height: 16px; font-size: 8px; }
+.row .who { display: inline-flex; align-items: center; gap: 7px; vertical-align: middle; }
+.status-dot { position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--sheet); }
+
+/* ---------- Profile card ---------- */
+.pcard { width: min(420px, calc(100vw / var(--z, 1) - 40px)); border-radius: 24px; overflow: hidden; background: var(--sheet); backdrop-filter: blur(40px) saturate(180%);
+         border: 1px solid var(--stroke); box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 var(--stroke-in);
+         transform: scale(.96) translateY(10px); transition: transform .25s cubic-bezier(.3,1.3,.5,1); }
+.overlay.show .pcard { transform: none; }
+.pcard-hero { height: 92px; background: linear-gradient(135deg, var(--accent), var(--purple)); position: relative; }
+.pcard-hero .bgimg { position: absolute; inset: 0; background-size: cover; background-position: center; filter: blur(18px) saturate(140%); opacity: .8; transform: scale(1.3); }
+.pcard .avatar.big { width: 92px; height: 92px; font-size: 34px; margin: -50px auto 0; border: 4px solid var(--sheet); box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+.pcard-body { padding: 10px 22px 20px; text-align: center; }
+.pcard-body h3 { margin: 6px 0 2px; font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+.pcard-status { display: inline-flex; align-items: center; gap: 6px; color: var(--text2); font-size: 12px; }
+.pcard-status i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.badge { display: inline-block; margin: 8px 3px 0; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 600;
+         background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.badge.gray { background: var(--track); color: var(--text2); }
+.pcard-bio { margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--card); text-align: left; font-size: 12px;
+             white-space: pre-wrap; max-height: 140px; overflow-y: auto; color: var(--text2); user-select: text; overflow-wrap: anywhere; }
+.pcard-actions { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+.pcard-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
+.pcard-actions .btn svg { width: 13px; height: 13px; }
+.pcard-note { font-size: 11px; color: var(--text3); margin-top: 10px; }
+
+/* ---------- Login form ---------- */
+.field { display: block; width: 100%; border: 1px solid var(--sep); background: var(--card); color: var(--text); border-radius: 10px;
+         padding: 9px 12px; font: 13px var(--font); outline: none; user-select: text; }
+.field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+.form { padding: 14px; display: grid; gap: 10px; }
+.form .btn { justify-self: stretch; padding: 9px; display: flex; align-items: center; justify-content: center; gap: 7px; }
+.form .btn svg { width: 15px; height: 15px; flex: none; }
+.btn-spin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; animation: btnspin .8s linear infinite; }
+@keyframes btnspin { to { transform: rotate(360deg); } }
+.form .err { color: var(--red); font-size: 12px; min-height: 16px; }
+.form .note { color: var(--text2); font-size: 11.5px; display: flex; gap: 6px; align-items: flex-start; }
+.form .note svg { width: 13px; height: 13px; flex-shrink: 0; margin-top: 2px; }
+.code-field { text-align: center; font: 600 22px var(--mono); letter-spacing: .35em; }
+.btn:disabled { opacity: .5; }
+.insp-foot { font-size: 11px; color: var(--text3); text-align: center; padding: 8px 12px 14px; white-space: nowrap; }
+
+/* ---------- Settings sheet ---------- */
+.overlay { position: fixed; top: 0; left: 0; width: calc(100vw / var(--z, 1)); height: calc(100vh / var(--z, 1)); z-index: 30; display: grid; place-items: center; background: rgba(0,0,0,.25);
+           opacity: 0; pointer-events: none; transition: opacity .2s; }
+.overlay.show { opacity: 1; pointer-events: auto; }
+.sheet { width: min(600px, calc(100% - 40px)); max-height: calc(100vh / var(--z, 1) - 60px); border-radius: 24px; display: flex; flex-direction: column;
+         background: var(--sheet); backdrop-filter: blur(40px) saturate(180%); border: 1px solid var(--stroke);
+         box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 var(--stroke-in);
+         transform: scale(.96) translateY(10px); transition: transform .25s cubic-bezier(.3,1.3,.5,1); }
+.overlay.show .sheet { transform: none; }
+.sheet-head { display: flex; align-items: center; padding: 18px 20px 10px; gap: 10px; }
+.sheet-head h1 { margin: 0; font-size: 20px; font-weight: 700; flex: 1; }
+.btn { border: none; border-radius: 99px; padding: 6px 16px; font: 600 12.5px var(--font); color: var(--text);
+       background: var(--track); white-space: nowrap; }
+.btn:hover { filter: brightness(1.12); }
+.btn.primary { background: var(--accent); color: #fff; }
+.btn.danger { color: var(--red); }
+.btn.danger.armed { background: var(--red); color: #fff; }
+.sheet-body { overflow-y: auto; padding: 0 20px 22px; }
+.sec-title { font-size: 12px; font-weight: 600; color: var(--text2); margin: 16px 6px 6px; }
+.card { background: var(--card); border-radius: 14px; border: 1px solid var(--sep); overflow: hidden; }
+.srow { display: flex; align-items: center; gap: 12px; padding: 9px 12px; min-height: 46px; }
+.srow + .srow { border-top: 1px solid var(--sep); }
+.srow .label { flex: 1; min-width: 0; }
+.srow .hint { display: block; font-size: 11px; color: var(--text2); }
+.themes { display: flex; gap: 14px; padding: 14px 12px 12px; justify-content: center; }
+.theme-opt { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; border: none; background: none; color: var(--text); padding: 0; }
+.theme-prev { width: 96px; height: 62px; border-radius: 10px; border: 3px solid transparent; position: relative; overflow: hidden;
+              box-shadow: 0 0 0 1px var(--sep); }
+.theme-opt.on .theme-prev { border-color: var(--accent); }
+.theme-prev::before { content: ""; position: absolute; left: 8px; top: 8px; width: 26px; bottom: 8px; border-radius: 5px; background: var(--pw); }
+.theme-prev::after { content: ""; position: absolute; left: 40px; right: 8px; top: 8px; bottom: 8px; border-radius: 5px; background: var(--pw); }
+.prev-light { background: linear-gradient(135deg, #a1c4fd, #fbc2eb); --pw: rgba(255,255,255,.75); }
+.prev-dark { background: linear-gradient(135deg, #1a2a6c, #b21f66); --pw: rgba(30,30,34,.7); }
+.prev-auto { background: linear-gradient(135deg, #a1c4fd 0 50%, #1a2a6c 50%); --pw: rgba(128,128,136,.6); }
+.dots { display: flex; gap: 8px; }
+.dot { width: 20px; height: 20px; border-radius: 50%; border: none; padding: 0; background: var(--d); display: grid; place-items: center; color: #fff;
+       box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+.dot svg { width: 12px; height: 12px; stroke-width: 3.5; opacity: 0; }
+.dot.on svg { opacity: 1; }
+.swatches { display: flex; gap: 8px; }
+.swatch { width: 44px; height: 30px; border-radius: 8px; border: 2px solid transparent; padding: 0; box-shadow: 0 0 0 1px var(--sep); }
+.swatch.on { border-color: var(--accent); }
+input[type=range] { appearance: none; width: 170px; height: 4px; border-radius: 99px; background: var(--track); outline: none; }
+input[type=range]::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35), 0 0 0 .5px rgba(0,0,0,.1); }
+.about { text-align: center; padding: 18px 12px; }
+.about .app-icon { width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 10px; display: grid; place-items: center; color: #fff;
+                   background: linear-gradient(135deg, var(--accent), var(--purple)); box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+.about .app-icon svg { width: 30px; height: 30px; }
+.about b { font-size: 15px; display: block; }
+.about span { color: var(--text2); font-size: 12px; }
+
+/* ---------- Navigation ---------- */
+.nav { padding: 4px 10px 6px; display: grid; gap: 1px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; border: none; background: none;
+            color: var(--text); font: 500 13px var(--font); text-align: left; width: 100%; }
+.nav-item:hover { background: var(--hover); }
+.nav-item.on { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.nav-item .label { flex: 1; }
+.nav-badge { min-width: 20px; padding: 0 6px; height: 18px; border-radius: 99px; background: var(--track); color: var(--text2);
+             font-size: 11px; font-weight: 600; display: grid; place-items: center; }
+.nav-badge.hot { background: var(--red); color: #fff; }
+.nav-sep { height: 1px; background: var(--sep); margin: 4px 16px 2px; }
+#filterArea { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.view { display: none; flex: 1; min-height: 0; overflow-y: auto; padding: 10px 14px 16px; }
+.view.on { display: block; }
+#log.view.on { display: block; }
+.empty-state { display: grid; place-items: center; text-align: center; height: 100%; color: var(--text2); gap: 12px; align-content: center; }
+.empty-state .tile { width: 48px; height: 48px; border-radius: 14px; margin: 0 auto; }
+.empty-state .tile svg { width: 26px; height: 26px; }
+
+/* ---------- Friends ---------- */
+.sec-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text2);
+            margin: 14px 4px 8px; text-transform: none; }
+.sec-head:first-child { margin-top: 4px; }
+.sec-head .n { color: var(--text3); font-weight: 600; }
+.sec-head button { margin-left: auto; }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text2); }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--gray); }
+.live.on i { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 25%, transparent); }
+.fgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; }
+.fcard { display: flex; gap: 10px; padding: 10px; border-radius: 14px; background: var(--card); border: 1px solid var(--sep); align-items: center; min-width: 0; }
+.fcard:hover { background: var(--hover); }
+.fcard .avatar { width: 40px; height: 40px; font-size: 15px; overflow: visible; }
+.fcard .avatar img { border-radius: 50%; }
+.fcard .info { flex: 1; min-width: 0; }
+.fcard .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fcard .sub { font-size: 11.5px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fcard .loc { font-size: 11.5px; display: flex; gap: 5px; align-items: center; min-width: 0; margin-top: 1px; }
+.fcard .loc svg { width: 12px; height: 12px; color: var(--text3); }
+.fcard .loc span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fcard .acts { display: flex; gap: 4px; }
+.mini-btn { width: 28px; height: 28px; border-radius: 99px; border: none; display: grid; place-items: center; background: var(--track); color: var(--text); }
+.mini-btn:hover { background: var(--accent); color: #fff; }
+.mini-btn svg { width: 14px; height: 14px; }
+.itype { font-size: 10px; font-weight: 700; padding: 0 6px; border-radius: 99px; background: var(--track); color: var(--text2); flex-shrink: 0; line-height: 16px; }
+.avwrap { position: relative; flex-shrink: 0; display: block; }
+.avwrap .sdot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--sheet); }
+.pcard { max-height: calc(100vh / var(--z, 1) - 40px); overflow-y: auto; }
+
+/* ---------- Feed / Notifications / History ---------- */
+.frow { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 10px; }
+.frow:hover { background: var(--hover); }
+.frow .time { font: 11.5px var(--mono); color: var(--text3); flex-shrink: 0; width: 92px; }
+.frow .avatar { width: 26px; height: 26px; font-size: 11px; }
+.frow .nm { font-weight: 600; cursor: pointer; flex-shrink: 0; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.frow .what { flex: 1; min-width: 0; color: var(--text2); display: flex; align-items: center; gap: 6px; }
+.frow .what svg { width: 13px; height: 13px; flex-shrink: 0; }
+.frow .what span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link { color: var(--accent); cursor: pointer; }
+.link:hover { text-decoration: underline; }
+.ncard { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--sep); margin-bottom: 8px; }
+.ncard .avatar { width: 40px; height: 40px; font-size: 15px; }
+.ncard .info { flex: 1; min-width: 0; }
+.ncard .nm { font-weight: 600; }
+.ncard .sub { color: var(--text2); font-size: 12px; }
+.ncard .acts { display: flex; gap: 6px; }
+.hrow { border-radius: 14px; margin-bottom: 6px; background: var(--card); border: 1px solid var(--sep); overflow: hidden; }
+.hhead { display: flex; align-items: center; gap: 12px; padding: 8px 10px; cursor: pointer; }
+.hhead:hover { background: var(--hover); }
+.thumb { width: 64px; height: 42px; border-radius: 8px; background: var(--track); background-size: cover; background-position: center; flex-shrink: 0;
+         display: grid; place-items: center; color: var(--text3); }
+.thumb svg { width: 18px; height: 18px; }
+.hhead .info { flex: 1; min-width: 0; }
+.hhead .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hhead .sub { color: var(--text2); font-size: 11.5px; display: flex; gap: 10px; flex-wrap: wrap; }
+.hhead .chev { color: var(--text3); transition: transform .2s; }
+.hrow.open .chev { transform: rotate(90deg); }
+.hbody { padding: 4px 12px 12px 86px; display: none; }
+.hrow.open .hbody { display: block; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 3px; border-radius: 99px; background: var(--track); font-size: 12px; cursor: pointer; max-width: 200px; }
+.chip:hover { background: var(--hover); }
+.chip .avatar { width: 20px; height: 20px; font-size: 9px; }
+.chip span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Search ---------- */
+.search-head { display: flex; gap: 10px; align-items: center; margin: 4px 0 14px; }
+.search-head .field { flex: 1; border-radius: 99px; padding: 9px 16px; }
+.wgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.wcard { border-radius: 14px; overflow: hidden; background: var(--card); border: 1px solid var(--sep); cursor: pointer; }
+.wcard:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+.wcard .wimg { aspect-ratio: 4 / 3; background: var(--track); background-size: cover; background-position: center; }
+.wcard .winfo { padding: 8px 10px; }
+.wcard .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wcard .sub { color: var(--text2); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- World card / profile extras ---------- */
+.wc-hero { height: 190px; background: var(--track); background-size: cover; background-position: center; }
+.stats { display: flex; justify-content: center; gap: 16px; margin-top: 8px; color: var(--text2); font-size: 12px; flex-wrap: wrap; }
+.stats b { color: var(--text); }
+.pcard-section { margin-top: 12px; text-align: left; }
+.pcard-section .lbl { font-size: 11px; font-weight: 700; color: var(--text3); margin: 0 2px 4px; }
+.memo { width: 100%; min-height: 54px; resize: vertical; border-radius: 10px; border: 1px solid var(--sep); background: var(--card); color: var(--text);
+        font: 12px var(--font); padding: 8px 10px; outline: none; user-select: text; }
+.memo:focus { border-color: var(--accent); }
+.locline { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--card); font-size: 12px; }
+.locline .w { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.locline .w.wrap { white-space: normal; }
+.acts { display: flex; gap: 4px; flex-shrink: 0; }
+.world-head { cursor: pointer; }
+.pcard.wide { width: 420px; }
+
+/* ---------- Banner / frame / badge ---------- */
+.fcard.bnr { position: relative; overflow: hidden; border-color: transparent; color: #fff; }
+.fcard.bnr .bnr-bg { position: absolute; inset: 0; background-size: cover !important; background-position: center !important; z-index: 0; }
+.fcard.bnr::after { content: ""; position: absolute; inset: 0; z-index: 0;
+                    background: linear-gradient(90deg, rgba(0,0,0,.66) 0%, rgba(0,0,0,.42) 55%, rgba(0,0,0,.2) 100%); }
+.fcard.bnr > *:not(.bnr-bg) { position: relative; z-index: 1; }
+.fcard.bnr:hover::after { background: linear-gradient(90deg, rgba(0,0,0,.58) 0%, rgba(0,0,0,.32) 55%, rgba(0,0,0,.1) 100%); }
+.fcard.bnr .nm { font-weight: 800; text-shadow: 0 1px 3px rgba(0,0,0,.45); }
+.fcard.bnr .sub, .fcard.bnr .loc { color: rgba(255,255,255,.85); }
+.fcard.bnr .loc svg { color: rgba(255,255,255,.65); }
+.fcard.bnr .itype { background: rgba(255,255,255,.22); color: #fff; }
+.fcard.bnr .mini-btn { background: rgba(255,255,255,.22); color: #fff; backdrop-filter: blur(8px); }
+.fcard.bnr .mini-btn:hover { background: var(--accent); }
+.fcard.bnr .avwrap .sdot { border-color: rgba(0,0,0,.55); }
+.avatar.framed { box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 0 0 4.5px var(--ring, var(--accent)), 0 2px 8px rgba(0,0,0,.35); }
+.avatar.mini.framed, .chip .avatar.framed { box-shadow: 0 0 0 1.5px var(--ring, var(--accent)); }
+.pcard-hero.cover { height: 120px; background-size: cover; background-position: center; }
+.badge.rank { background: color-mix(in srgb, var(--rk) 20%, transparent); color: var(--rk); }
+.badge.vplus { background: linear-gradient(135deg, #ffcb47, #ff7a59); color: #fff; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
+.badges img { width: 36px; height: 36px; border-radius: 9px; object-fit: contain; background: var(--card); padding: 2px; }
+.links { display: grid; gap: 6px; }
+.link-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: var(--card); font-size: 12px; cursor: pointer; min-width: 0; }
+.link-row:hover { background: var(--hover); color: var(--accent); }
+.link-row svg { width: 13px; height: 13px; flex-shrink: 0; color: var(--text3); }
+.link-row b { flex-shrink: 0; }
+.link-row span { color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip.lang { padding: 3px 10px; cursor: default; }
+
+/* ---------- Groups / avatars / inventory ---------- */
+.gcard { position: relative; }
+.gcard .wimg { aspect-ratio: 3 / 1; }
+.gcard .gicon { position: absolute; left: 10px; top: 0; margin-top: calc(33.3% - 24px); }
+.gicon { width: 44px; height: 44px; border-radius: 12px; background: var(--track) center/cover; border: 3px solid var(--sheet);
+         box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.gcard .winfo { padding-top: 26px; }
+.gicon.big { width: 84px; height: 84px; border-radius: 20px; margin: -46px auto 0; border-width: 4px; position: relative; }
+.verified svg { width: 15px; height: 15px; color: var(--blue); display: inline-block; vertical-align: -2px; }
+.hint-inline { color: var(--text3); font-size: 11.5px; }
+.wcard.current { outline: 2.5px solid var(--accent); outline-offset: -2.5px; }
+.wcard .wimg { position: relative; }
+.wear { position: absolute; left: 8px; top: 8px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.inv-tabs button { display: inline-flex; align-items: center; gap: 6px; }
+.inv-tabs svg { width: 14px; height: 14px; }
+.igrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.igrid.photos { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.itile { position: relative; border-radius: 14px; background: var(--card); border: 1px solid var(--sep); padding: 8px; cursor: pointer; min-width: 0; }
+.itile:hover { background: var(--hover); }
+.itile.dim { opacity: .5; }
+.itile.on { outline: 2.5px solid var(--accent); outline-offset: -2.5px; }
+.iimg { aspect-ratio: 1; border-radius: 10px; background: var(--track) center/contain no-repeat; }
+.photos .iimg { aspect-ratio: 16 / 9; background-size: cover; }
+.iname { font-weight: 600; font-size: 12px; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.isub { color: var(--text2); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.itile .del { position: absolute; top: 12px; right: 12px; opacity: 0; transition: opacity .15s; }
+.itile:hover .del, .itile .del.armed { opacity: 1; }
+.mini-btn.armed, .btn.danger.armed { background: var(--red) !important; color: #fff; width: auto; padding: 0 10px; font: 600 11px var(--font); }
+.ianim { position: absolute; right: 12px; bottom: 12px; display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700;
+         padding: 1px 7px 1px 5px; border-radius: 99px; background: var(--accent); color: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+.ianim svg { width: 9px; height: 9px; fill: currentColor; }
+.itag { position: absolute; left: 12px; top: 12px; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: rgba(0,0,0,.5); color: #fff; }
+
+/* ---------- Animated emoji ---------- */
+.sheet.wide { width: min(880px, calc(100% - 40px)); }
+.emk { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; padding: 0 20px 20px; overflow-y: auto; }
+.emk-left { display: flex; flex-direction: column; gap: 10px; }
+.checker { background: repeating-conic-gradient(rgba(128,128,128,.22) 0 25%, transparent 0 50%) 0 0 / 20px 20px, var(--track); }
+.emk canvas { width: 300px; height: 300px; border-radius: 16px; display: block; }
+.emk canvas.pv { cursor: crosshair; }
+.emk canvas.sh { border-radius: 10px; }
+.emk-drop { height: 300px; border: 2px dashed var(--sep); border-radius: 16px; display: grid; place-content: center; justify-items: center; gap: 8px;
+            text-align: center; color: var(--text2); cursor: pointer; padding: 20px; white-space: pre-line; }
+.emk-drop:hover, .emk-drop.over { border-color: var(--accent); color: var(--text); }
+.emk-drop svg { width: 30px; height: 30px; }
+.emk .srow input[type=range] { width: 150px; }
+.emk .val { min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; color: var(--text2); }
+.emk .card + .card { margin-top: 10px; }
+.emk-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.emk-actions .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; }
+.emk-actions .btn svg { width: 15px; height: 15px; }
+.emk select { border: none; border-radius: 8px; background: var(--track); color: var(--text); font: 500 12px var(--font); padding: 5px 8px; }
+.emk select option { background: var(--sheet); color: var(--text); }
+.emk input[type=color] { width: 34px; height: 24px; border: none; padding: 0; background: none; border-radius: 6px; }
+.btn.sm { padding: 3px 10px; font-size: 11.5px; }
+.btn.on { background: var(--accent); color: #fff; }
+@media (max-width: 820px) { .emk { grid-template-columns: 1fr; } .emk-left { align-items: center; } }
+
+/* ---------- misc ---------- */
+.toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); opacity: 0; z-index: 40;
+         padding: 9px 18px; border-radius: 99px; font-weight: 500; transition: all .25s; pointer-events: none; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.grip { position: fixed; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; z-index: 20; }
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-thumb { background: var(--track); border-radius: 99px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--text3); }
+::-webkit-scrollbar-track { background: transparent; }
+button { cursor: default; }
+</style>
+</head>
+<body>
+<div class="wallpaper"></div>
+<div class="app">
+  <aside class="sidebar glass">
+    <div class="traffic pywebview-drag-region">
+      <button class="tl close" data-tip="close" onclick="api('close')" data-icon="x"></button>
+      <button class="tl min" data-tip="min" onclick="api('minimize')" data-icon="minus"></button>
+      <button class="tl max" data-tip="zoom" onclick="api('zoom')" data-icon="plus"></button>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="nav-sep"></div>
+    <div id="filterArea">
+      <div class="side-title pywebview-drag-region" id="filterTitle"></div>
+      <div class="side-scroll" id="groups"></div>
+      <div class="side-footer" id="filterFooter">
+        <div class="segmented">
+          <button onclick="setAll(true)" data-t="all"></button>
+          <button onclick="setDefault()" data-t="defaults"></button>
+          <button onclick="setAll(false)" data-t="none"></button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <header class="toolbar pywebview-drag-region" ondblclick="if(event.target===this)api('zoom')">
+      <div class="titles">
+        <div class="world" id="world">VRC Nook</div>
+        <div class="subtitle" id="subtitle"></div>
+      </div>
+      <div class="capsule glass">
+        <button class="icon-btn" id="pauseBtn" data-tip="pause" onclick="togglePause()" data-icon="pause"></button>
+        <button class="icon-btn" id="clearBtn" data-tip="clear" onclick="clearLog()" data-icon="eraser"></button>
+        <button class="icon-btn" id="refreshBtn" data-tip="refresh" onclick="refreshView()" data-icon="refresh-cw"></button>
+        <button class="icon-btn" data-tip="settings" onclick="openSettings()" data-icon="settings"></button>
+        <button class="icon-btn on" id="inspBtn" data-tip="togglePlayers" onclick="toggleInspector()" data-icon="users"></button>
+      </div>
+      <label class="search glass" id="searchBox">
+        <span data-icon="search"></span>
+        <input id="search" spellcheck="false">
+      </label>
+    </header>
+    <div class="content glass">
+      <div class="log view on" id="log"></div>
+      <div class="view" id="v_friends"></div>
+      <div class="view" id="v_feed"></div>
+      <div class="view" id="v_notifs"></div>
+      <div class="view" id="v_history"></div>
+      <div class="view" id="v_groups"></div>
+      <div class="view" id="v_avatars"></div>
+      <div class="view" id="v_inventory"></div>
+      <div class="view" id="v_search"></div>
+      <button class="jump glass" id="jump" onclick="scrollBottom()"><span data-icon="arrow-down"></span><span data-t="latest"></span></button>
+    </div>
+  </main>
+
+  <aside class="inspector glass" id="inspector">
+    <div class="insp-head"><h2 data-t="players"></h2><span class="count" id="pcount"></span></div>
+    <div class="players" id="players"></div>
+    <div class="insp-foot" data-t="copyHint"></div>
+  </aside>
+</div>
+
+<div class="overlay" id="overlay" onmousedown="if(event.target===this)closeSettings()">
+  <div class="sheet" id="sheet"></div>
+</div>
+<div class="overlay" id="pOverlay" onmousedown="if(event.target===this)closeProfile()">
+  <div class="pcard" id="pcard"></div>
+</div>
+<div class="overlay" id="eOverlay" onmousedown="if(event.target===this)closeEmk()">
+  <div class="sheet wide" id="esheet"></div>
+</div>
+<div class="grip" id="grip"></div>
+<div class="toast glass" id="toast"></div>
+
+<script>
+// Lucide icons (ISC) — vrclog_mac.py injects vrclog_icons.json in place of this line
+const ICONS = /*ICONS*/{};
+const EXTRA_ICONS = {  // Small icons for the traffic-light buttons
+  minus: '<path d="M5 12h14"/>', plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+};
+function icon(name) {
+  const body = ICONS[name] || EXTRA_ICONS[name] || ICONS["circle-alert"] || "";
+  return `<svg class="i" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+}
+
+// ---------- Event type data ----------
+const KIND_STYLE = {  // [icon, color]
+  world: ["globe", "blue"], instance: ["hash", "gray"], join: ["user-plus", "green"], leave: ["user-minus", "red"],
+  left: ["door-open", "teal"], disconnect: ["unplug", "red"], travel: ["compass", "teal"], world_load: ["timer", "gray"],
+  avatar: ["shirt", "indigo"], avatar_load: ["package", "indigo"], perf: ["shield-alert", "orange"], moderation: ["shield-check", "gray"],
+  video: ["clapperboard", "purple"], video_title: ["music", "pink"], video_err: ["triangle-alert", "orange"], download: ["download", "gray"],
+  screenshot: ["camera", "blue"], sticker: ["sticker", "pink"], item: ["gift", "purple"], pickup: ["hand", "brown"], store: ["shopping-bag", "mint"],
+  notify: ["bell", "orange"], login: ["key-round", "green"], net: ["wifi-off", "yellow"], mic: ["mic", "gray"], udon_err: ["bug", "red"], error: ["circle-alert", "red"],
+};
+const GROUPS = [
+  ["g_room", ["world", "instance", "join", "leave", "left", "disconnect", "travel", "world_load"]],
+  ["g_avatar", ["avatar", "avatar_load", "perf", "moderation"]],
+  ["g_media", ["video", "video_title", "video_err", "download"]],
+  ["g_activity", ["screenshot", "sticker", "item", "pickup", "store"]],
+  ["g_system", ["notify", "login", "net", "mic", "udon_err", "error"]],
+];
+const DIM = new Set(["instance", "travel", "world_load", "download", "mic", "moderation", "pickup", "avatar_load"]);
+
+// ---------- Languages ----------
+const LANGS = { th: "ไทย", en: "English", ja: "日本語", ko: "한국어", ru: "Русский", vi: "Tiếng Việt", zh: "中文 (简体)" };  // ko/ru/vi/zh are in i18n_extra.js
+const I18N = {
+  th: {
+    chooseView: "เลือกสิ่งที่จะดู", all: "ทั้งหมด", defaults: "ค่าเริ่มต้น", none: "ไม่เลือก",
+    g_room: "ห้องและผู้เล่น", g_avatar: "อวตาร", g_media: "วิดีโอและสื่อ", g_activity: "กิจกรรม", g_system: "ระบบ", g_other: "อื่นๆ",
+    searchPh: "ค้นหา ชื่อ, โลก, URL, ID", waiting: "กำลังรอ log…", noMatch: "ไม่มีรายการที่ตรงกับตัวกรอง",
+    events: n => `${n.toLocaleString()} เหตุการณ์`, paused: "หยุดชั่วคราว", players: "ผู้เล่นในห้อง", people: n => `${n} คน`,
+    copyHint: "ดับเบิลคลิกเพื่อคัดลอก user ID", copied: n => `คัดลอก ID ของ ${n} แล้ว`, latest: "ล่าสุด",
+    pause: "หยุดชั่วคราว", resume: "ทำต่อ", clear: "ล้างจอ", folder: "เปิดโฟลเดอร์ log", settings: "ตั้งค่า",
+    togglePlayers: "แสดง/ซ่อนผู้เล่น", close: "ปิด", min: "ย่อ", zoom: "ขยาย",
+    done: "เสร็จ", general: "ทั่วไป", appearance: "ลักษณะ", data: "ข้อมูล", about: "เกี่ยวกับ",
+    language: "ภาษา", showDate: "แสดงวันที่หน้าเวลา", textSize: "ขนาดตัวอักษร", sizeS: "เล็ก", sizeM: "กลาง", sizeL: "ใหญ่",
+    compact: "แถวแบบกะทัดรัด", compactHint: "แสดงได้หลายบรรทัดขึ้นในหน้าจอเดียว",
+    onTop: "อยู่บนสุดเสมอ", onTopHint: "หน้าต่างลอยอยู่เหนือโปรแกรมอื่น",
+    theme: "ธีม", themeAuto: "อัตโนมัติ", themeLight: "สว่าง", themeDark: "มืด", accent: "สีเน้น", wallpaper: "วอลเปเปอร์",
+    glass: "ความทึบของกระจก", glassHint: "ซ้าย = ใส, ขวา = ทึบ",
+    openFolder: "โฟลเดอร์ log ของ VRChat", open: "เปิด", resetAll: "รีเซ็ตการตั้งค่าทั้งหมด", reset: "รีเซ็ต", confirm: "กดอีกครั้งเพื่อยืนยัน",
+    resetDone: "รีเซ็ตการตั้งค่าแล้ว", version: v => `เวอร์ชัน ${v}`, credits: "ไอคอนโดย Lucide (ISC License)", madeBy: "สร้างโดย",
+    wp: { tahoe: "Tahoe", ocean: "มหาสมุทร", sunset: "พระอาทิตย์ตก", forest: "ป่า", graphite: "กราไฟต์" },
+    kinds: { world: "เข้าโลก", instance: "Instance ID", join: "มีคนเข้า", leave: "มีคนออก", left: "ตัวเองออกจากห้อง",
+      disconnect: "หลุดการเชื่อมต่อ", travel: "กำลังย้ายโลก", world_load: "เวลาโหลดโลก", avatar: "เปลี่ยนอวตาร",
+      avatar_load: "โหลดอวตาร + เจ้าของ", perf: "อวตารถูกบล็อก (performance)", moderation: "ตั้งค่าแสดงอวตาร",
+      video: "เปิดวิดีโอ", video_title: "ชื่อวิดีโอ (YTTL)", video_err: "วิดีโอ error", download: "โหลดรูป/ข้อความจาก URL",
+      screenshot: "ถ่ายรูป", sticker: "สติกเกอร์", item: "ไอเทม (prop)", pickup: "หยิบของ", store: "ร้านค้าในโลก",
+      notify: "แจ้งเตือน", login: "Login", net: "การเชื่อมต่อ API หลุด", mic: "เปลี่ยนไมค์", udon_err: "Udon script error", error: "Error อื่นๆ" },
+    fmt: {
+      left: () => "ออกจากห้อง", video_title: (t, v) => t === "title" ? v : `โดย ${v}`, sticker: (u, n) => `${n} วางสติกเกอร์`,
+      notify: (u, t) => u ? `${t} จาก ${u}` : t, login: n => `Login เป็น ${n}`, item: n => `${n} วางไอเทม`,
+      disconnect: r => `หลุดจากห้อง (${r})`, net: () => "การเชื่อมต่อ API หลุด — เพื่อน/แจ้งเตือนอาจไม่อัปเดต",
+      perf: () => "อวตารถูกบล็อกโดย performance limit", udon_err: () => "Udon script ของโลกเกิด error",
+      travel: d => `กำลังย้ายไป ${d}`, world_load: t => `โหลดโลกใช้เวลา ${t}`, avatar_load: (n, o) => `โหลดอวตาร ${n} (ของ ${o})`,
+      store: n => `โลกนี้มีร้านค้า ${n} รายการ`,
+    },
+  },
+  en: {
+    chooseView: "Show events", all: "All", defaults: "Default", none: "None",
+    g_room: "Room & Players", g_avatar: "Avatars", g_media: "Video & Media", g_activity: "Activity", g_system: "System", g_other: "Other",
+    searchPh: "Search names, worlds, URLs, IDs", waiting: "Waiting for log…", noMatch: "No events match the current filters",
+    events: n => `${n.toLocaleString()} events`, paused: "Paused", players: "Players in Room", people: n => `${n} ${n === 1 ? "player" : "players"}`,
+    copyHint: "Double-click to copy user ID", copied: n => `Copied ${n}'s ID`, latest: "Latest",
+    pause: "Pause", resume: "Resume", clear: "Clear", folder: "Open log folder", settings: "Settings",
+    togglePlayers: "Show/hide players", close: "Close", min: "Minimize", zoom: "Zoom",
+    done: "Done", general: "General", appearance: "Appearance", data: "Data", about: "About",
+    language: "Language", showDate: "Show date with time", textSize: "Text size", sizeS: "Small", sizeM: "Medium", sizeL: "Large",
+    compact: "Compact rows", compactHint: "Fit more lines on screen",
+    onTop: "Always on top", onTopHint: "Keep the window above other apps",
+    theme: "Theme", themeAuto: "Auto", themeLight: "Light", themeDark: "Dark", accent: "Accent color", wallpaper: "Wallpaper",
+    glass: "Glass opacity", glassHint: "Left = clear, right = frosted",
+    openFolder: "VRChat log folder", open: "Open", resetAll: "Reset all settings", reset: "Reset", confirm: "Click again to confirm",
+    resetDone: "Settings reset", version: v => `Version ${v}`, credits: "Icons by Lucide (ISC License)", madeBy: "Created by",
+    wp: { tahoe: "Tahoe", ocean: "Ocean", sunset: "Sunset", forest: "Forest", graphite: "Graphite" },
+    kinds: { world: "Joined world", instance: "Instance ID", join: "Player joined", leave: "Player left", left: "Left room",
+      disconnect: "Disconnected", travel: "Traveling", world_load: "World load time", avatar: "Avatar changed",
+      avatar_load: "Avatar loaded + owner", perf: "Avatar blocked (performance)", moderation: "Avatar visibility",
+      video: "Video opened", video_title: "Video title (YTTL)", video_err: "Video error", download: "URL downloads",
+      screenshot: "Screenshot", sticker: "Sticker", item: "Item (prop)", pickup: "Pickup", store: "World store",
+      notify: "Notification", login: "Login", net: "API connection lost", mic: "Microphone changed", udon_err: "Udon script error", error: "Other errors" },
+    fmt: {
+      left: () => "Left the room", video_title: (t, v) => t === "title" ? v : `by ${v}`, sticker: (u, n) => `${n} placed a sticker`,
+      notify: (u, t) => u ? `${t} from ${u}` : t, login: n => `Logged in as ${n}`, item: n => `${n} spawned an item`,
+      disconnect: r => `Disconnected (${r})`, net: () => "API connection lost — friends/notifications may not update",
+      perf: () => "Avatar blocked by performance limits", udon_err: () => "World Udon script error",
+      travel: d => `Traveling to ${d}`, world_load: t => `World loaded in ${t}`, avatar_load: (n, o) => `Loaded avatar ${n} (by ${o})`,
+      store: n => `World store: ${n} listings`,
+    },
+  },
+  ja: {
+    chooseView: "表示するイベント", all: "すべて", defaults: "デフォルト", none: "なし",
+    g_room: "ルームとプレイヤー", g_avatar: "アバター", g_media: "動画とメディア", g_activity: "アクティビティ", g_system: "システム", g_other: "その他",
+    searchPh: "名前・ワールド・URL・IDを検索", waiting: "ログを待機中…", noMatch: "条件に一致するイベントはありません",
+    events: n => `${n.toLocaleString()} 件のイベント`, paused: "一時停止中", players: "ルーム内のプレイヤー", people: n => `${n} 人`,
+    copyHint: "ダブルクリックでユーザーIDをコピー", copied: n => `${n} のIDをコピーしました`, latest: "最新",
+    pause: "一時停止", resume: "再開", clear: "クリア", folder: "ログフォルダを開く", settings: "設定",
+    togglePlayers: "プレイヤーを表示/非表示", close: "閉じる", min: "最小化", zoom: "拡大",
+    done: "完了", general: "一般", appearance: "外観", data: "データ", about: "情報",
+    language: "言語", showDate: "時刻に日付を表示", textSize: "文字サイズ", sizeS: "小", sizeM: "中", sizeL: "大",
+    compact: "コンパクト表示", compactHint: "画面により多くの行を表示",
+    onTop: "常に手前に表示", onTopHint: "ウインドウを他のアプリより前面に表示",
+    theme: "テーマ", themeAuto: "自動", themeLight: "ライト", themeDark: "ダーク", accent: "アクセントカラー", wallpaper: "壁紙",
+    glass: "ガラスの不透明度", glassHint: "左 = 透明、右 = すりガラス",
+    openFolder: "VRChat のログフォルダ", open: "開く", resetAll: "すべての設定をリセット", reset: "リセット", confirm: "もう一度押して確定",
+    resetDone: "設定をリセットしました", version: v => `バージョン ${v}`, credits: "アイコン: Lucide (ISC License)", madeBy: "作成者",
+    wp: { tahoe: "Tahoe", ocean: "オーシャン", sunset: "サンセット", forest: "フォレスト", graphite: "グラファイト" },
+    kinds: { world: "ワールド入室", instance: "インスタンスID", join: "プレイヤー参加", leave: "プレイヤー退出", left: "ルーム退出",
+      disconnect: "切断", travel: "ワールド移動中", world_load: "ワールド読み込み時間", avatar: "アバター変更",
+      avatar_load: "アバター読み込み + 作者", perf: "アバターブロック (パフォーマンス)", moderation: "アバター表示設定",
+      video: "動画再生", video_title: "動画タイトル (YTTL)", video_err: "動画エラー", download: "URLダウンロード",
+      screenshot: "スクリーンショット", sticker: "ステッカー", item: "アイテム (prop)", pickup: "ピックアップ", store: "ワールドストア",
+      notify: "通知", login: "ログイン", net: "API接続切断", mic: "マイク変更", udon_err: "Udonスクリプトエラー", error: "その他のエラー" },
+    fmt: {
+      left: () => "ルームを退出", video_title: (t, v) => t === "title" ? v : `投稿者: ${v}`, sticker: (u, n) => `${n} がステッカーを貼りました`,
+      notify: (u, t) => u ? `${u} から ${t}` : t, login: n => `${n} としてログイン`, item: n => `${n} がアイテムを出しました`,
+      disconnect: r => `切断されました (${r})`, net: () => "API接続が切れました — フレンド/通知が更新されない可能性があります",
+      perf: () => "パフォーマンス制限でアバターがブロックされました", udon_err: () => "ワールドのUdonスクリプトでエラー",
+      travel: d => `${d} へ移動中`, world_load: t => `ワールド読み込み ${t}`, avatar_load: (n, o) => `アバター ${n} を読み込み (${o})`,
+      store: n => `ワールドストア: ${n} 件`,
+    },
+  },
+};
+// VRChat account / profile strings
+Object.assign(I18N.th, {
+  copyHint: "คลิกที่ชื่อเพื่อดูโปรไฟล์", account: "บัญชี VRChat", notSignedIn: "ยังไม่ได้เข้าสู่ระบบ",
+  signInHint: "เข้าสู่ระบบเพื่อแสดงรูปโปรไฟล์ผู้เล่น", signIn: "เข้าสู่ระบบ", signingIn: "กำลังเข้าสู่ระบบ…",
+  signOut: "ออกจากระบบ", signedIn: "เข้าสู่ระบบแล้ว", username: "ชื่อผู้ใช้หรืออีเมล", password: "รหัสผ่าน",
+  pwNote: "รหัสผ่านถูกส่งตรงไปที่ VRChat และไม่ถูกบันทึก — โปรแกรมเก็บแค่ session ที่เข้ารหัสไว้ในเครื่องนี้",
+  apiNote: "ใช้ VRChat API แบบไม่เป็นทางการ โหลดทีละคนอย่างช้าๆ เพื่อไม่ให้เกิน rate limit",
+  back: "กลับ", twoFA: "ยืนยันตัวตน 2 ขั้น", twoFAApp: "ใส่รหัส 6 หลักจากแอป Authenticator",
+  twoFAEmail: "ใส่รหัสที่ VRChat ส่งไปที่อีเมลของคุณ", useRecovery: "ใช้รหัสกู้คืนแทน", verify: "ยืนยัน",
+  errLogin: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", errCode: "รหัสไม่ถูกต้อง ลองอีกครั้ง", errNet: "เชื่อมต่อ VRChat ไม่ได้",
+  errRate: "ลองบ่อยเกินไป รอสักครู่แล้วลองใหม่", sessionExpired: "session หมดอายุ — กรุณาเข้าสู่ระบบใหม่",
+  showPics: "แสดงรูปโปรไฟล์ใน log", clearCache: "ล้าง cache รูปโปรไฟล์", clear2: "ล้าง", cacheCleared: "ล้าง cache แล้ว",
+  copyId: "คัดลอก ID", openWeb: "เปิดในเว็บ", friend: "เพื่อน", loginToSee: "เข้าสู่ระบบในหน้าตั้งค่าเพื่อดูรูปและโปรไฟล์",
+  loadingProfile: "กำลังโหลดโปรไฟล์…", noBio: "ไม่มีคำแนะนำตัว",
+  st: { active: "ออนไลน์", "join me": "Join Me", "ask me": "Ask Me", busy: "ไม่ว่าง", offline: "ออฟไลน์" },
+});
+Object.assign(I18N.en, {
+  copyHint: "Click a name to view profile", account: "VRChat Account", notSignedIn: "Not signed in",
+  signInHint: "Sign in to show player profile pictures", signIn: "Sign in", signingIn: "Signing in…",
+  signOut: "Sign out", signedIn: "Signed in", username: "Username or email", password: "Password",
+  pwNote: "Your password goes straight to VRChat and is never saved — only an encrypted session is kept on this PC",
+  apiNote: "Uses the unofficial VRChat API, loading one player at a time to stay under rate limits",
+  back: "Back", twoFA: "Two-factor authentication", twoFAApp: "Enter the 6-digit code from your authenticator app",
+  twoFAEmail: "Enter the code VRChat sent to your email", useRecovery: "Use a recovery code instead", verify: "Verify",
+  errLogin: "Incorrect username or password", errCode: "Invalid code, try again", errNet: "Couldn't reach VRChat",
+  errRate: "Too many attempts — wait a moment and try again", sessionExpired: "Session expired — please sign in again",
+  showPics: "Show profile pictures in log", clearCache: "Clear profile picture cache", clear2: "Clear", cacheCleared: "Cache cleared",
+  copyId: "Copy ID", openWeb: "Open on web", friend: "Friend", loginToSee: "Sign in from Settings to see pictures and profiles",
+  loadingProfile: "Loading profile…", noBio: "No bio",
+  st: { active: "Online", "join me": "Join Me", "ask me": "Ask Me", busy: "Do Not Disturb", offline: "Offline" },
+});
+Object.assign(I18N.ja, {
+  copyHint: "名前をクリックしてプロフィールを表示", account: "VRChat アカウント", notSignedIn: "サインインしていません",
+  signInHint: "サインインするとプレイヤーのアイコンを表示できます", signIn: "サインイン", signingIn: "サインイン中…",
+  signOut: "サインアウト", signedIn: "サインイン済み", username: "ユーザー名またはメール", password: "パスワード",
+  pwNote: "パスワードは VRChat に直接送信され保存されません。暗号化したセッションのみこのPCに保存します",
+  apiNote: "非公式の VRChat API を使用し、レート制限を超えないよう1人ずつ読み込みます",
+  back: "戻る", twoFA: "2段階認証", twoFAApp: "認証アプリの6桁のコードを入力", twoFAEmail: "VRChat からメールで届いたコードを入力",
+  useRecovery: "リカバリーコードを使う", verify: "確認",
+  errLogin: "ユーザー名またはパスワードが違います", errCode: "コードが正しくありません", errNet: "VRChat に接続できません",
+  errRate: "試行回数が多すぎます。しばらく待ってから再試行してください", sessionExpired: "セッションの期限が切れました。再度サインインしてください",
+  showPics: "ログにプロフィール画像を表示", clearCache: "プロフィール画像のキャッシュを削除", clear2: "削除", cacheCleared: "キャッシュを削除しました",
+  copyId: "IDをコピー", openWeb: "Webで開く", friend: "フレンド", loginToSee: "設定からサインインすると画像とプロフィールを表示できます",
+  loadingProfile: "プロフィールを読み込み中…", noBio: "自己紹介はありません",
+  st: { active: "オンライン", "join me": "Join Me", "ask me": "Ask Me", busy: "取り込み中", offline: "オフライン" },
+});
+// Strings for the VRCX-style pages (friends, feed, notifications, history, search, worlds)
+Object.assign(I18N.th, {
+  nav_log: "Game Log", nav_friends: "เพื่อน", nav_feed: "Feed", nav_notifs: "แจ้งเตือน", nav_history: "ประวัติ", nav_search: "ค้นหา",
+  refresh: "โหลดใหม่", refreshing: "กำลังโหลดใหม่…", needLogin: "ต้องเข้าสู่ระบบ VRChat ก่อนจึงจะใช้หน้านี้ได้", loading: "กำลังโหลด…",
+  loadingFriends: "กำลังโหลดรายชื่อเพื่อน…", fs_online: "อยู่ในโลก", fs_private: "อยู่ในโลกส่วนตัว", nav_groups: "กลุ่ม", nav_avatars: "อวตาร", nav_inventory: "Inventory", ft_name: "เปลี่ยนชื่อ", ff_name: (o, n) => `เปลี่ยนชื่อจาก "${o}" เป็น "${n}"`,
+  prevNames: "ชื่อที่เคยใช้", g_searchPh: "ค้นหาชื่อกลุ่มหรือ short code…", g_mine: "กลุ่มของฉัน", g_results: "ผลการค้นหา",
+  members: n => `${Number(n).toLocaleString()} สมาชิก`, membersW: "สมาชิก", onlineW: "ออนไลน์", joinGroup: "เข้าร่วมกลุ่ม", requestJoin: "ขอเข้าร่วม",
+  inviteOnly: "ต้องได้รับเชิญ", leaveGroup: "ออกจากกลุ่ม", requested: "ส่งคำขอแล้ว", joined: "เป็นสมาชิก",
+  joinedToast: "เข้าร่วมกลุ่มแล้ว", requestedToast: "ส่งคำขอเข้าร่วมแล้ว", leftToast: "ออกจากกลุ่มแล้ว",
+  a_mine: "อวตารของฉัน", a_fav: "Favorites", a_searchHint: "ใช้ช่องค้นหาด้านบน — VRChat ไม่อนุญาตให้ค้นหาอวตารของคนอื่นผ่าน API",
+  wearing: "ใส่อยู่", useAvatar: "ใช้อวตารนี้", avatarChanged: "เปลี่ยนอวตารแล้ว", updated: "อัปเดต",
+  i_gallery: "รูปถ่าย", i_emoji: "อีโมจิ", i_sticker: "สติกเกอร์", i_items: "ไอเทม", i_cosmetics: "ของแต่ง",
+  i_hint_gallery: "PNG/JPG ย่อให้ไม่เกิน 2048px อัตโนมัติ", i_hint_emoji: "ย่อเป็นสี่เหลี่ยมจัตุรัส 1024px", i_hint_sticker: "ย่อเป็นสี่เหลี่ยมจัตุรัส 1024px",
+  upload: "อัปโหลด", uploading: "กำลังอัปโหลด…", uploaded: "อัปโหลดแล้ว", del: "ลบ", deleted: "ลบแล้ว", noItems: "ไม่มีรายการ",
+  equip: "ใส่", unequip: "ถอด", equipped: "ใส่อยู่", equippedToast: "ใส่แล้ว", unequippedToast: "ถอดแล้ว",
+  slot_iconFrame: "กรอบโปรไฟล์", slot_drone: "โดรน", slot_portal: "พอร์ทัล", slot_warp: "เอฟเฟกต์วาร์ป", slot_nameplateEffect: "เอฟเฟกต์ป้ายชื่อ", slot_profileEffect: "เอฟเฟกต์โปรไฟล์", animFrames: "กรอบโปรไฟล์แบบเคลื่อนไหว", animFramesHint: "ไฟล์ใหญ่ (~4 MB ต่อกรอบ) ปิดไว้จะใช้กรอบภาพนิ่ง", links: "ลิงก์โซเชียล", languages: "ภาษาที่ใช้", fs_active: "ออนไลน์บนเว็บ/แอป", fs_offline: "ออฟไลน์",
+  live: "อัปเดตสด", notLive: "ไม่ได้เชื่อมต่อสด", show: "แสดง", hide: "ซ่อน", onWeb: "ออนไลน์บนเว็บ/แอป", offlineLoc: "ออฟไลน์",
+  privateLoc: "ห้องส่วนตัว", traveling: "กำลังย้ายโลก…", join: "เข้าร่วม (เปิด VRChat)", inviteMe: "เชิญตัวเอง",
+  inviteSent: "ส่งคำเชิญเข้าเกมแล้ว", launched: "กำลังเปิด VRChat…", errGeneric: "ทำไม่สำเร็จ ลองอีกครั้ง",
+  location: "อยู่ที่", encounters: "เคยเจอกัน", met: (n, a, b) => `${n} ครั้ง · ครั้งแรก ${a} · ล่าสุด ${b}`, neverMet: "ยังไม่เคยอยู่ห้องเดียวกัน",
+  memo: "โน้ต (เก็บในเครื่องนี้)", memoPh: "จดอะไรเกี่ยวกับคนนี้…", mins: m => `${m} นาที`, hours: (h, m) => `${h} ชม. ${m} นาที`, now: "ตอนนี้",
+  friendsCount: (a, b) => `ออนไลน์ ${a} / ทั้งหมด ${b}`, notifCount: n => `${n} รายการ`, visits: n => `${n} โลก`,
+  feedFilter: "แสดงใน Feed", ft_online: "ออนไลน์", ft_offline: "ออฟไลน์", ft_location: "ย้ายโลก", ft_status: "เปลี่ยนสถานะ",
+  ft_avatar: "เปลี่ยนอวตาร", ft_bio: "แก้ไข bio", ft_friendAdd: "เพื่อนใหม่", ft_friendRemove: "ลบเพื่อน",
+  ff_online: w => `ออนไลน์ — ${w}`, ff_offline: "ออฟไลน์", ff_location: w => `ไปที่ ${w}`, ff_status: d => `สถานะ: ${d}`,
+  ff_avatar: "เปลี่ยนอวตาร", ff_bio: "แก้ไข bio", ff_friendAdd: "เป็นเพื่อนกันแล้ว", ff_friendRemove: "ไม่ได้เป็นเพื่อนแล้ว",
+  noFeed: "ยังไม่มีความเคลื่อนไหว — Feed จะบันทึกเมื่อเพื่อนออนไลน์/ย้ายโลก ระหว่างที่เปิดโปรแกรมไว้",
+  noNotifs: "ไม่มีการแจ้งเตือน", n_friendRequest: () => "ส่งคำขอเป็นเพื่อน", n_invite: w => `เชิญคุณไป ${w || "โลกหนึ่ง"}`,
+  n_requestInvite: () => "ขอให้คุณเชิญ", newNotif: (n, x) => `${n}: ${x}`, accept: "ยอมรับ", decline: "ปฏิเสธ", dismiss: "ปิด",
+  accepted: "ยอมรับคำขอแล้ว", dismissed: "ปิดการแจ้งเตือนแล้ว",
+  noHistory: "ยังไม่มีประวัติ", playersMet: n => `เจอ ${n} คน`, worldInfo: "ข้อมูลโลก", noPlayers: "ไม่มีผู้เล่นคนอื่น",
+  s_users: "ผู้เล่น", s_worlds: "โลก", searchUsersPh: "ค้นหาชื่อผู้เล่น…", searchWorldsPh: "ค้นหาชื่อโลก…",
+  searching: "กำลังค้นหา…", noResults: "ไม่พบผลลัพธ์",
+  by: a => `โดย ${a}`, capacity: "คนสูงสุด", occupants: "คนอยู่ตอนนี้", visitsW: "ครั้งที่เข้าชม", favorites: "รายการโปรด",
+  instance: "Instance", joinInstance: "เข้า Instance นี้", launch: "เปิดใน VRChat", loadingWorld: "กำลังโหลดข้อมูลโลก…",
+});
+Object.assign(I18N.en, {
+  nav_log: "Game Log", nav_friends: "Friends", nav_feed: "Feed", nav_notifs: "Notifications", nav_history: "History", nav_search: "Search",
+  refresh: "Refresh", refreshing: "Refreshing…", needLogin: "Sign in to VRChat to use this page", loading: "Loading…",
+  loadingFriends: "Loading friends…", fs_online: "In a world", fs_private: "In a private world", nav_groups: "Groups", nav_avatars: "Avatars", nav_inventory: "Inventory", ft_name: "Name changes", ff_name: (o, n) => `changed name from "${o}" to "${n}"`,
+  prevNames: "Previous names", g_searchPh: "Search group name or short code…", g_mine: "My groups", g_results: "Search results",
+  members: n => `${Number(n).toLocaleString()} members`, membersW: "members", onlineW: "online", joinGroup: "Join group", requestJoin: "Request to join",
+  inviteOnly: "Invite only", leaveGroup: "Leave group", requested: "Request sent", joined: "Member",
+  joinedToast: "Joined group", requestedToast: "Join request sent", leftToast: "Left group",
+  a_mine: "My avatars", a_fav: "Favorites", a_searchHint: "Use the search box above — VRChat's API doesn't allow searching other people's avatars",
+  wearing: "Wearing", useAvatar: "Use this avatar", avatarChanged: "Avatar changed", updated: "Updated",
+  i_gallery: "Photos", i_emoji: "Emojis", i_sticker: "Stickers", i_items: "Items", i_cosmetics: "Cosmetics",
+  i_hint_gallery: "PNG/JPG, auto-resized to max 2048px", i_hint_emoji: "Auto-resized to a 1024px square", i_hint_sticker: "Auto-resized to a 1024px square",
+  upload: "Upload", uploading: "Uploading…", uploaded: "Uploaded", del: "Delete", deleted: "Deleted", noItems: "Nothing here",
+  equip: "Equip", unequip: "Unequip", equipped: "Equipped", equippedToast: "Equipped", unequippedToast: "Unequipped",
+  slot_iconFrame: "Icon frame", slot_drone: "Drone", slot_portal: "Portal", slot_warp: "Warp effect", slot_nameplateEffect: "Nameplate effect", slot_profileEffect: "Profile effect", animFrames: "Animated icon frames", animFramesHint: "Large files (~4 MB per frame); off = static frames", links: "Social links", languages: "Languages", fs_active: "Active on web/app", fs_offline: "Offline",
+  live: "Live", notLive: "Not connected", show: "Show", hide: "Hide", onWeb: "Active on web/app", offlineLoc: "Offline",
+  privateLoc: "Private", traveling: "Traveling…", join: "Join (launch VRChat)", inviteMe: "Invite me",
+  inviteSent: "Self-invite sent", launched: "Launching VRChat…", errGeneric: "Something went wrong, try again",
+  location: "Location", encounters: "Encounters", met: (n, a, b) => `${n}× · first ${a} · last ${b}`, neverMet: "Never been in the same room",
+  memo: "Note (stored on this PC)", memoPh: "Write a note about this person…", mins: m => `${m} min`, hours: (h, m) => `${h}h ${m}m`, now: "now",
+  friendsCount: (a, b) => `${a} online / ${b} total`, notifCount: n => `${n} items`, visits: n => `${n} worlds`,
+  feedFilter: "Show in Feed", ft_online: "Online", ft_offline: "Offline", ft_location: "Location changes", ft_status: "Status changes",
+  ft_avatar: "Avatar changes", ft_bio: "Bio edits", ft_friendAdd: "New friends", ft_friendRemove: "Unfriended",
+  ff_online: w => `came online — ${w}`, ff_offline: "went offline", ff_location: w => `went to ${w}`, ff_status: d => `status: ${d}`,
+  ff_avatar: "changed avatar", ff_bio: "edited bio", ff_friendAdd: "is now your friend", ff_friendRemove: "is no longer your friend",
+  noFeed: "Nothing yet — the feed records friend activity while the app is open",
+  noNotifs: "No notifications", n_friendRequest: () => "sent you a friend request", n_invite: w => `invited you to ${w || "a world"}`,
+  n_requestInvite: () => "requested an invite", newNotif: (n, x) => `${n} ${x}`, accept: "Accept", decline: "Decline", dismiss: "Dismiss",
+  accepted: "Friend request accepted", dismissed: "Notification dismissed",
+  noHistory: "No history yet", playersMet: n => `${n} players`, worldInfo: "World info", noPlayers: "No other players",
+  s_users: "Players", s_worlds: "Worlds", searchUsersPh: "Search players…", searchWorldsPh: "Search worlds…",
+  searching: "Searching…", noResults: "No results",
+  by: a => `by ${a}`, capacity: "capacity", occupants: "in world now", visitsW: "visits", favorites: "favorites",
+  instance: "Instance", joinInstance: "Join this instance", launch: "Open in VRChat", loadingWorld: "Loading world…",
+});
+Object.assign(I18N.ja, {
+  nav_log: "ゲームログ", nav_friends: "フレンド", nav_feed: "フィード", nav_notifs: "通知", nav_history: "履歴", nav_search: "検索",
+  refresh: "再読み込み", refreshing: "再読み込み中…", needLogin: "このページを使うには VRChat にサインインしてください", loading: "読み込み中…",
+  loadingFriends: "フレンドを読み込み中…", fs_online: "ワールド内", fs_private: "プライベートワールド", nav_groups: "グループ", nav_avatars: "アバター", nav_inventory: "インベントリ", ft_name: "名前の変更", ff_name: (o, n) => `名前を「${o}」から「${n}」に変更`,
+  prevNames: "以前の名前", g_searchPh: "グループ名またはショートコードで検索…", g_mine: "参加中のグループ", g_results: "検索結果",
+  members: n => `メンバー ${Number(n).toLocaleString()} 人`, membersW: "メンバー", onlineW: "オンライン", joinGroup: "参加する", requestJoin: "参加をリクエスト",
+  inviteOnly: "招待制", leaveGroup: "グループを退出", requested: "リクエスト済み", joined: "メンバー",
+  joinedToast: "グループに参加しました", requestedToast: "参加リクエストを送信しました", leftToast: "グループを退出しました",
+  a_mine: "マイアバター", a_fav: "お気に入り", a_searchHint: "上の検索欄で絞り込み — VRChat API では他人のアバターは検索できません",
+  wearing: "着用中", useAvatar: "このアバターを使う", avatarChanged: "アバターを変更しました", updated: "更新",
+  i_gallery: "写真", i_emoji: "絵文字", i_sticker: "ステッカー", i_items: "アイテム", i_cosmetics: "コスメティック",
+  i_hint_gallery: "PNG/JPG、最大 2048px に自動縮小", i_hint_emoji: "1024px の正方形に自動縮小", i_hint_sticker: "1024px の正方形に自動縮小",
+  upload: "アップロード", uploading: "アップロード中…", uploaded: "アップロードしました", del: "削除", deleted: "削除しました", noItems: "何もありません",
+  equip: "装備", unequip: "外す", equipped: "装備中", equippedToast: "装備しました", unequippedToast: "外しました",
+  slot_iconFrame: "アイコンフレーム", slot_drone: "ドローン", slot_portal: "ポータル", slot_warp: "ワープエフェクト", slot_nameplateEffect: "ネームプレートエフェクト", slot_profileEffect: "プロフィールエフェクト", animFrames: "アニメーションするアイコンフレーム", animFramesHint: "ファイルが大きい (1つ約4 MB)。オフ = 静止画フレーム", links: "リンク", languages: "言語", fs_active: "Web/アプリでオンライン", fs_offline: "オフライン",
+  live: "ライブ", notLive: "未接続", show: "表示", hide: "非表示", onWeb: "Web/アプリでオンライン", offlineLoc: "オフライン",
+  privateLoc: "プライベート", traveling: "移動中…", join: "参加 (VRChat を起動)", inviteMe: "自分を招待",
+  inviteSent: "セルフ招待を送信しました", launched: "VRChat を起動中…", errGeneric: "失敗しました。もう一度お試しください",
+  location: "現在地", encounters: "遭遇", met: (n, a, b) => `${n} 回 · 初回 ${a} · 最終 ${b}`, neverMet: "同じルームにいたことはありません",
+  memo: "メモ (このPCに保存)", memoPh: "この人についてメモ…", mins: m => `${m} 分`, hours: (h, m) => `${h} 時間 ${m} 分`, now: "現在",
+  friendsCount: (a, b) => `オンライン ${a} / 全 ${b}`, notifCount: n => `${n} 件`, visits: n => `${n} ワールド`,
+  feedFilter: "フィードに表示", ft_online: "オンライン", ft_offline: "オフライン", ft_location: "ワールド移動", ft_status: "ステータス変更",
+  ft_avatar: "アバター変更", ft_bio: "自己紹介の編集", ft_friendAdd: "新しいフレンド", ft_friendRemove: "フレンド解除",
+  ff_online: w => `オンライン — ${w}`, ff_offline: "オフライン", ff_location: w => `${w} へ移動`, ff_status: d => `ステータス: ${d}`,
+  ff_avatar: "アバターを変更", ff_bio: "自己紹介を編集", ff_friendAdd: "フレンドになりました", ff_friendRemove: "フレンドではなくなりました",
+  noFeed: "まだありません — アプリを開いている間、フレンドの動きを記録します",
+  noNotifs: "通知はありません", n_friendRequest: () => "フレンドリクエスト", n_invite: w => `${w || "ワールド"} への招待`,
+  n_requestInvite: () => "招待をリクエスト", newNotif: (n, x) => `${n}: ${x}`, accept: "承認", decline: "拒否", dismiss: "閉じる",
+  accepted: "フレンドリクエストを承認しました", dismissed: "通知を閉じました",
+  noHistory: "履歴はまだありません", playersMet: n => `${n} 人`, worldInfo: "ワールド情報", noPlayers: "他のプレイヤーはいません",
+  s_users: "プレイヤー", s_worlds: "ワールド", searchUsersPh: "プレイヤーを検索…", searchWorldsPh: "ワールドを検索…",
+  searching: "検索中…", noResults: "見つかりませんでした",
+  by: a => `作者: ${a}`, capacity: "定員", occupants: "現在の人数", visitsW: "訪問", favorites: "お気に入り",
+  instance: "インスタンス", joinInstance: "このインスタンスに参加", launch: "VRChat で開く", loadingWorld: "ワールドを読み込み中…",
+});
+const STATUS_COLOR = { active: "var(--green)", "join me": "var(--blue)", "ask me": "var(--orange)", busy: "var(--red)", offline: "var(--gray)" };
+const L = () => I18N[S.lang] || I18N.th;
+Object.assign(I18N.th, { emk_title: "สร้างอีโมจิ", emk_new: "สร้างอีโมจิ", emk_credit: "แนวคิดจาก VRCEmoji โดย Wakamu",
+  emk_drop: "คลิกเพื่อเลือกไฟล์ หรือลากมาวาง\nGIF · WebP · APNG · MP4 · WebM\nหรือเลือกรูปหลายรูปพร้อมกันเพื่อใช้เป็นเฟรม", emk_decoding: "กำลังอ่านเฟรม…",
+  emk_open: "ไฟล์ต้นฉบับ", emk_choose: "เลือกไฟล์", emk_src: (n, s) => `${n} เฟรม · ${s} วินาที`, emk_err: "อ่านไฟล์นี้ไม่ได้", emk_still: "ไฟล์นี้เป็นภาพนิ่ง มีแค่ 1 เฟรม — ถ้าดาวน์โหลดจาก Discord/เว็บ ให้โหลดไฟล์ GIF ต้นฉบับแทนภาพตัวอย่าง",
+  emk_range: "ช่วงที่ใช้", emk_start: "เริ่มที่เฟรม", emk_end: "จบที่เฟรม",
+  emk_quality: "โหมด", emk_q4: "คมชัด", emk_q16: "สมดุล", emk_q64: "ลื่นไหล",
+  emk_frames: "จำนวนเฟรม", emk_grid: (g, c) => `ตาราง ${g}×${g} · เฟรมละ ${c}px`,
+  emk_fps: "ความเร็ว (เฟรม/วินาที)", emk_auto: "อัตโนมัติ", emk_autoHint: "อัตโนมัติ = เร็วเท่าต้นฉบับ",
+  emk_fit: "การจัดภาพ", emk_contain: "พอดีกรอบ", emk_cover: "เต็มกรอบ",
+  emk_loop: "การวนซ้ำ", emk_linear: "วนต่อเนื่อง", emk_pingpong: "ไป-กลับ",
+  emk_style: "เอฟเฟกต์ใน VRChat", emk_none: "ไม่มี",
+  emk_key: "ลบพื้นหลังด้วยสี", emk_keyHint: "คลิกที่ภาพตัวอย่างเพื่อดูดสี", emk_tol: "ความใกล้เคียงของสี",
+  emk_save: "บันทึก PNG", emk_saveHint: "ชื่อไฟล์ใส่จำนวนเฟรมและ fps ไว้แล้ว ใช้อัปโหลดผ่านเว็บ VRChat ได้", emk_saved: "บันทึกแล้ว",
+  emk_upload: "อัปโหลดไป VRChat", emk_preview: "ตัวอย่าง (คลิกเพื่อดูดสี)", emk_sheet: "Sprite sheet 1024×1024" });
+Object.assign(I18N.en, { emk_title: "Create Emoji", emk_new: "Create emoji", emk_credit: "Inspired by VRCEmoji by Wakamu",
+  emk_drop: "Click to choose a file or drop it here\nGIF · WebP · APNG · MP4 · WebM\nor pick several images to use as frames", emk_decoding: "Reading frames…",
+  emk_open: "Source", emk_choose: "Choose file", emk_src: (n, s) => `${n} frames · ${s} s`, emk_err: "Couldn't read this file", emk_still: "This file is a still image (1 frame) — if it came from Discord or a website, download the original GIF instead of the preview",
+  emk_range: "Range", emk_start: "Start frame", emk_end: "End frame",
+  emk_quality: "Mode", emk_q4: "Quality", emk_q16: "Balance", emk_q64: "Fluidity",
+  emk_frames: "Frames", emk_grid: (g, c) => `${g}×${g} grid · ${c}px per frame`,
+  emk_fps: "Speed (frames/sec)", emk_auto: "Auto", emk_autoHint: "Auto = same speed as the source",
+  emk_fit: "Fit", emk_contain: "Contain", emk_cover: "Fill",
+  emk_loop: "Loop", emk_linear: "Loop", emk_pingpong: "Ping-pong",
+  emk_style: "VRChat effect", emk_none: "None",
+  emk_key: "Remove background color", emk_keyHint: "Click the preview to pick a color", emk_tol: "Color tolerance",
+  emk_save: "Save PNG", emk_saveHint: "The file name includes frames and fps, so it also works with the VRChat website uploader", emk_saved: "Saved",
+  emk_upload: "Upload to VRChat", emk_preview: "Preview (click to pick color)", emk_sheet: "Sprite sheet 1024×1024" });
+Object.assign(I18N.ja, { emk_title: "絵文字を作成", emk_new: "絵文字を作成", emk_credit: "Wakamu さんの VRCEmoji を参考にしています",
+  emk_drop: "クリックしてファイルを選択、またはドロップ\nGIF · WebP · APNG · MP4 · WebM\n複数の画像を選ぶとフレームとして使います", emk_decoding: "フレームを読み込み中…",
+  emk_open: "元ファイル", emk_choose: "ファイルを選択", emk_src: (n, s) => `${n} フレーム · ${s} 秒`, emk_err: "このファイルを読み込めません", emk_still: "静止画です（1フレーム）— Discord やサイトから保存した場合はプレビューではなく元の GIF を保存してください",
+  emk_range: "使用範囲", emk_start: "開始フレーム", emk_end: "終了フレーム",
+  emk_quality: "モード", emk_q4: "画質", emk_q16: "バランス", emk_q64: "なめらか",
+  emk_frames: "フレーム数", emk_grid: (g, c) => `${g}×${g} グリッド · 1フレーム ${c}px`,
+  emk_fps: "速度 (フレーム/秒)", emk_auto: "自動", emk_autoHint: "自動 = 元と同じ速度",
+  emk_fit: "配置", emk_contain: "全体を表示", emk_cover: "全面に拡大",
+  emk_loop: "ループ", emk_linear: "通常", emk_pingpong: "往復",
+  emk_style: "VRChat エフェクト", emk_none: "なし",
+  emk_key: "背景色を透過", emk_keyHint: "プレビューをクリックして色を選択", emk_tol: "色の許容範囲",
+  emk_save: "PNG を保存", emk_saveHint: "ファイル名にフレーム数と fps が入るので VRChat サイトからもアップロードできます", emk_saved: "保存しました",
+  emk_upload: "VRChat にアップロード", emk_preview: "プレビュー (クリックで色を選択)", emk_sheet: "スプライトシート 1024×1024" });
+function t(key, ...args) { const v = L()[key] ?? I18N.en[key] ?? key; return typeof v === "function" ? v(...args) : v; }
+
+// ---------- Settings ----------
+const DEFAULTS = { lang: "th", theme: "auto", accent: "blue", wallpaper: "tahoe", glass: 40, size: "m",
+                   showDate: false, compact: false, onTop: false, inspector: true, showPics: true, showOffline: false, view: "friends", animFrames: false, autoUpdate: true };
+const ACCENTS = { blue: "#0a84ff", purple: "#bf5af2", pink: "#ff375f", red: "#ff453a", orange: "#ff9f0a",
+                  yellow: "#ffcc00", green: "#30d158", graphite: "#8e8e93" };
+const WALLPAPERS = {  // [dark, light]
+  tahoe:    [["#1a2a6c", "#6a3093", "#b21f66", "#0f4c75", "#101018"], ["#a1c4fd", "#fbc2eb", "#ffd1a9", "#c2e9fb", "#eef1f8"]],
+  ocean:    [["#0f2027", "#2c5364", "#0083b0", "#00b4db", "#0a141c"], ["#a8edea", "#c2e9fb", "#a1c4fd", "#d4fc79", "#eef6f8"]],
+  sunset:   [["#42275a", "#734b6d", "#d76d77", "#ffaf7b", "#170f1c"], ["#ffecd2", "#fcb69f", "#ff9a9e", "#fad0c4", "#fbf1ee"]],
+  forest:   [["#0b3d2e", "#134e5e", "#2f7336", "#71b280", "#0a1410"], ["#d4fc79", "#96e6a1", "#c1dfc4", "#e2f0cb", "#f0f6ee"]],
+  graphite: [["#232526", "#414345", "#2c3e50", "#3a3a3a", "#121214"], ["#e0e0e0", "#f5f7fa", "#c3cfe2", "#dfe4ea", "#f2f3f5"]],
+};
+const SIZES = { s: .92, m: 1, l: 1.1 };
+
+// App logo (archway + crescent moon = a cozy "Nook") — matches the exe/tray icon in tray.make_icon
+const LOGO_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <defs><mask id="nookMoon"><rect width="24" height="24" fill="#fff"/><circle cx="13.7" cy="12.6" r="2.7" fill="#000"/></mask></defs>
+  <path d="M5 20.5V11a7 7 0 0 1 14 0v9.5M3 20.5h18"/><circle cx="12" cy="14" r="3.2" fill="currentColor" stroke="none" mask="url(#nookMoon)"/></svg>`;
+let S = { ...DEFAULTS }, KINDS = {}, enabled = {}, VERSION = "", ready = false, queued = [];
+let events = [], paused = false, query = "", lastBatch = null;
+const MAX_EVENTS = 20000, MAX_ROWS = 3000;
+const $ = id => document.getElementById(id);
+const logEl = $("log");
+const dark = () => S.theme === "dark" || (S.theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+
+function api(name, ...args) { return window.pywebview?.api?.[name]?.(...args); }
+function save() { S.enabled = enabled; api("save_settings", S); }
+
+function applyAppearance() {
+  const root = document.documentElement, d = dark();
+  window.applyFont?.();
+  root.dataset.theme = d ? "dark" : "light";
+  root.style.setProperty("--accent", ACCENTS[S.accent] || ACCENTS.blue);
+  const wp = (WALLPAPERS[S.wallpaper] || WALLPAPERS.tahoe)[d ? 0 : 1];
+  ["--wall-1", "--wall-2", "--wall-3", "--wall-4", "--wall-base"].forEach((v, i) => root.style.setProperty(v, wp[i]));
+  root.style.setProperty("--glass-a", (0.12 + S.glass / 100 * 0.75).toFixed(3));
+  root.style.setProperty("--z", SIZES[S.size] || 1);
+  document.body.classList.toggle("compact", !!S.compact);
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { applyAppearance(); if (settingsOpen) buildSettings(); });
+
+function applyLang() {
+  document.documentElement.lang = S.lang;
+  document.querySelectorAll("[data-t]").forEach(el => el.textContent = t(el.dataset.t));
+  document.querySelectorAll("[data-tip]").forEach(el => el.title = t(el.dataset.tip));
+  $("pauseBtn").title = t(paused ? "resume" : "pause");
+  $("search").placeholder = t("searchPh");
+  buildNav();
+  buildSidebar();
+  render();
+  if (lastBatch) { lastPlayers = ""; renderPlayers(lastBatch.players); }
+  renderView();
+  updateSubtitle();
+}
+
+// ---------- Startup ----------
+document.querySelectorAll("[data-icon]").forEach(el => el.innerHTML = icon(el.dataset.icon));
+
+window.addEventListener("pywebviewready", async () => {
+  const init = await api("init");
+  VERSION = init.version;
+  S = { ...DEFAULTS, ...(init.settings || {}) };
+  init.kinds.forEach(k => KINDS[k.name] = k);
+  for (const k of init.kinds) enabled[k.name] = S.enabled?.[k.name] ?? k.default;
+  for (const k of FEED_TYPES) feedOn[k] = S.feedEnabled?.[k] ?? true;
+  view = VIEWS.includes(S.view) ? S.view : "friends";
+  applyAppearance();
+  toggleInspector(S.inspector !== false, false);
+  if (S.onTop) api("set_on_top", true);
+  ready = true;
+  setView(view, false);
+  applyLang();
+  queued.forEach(b => window.onBatch(b));
+  queued = [];
+  feed = (await api("feed")) || [];
+  if (view === "feed") renderView();
+});
+
+function kindLabel(n) { return L().kinds?.[n] || KINDS[n]?.desc || n; }
+
+function buildSidebar() {
+  const root = $("groups");
+  root.innerHTML = "";
+  $("filterArea").style.display = view === "log" || view === "feed" ? "" : "none";
+  $("filterFooter").style.display = view === "log" ? "" : "none";
+  $("filterTitle").textContent = t("chooseView");
+  if (view === "feed") return buildFeedFilters(root);
+  const listed = new Set(GROUPS.flatMap(g => g[1]));
+  const extra = Object.keys(KINDS).filter(k => !listed.has(k));  // In case new types are added in vrclog.py
+  for (const [title, names] of [...GROUPS, ...(extra.length ? [["g_other", extra]] : [])]) {
+    const g = document.createElement("div");
+    g.className = "group";
+    g.innerHTML = `<div class="group-title">${t(title)}</div>`;
+    for (const n of names) {
+      if (!KINDS[n]) continue;
+      const [ic, col] = KIND_STYLE[n] || ["circle-alert", "gray"];
+      const row = document.createElement("label");
+      row.className = "toggle-row";
+      row.innerHTML = `<span class="tile" style="--c:var(--${col})">${icon(ic)}</span><span class="label"></span>
+                       <span class="switch"><input type="checkbox"></span>`;
+      row.querySelector(".label").textContent = row.title = kindLabel(n);
+      const cb = row.querySelector("input");
+      cb.checked = enabled[n];
+      cb.dataset.kind = n;
+      cb.onchange = () => { enabled[n] = cb.checked; save(); render(); };
+      g.appendChild(row);
+    }
+    root.appendChild(g);
+  }
+}
+
+function syncSwitches() { document.querySelectorAll("#groups input").forEach(cb => cb.checked = enabled[cb.dataset.kind]); }
+function setAll(v) { for (const n in enabled) enabled[n] = v; syncSwitches(); save(); render(); }
+function setDefault() { for (const n in enabled) enabled[n] = KINDS[n].default; syncSwitches(); save(); render(); }
+
+// ---------- Data from Python ----------
+window.onBatch = (b) => {
+  if (!ready) { queued.push(b); return; }
+  lastBatch = b;
+  if (view === "log") $("world").textContent = b.world && b.world !== "-" ? b.world : "VRC Nook";
+  renderPlayers(b.players);
+  for (const e of b.events) {  // Attach the instance to the world header so the world info can be opened
+    if (e.k === "world") lastWorldEv = e;
+    else if (e.k === "instance" && lastWorldEv && !lastWorldEv.loc) lastWorldEv.loc = e.v;
+  }
+  if (b.events.length) {
+    events.push(...b.events);
+    if (events.length > MAX_EVENTS) events.splice(0, events.length - MAX_EVENTS);
+    if (!paused) appendRows(b.events);
+  }
+  updateSubtitle();
+};
+function updateSubtitle() {
+  if (view !== "log") return updateViewTitle();
+  $("subtitle").textContent = t("events", events.length) + (paused ? ` · ${t("paused")}` : "");
+}
+
+// ---------- Rendering ----------
+function text(e) {
+  const f = L().fmt[e.k];
+  try { return f ? f(...(e.p || [])) : e.v; } catch { return e.v; }
+}
+function visible(e) {
+  if (!enabled[e.k]) return false;
+  return !query || text(e).toLowerCase().includes(query) || e.v.toLowerCase().includes(query) || e.u.toLowerCase().includes(query);
+}
+function timeStr(ts) {
+  const [, , mo, d, hms] = ts.match(/^(\d{4})\.(\d\d)\.(\d\d) (.+)$/) || [];
+  return S.showDate ? `${d}/${mo} ${hms}` : hms;
+}
+
+function makeRow(e) {
+  const [ic, col] = KIND_STYLE[e.k] || ["circle-alert", "gray"];
+  const color = `var(--${col})`;
+  if (e.k === "world") {
+    const d = document.createElement("div");
+    d.className = "world-head glass";
+    d.innerHTML = `<span class="tile" style="--c:${color}">${icon(ic)}</span><span class="name"></span><span class="when"></span>`;
+    d.querySelector(".name").textContent = e.v;
+    d.querySelector(".when").textContent = e.t.replace(/^(\d{4})\.(\d\d)\.(\d\d) /, "$3/$2 ");
+    d.onclick = () => e.loc && openWorld(e.loc.split(":")[0], e.loc);
+    return d;
+  }
+  const d = document.createElement("div");
+  d.className = "row" + (e.k === "instance" ? " mono" : DIM.has(e.k) ? " dim" : "");
+  d.innerHTML = `<span class="time"></span><span class="tile" style="--c:${color}">${icon(ic)}</span><span class="val"></span>`;
+  d.querySelector(".time").textContent = timeStr(e.t);
+  d.querySelector(".time").title = e.t;
+  d.querySelector(".tile").title = kindLabel(e.k);
+  const val = d.querySelector(".val");
+  val.textContent = text(e);
+  if (e.k === "join" || e.k === "leave") {
+    val.style.color = color;
+    if (S.showPics && e.u) {
+      val.textContent = "";
+      const who = document.createElement("span");
+      who.className = "who";
+      who.append(makeAvatar(e.u, e.p?.[0] || e.v, "mini"), document.createTextNode(text(e)));
+      who.style.cursor = "pointer";
+      who.onclick = () => showProfile(e.u, e.p?.[0] || e.v);
+      val.appendChild(who);
+    }
+    const p = document.createElement("span");
+    p.className = "pill";
+    p.textContent = t("people", e.c);
+    d.appendChild(p);
+  }
+  if (e.k === "instance") {
+    val.classList.add("link");
+    val.onclick = () => openWorld(e.v.split(":")[0], e.v);
+  }
+  if (e.u) d.title = e.u;
+  return d;
+}
+
+function atBottom() { return logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 60; }
+function scrollBottom() { logEl.scrollTop = logEl.scrollHeight; $("jump").classList.remove("show"); }
+logEl.addEventListener("scroll", () => { if (atBottom()) $("jump").classList.remove("show"); });
+
+function appendRows(list) {
+  const stick = atBottom();
+  const frag = document.createDocumentFragment();
+  for (const e of list) if (visible(e)) frag.appendChild(makeRow(e));
+  if (!frag.childNodes.length) return;
+  logEl.querySelector(".empty")?.remove();
+  logEl.appendChild(frag);
+  while (logEl.childElementCount > MAX_ROWS) logEl.firstElementChild.remove();
+  if (stick) scrollBottom(); else $("jump").classList.add("show");
+}
+
+function render() {
+  logEl.innerHTML = "";
+  const shown = [];
+  for (let i = events.length - 1; i >= 0 && shown.length < MAX_ROWS; i--) if (visible(events[i])) shown.push(events[i]);
+  shown.reverse();
+  if (!shown.length) {
+    logEl.innerHTML = `<div class="empty">${t(events.length ? "noMatch" : "waiting")}</div>`;
+    return;
+  }
+  const frag = document.createDocumentFragment();
+  shown.forEach(e => frag.appendChild(makeRow(e)));
+  logEl.appendChild(frag);
+  scrollBottom();
+}
+
+// ---------- Players ----------
+const AV_COLORS = ["blue", "green", "orange", "purple", "pink", "teal", "indigo", "red", "mint", "brown"];
+function hash(s) { let h = 0; for (const c of s) h = (h * 31 + c.codePointAt(0)) | 0; return Math.abs(h); }
+// ---------- Profile pictures / VRChat account ----------
+const PROFILES = {};  // uid -> {img, displayName, status, bio, ...}
+let AUTH = { loggedIn: false }, authKnown = false;
+
+// Build the profile picture circle — shows the first letter until the image loads, then swaps itself
+function makeAvatar(uid, name, cls = "") {
+  const av = document.createElement("span");
+  av.className = "avatar " + cls;
+  av.dataset.av = uid;
+  av.dataset.name = name;
+  fillAvatar(av);
+  return av;
+}
+function fillAvatar(av) {
+  const p = PROFILES[av.dataset.av];
+  av.innerHTML = "";
+  // Profile frame: use the real frame image from the template once loaded; meanwhile show a theme-colored ring
+  const fr = p?.iconFrame;
+  const fimg = fr && ((S.animFrames && FRAMES[fr]?.anim) || FRAMES[fr]?.img);
+  if (fr && !(S.animFrames ? FRAMES[fr]?.anim : FRAMES[fr]?.img)) needFrame(fr);
+  av.classList.toggle("framed", !!fr && !fimg);
+  av.classList.toggle("has-frame", !!fimg);
+  const ring = [p?.themeIconColor, p?.themeButtonColor, p?.bannerColor].find(c => c && HEX.test(c) && c !== "000000");
+  if (ring) av.style.setProperty("--ring", "#" + ring); else av.style.removeProperty("--ring");
+  if (p?.img) {
+    const img = new Image();
+    img.src = p.img;
+    img.draggable = false;
+    av.appendChild(img);
+    av.style.background = "var(--track)";
+  } else {
+    av.style.background = `var(--${AV_COLORS[hash(av.dataset.av) % AV_COLORS.length]})`;
+    av.textContent = [...(av.dataset.name || "?").trim()][0]?.toUpperCase() || "?";
+  }
+  if (fimg) {  // Overlay the frame on the picture at 130%, like the VRChat website
+    const f = new Image();
+    f.className = "frame-img";
+    f.src = fimg;
+    f.draggable = false;
+    av.appendChild(f);
+  }
+}
+
+// ---------- Profile frames ----------
+const FRAMES = {};  // template ID -> {img: still image, anim: animated WebP}
+const frameAsked = { static: new Set(), anim: new Set() };
+let framePending = new Set(), frameTimer = 0;
+function needFrame(tid) {
+  const asked = frameAsked[S.animFrames ? "anim" : "static"];
+  if (asked.has(tid)) return;
+  asked.add(tid);
+  framePending.add(tid);
+  clearTimeout(frameTimer);
+  frameTimer = setTimeout(() => { api("frames", [...framePending], !!S.animFrames); framePending = new Set(); }, 300);
+}
+window.onFrames = ({ anim, list }) => {
+  const ids = new Set();
+  for (const f of list) {
+    if (!f.img) continue;
+    FRAMES[f.id] = { ...FRAMES[f.id], [anim ? "anim" : "img"]: f.img };
+    ids.add(f.id);
+  }
+  if (!ids.size) return;
+  document.querySelectorAll(".avatar[data-av]").forEach(av => { if (ids.has(PROFILES[av.dataset.av]?.iconFrame)) fillAvatar(av); });
+};
+
+window.onProfiles = (list) => {
+  for (const p of list) {
+    PROFILES[p.id] = p;
+    document.querySelectorAll(`[data-av="${CSS.escape(p.id)}"]`).forEach(fillAvatar);
+    if (profileOpen === p.id) buildProfile();
+  }
+  if (lastBatch) { lastPlayers = ""; renderPlayers(lastBatch.players); }
+};
+
+window.onAuth = (a) => {
+  const wasIn = AUTH.loggedIn;
+  AUTH = a;
+  authKnown = true;
+  if (!ready) return;
+  if (a.expired && wasIn) toast(t("sessionExpired"));
+  if (settingsOpen && settingsView === "main") buildSettings();
+  renderView();
+};
+
+let lastPlayers = "";
+function renderPlayers(list) {
+  const key = JSON.stringify(list);
+  if (key === lastPlayers) return;
+  lastPlayers = key;
+  $("pcount").textContent = t("people", list.length);
+  const root = $("players");
+  root.innerHTML = "";
+  for (const [uid, name] of list) {
+    const d = document.createElement("div");
+    d.className = "player";
+    d.title = uid;
+    d.innerHTML = `<span class="pname"></span>`;
+    d.prepend(makeAvatar(uid, name));
+    d.querySelector(".pname").textContent = name;
+    if (PROFILES[uid]?.isFriend) d.insertAdjacentHTML("beforeend", `<span class="fr" title="${t("friend")}">${icon("heart")}</span>`);
+    d.onclick = () => showProfile(uid, name);
+    root.appendChild(d);
+  }
+}
+
+// ---------- Profile card ----------
+let profileOpen = null, profileName = "";
+const PEXTRA = {};  // uid -> {enc, memo, friend} from the local database
+async function showProfile(uid, name) {
+  worldOpen = null; groupOpen = null; avatarOpen = null; profileOpen = uid; profileName = name || PROFILES[uid]?.displayName || uid;
+  buildProfile(); $("pOverlay").classList.add("show");
+  const x = await api("user", uid);
+  if (x) { PEXTRA[uid] = x; if (profileOpen === uid) buildProfile(); }
+}
+function closeProfile() { profileOpen = null; worldOpen = null; groupOpen = null; avatarOpen = null; $("pOverlay").classList.remove("show"); }
+
+function profileExtras(uid) {
+  const x = PEXTRA[uid];
+  if (!x) return "";
+  const f = FRIENDS[uid] || x.friend || {};
+  let html = "";
+  if (f.state && f.state !== "offline") {
+    const loc = f.location || "";
+    const L2 = parseLoc(loc), w = WORLDS[L2.wid];
+    html += `<div class="pcard-section"><div class="lbl">${t("location")}</div><div class="locline">${icon("map-pin")}
+      <span class="w">${L2.wid ? `<span class="link" onclick="openWorld('${L2.wid}','${esc(loc)}')">${esc(w?.name || L2.wid)}</span>` : esc(locLabel(loc, f.state))}</span>
+      ${L2.wid ? `<span class="itype">${esc(itypeLabel(L2))}</span>${joinButtons(loc)}` : ""}</div></div>`;
+  }
+  const prev = (x.names || []).filter(n => n.name !== (PROFILES[uid]?.displayName || profileName));
+  if (prev.length) html += `<div class="pcard-section"><div class="lbl">${t("prevNames")}</div><div class="links">${[...prev].reverse().map(n =>
+    `<div class="link-row" style="cursor:default">${icon("pencil")}<span style="color:var(--text)">${esc(n.name)}</span><span style="margin-left:auto;flex-shrink:0">${fmtDate(n.first).slice(0, 10)}${n.last && n.last.slice(0, 10) !== n.first.slice(0, 10) ? " – " + fmtDate(n.last).slice(0, 10) : ""}</span></div>`).join("")}</div></div>`;
+  const e = x.enc || {};
+  if (uid !== AUTH.id) html += `<div class="pcard-section"><div class="lbl">${t("encounters")}</div><div class="locline">${icon("history")}<span class="w wrap">${
+    e.count ? t("met", e.count, fmtDate(e.first), fmtDate(e.last)) : t("neverMet")}</span></div></div>`;
+  if (uid !== AUTH.id) html += `<div class="pcard-section"><div class="lbl">${t("memo")}</div>
+    <textarea class="memo" placeholder="${t("memoPh")}" onchange="api('set_memo','${uid}',this.value);PEXTRA['${uid}'].memo=this.value">${esc(x.memo)}</textarea></div>`;
+  return html;
+}
+function esc(s) { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
+
+function buildProfile() {
+  const uid = profileOpen, p = PROFILES[uid] || {};
+  const name = p.displayName || profileName;
+  const st = (p.status || "").toLowerCase();
+  const card = $("pcard");
+  const memoFocused = document.activeElement?.classList.contains("memo");
+  if (memoFocused) return;  // Don't overwrite while a note is being typed
+  card.classList.remove("wide");
+  const rank = trustRank(p);
+  const isFriend = p.isFriend || !!FRIENDS[uid];
+  const platform = p.last_platform || FRIENDS[uid]?.last_platform;
+  card.innerHTML = `
+    <div class="pcard-hero cover" style="${bannerStyle(uid)}">${!bannerStyle(uid) && p.img ? `<div class="bgimg" style="background-image:url('${p.img}')"></div>` : ""}</div>
+    <div class="pcard-body">
+      <div id="pcAv"></div>
+      <h3>${esc(name)}</h3>
+      ${st ? `<div class="pcard-status"><i style="background:${STATUS_COLOR[st] || "var(--gray)"}"></i>${esc(p.statusDescription || L().st?.[st] || st)}</div>` : ""}
+      <div>
+        ${rank ? `<span class="badge rank" style="--rk:${rank.color}">${rank.name}</span>` : ""}
+        ${p.hasVrcPlus || (p.tags || []).includes("system_supporter") ? `<span class="badge vplus">VRC+</span>` : ""}
+        ${isFriend ? `<span class="badge">${t("friend")}</span>` : ""}
+        ${p.ageVerificationStatus === "18+" ? `<span class="badge gray">18+</span>` : ""}
+        ${p.pronouns ? `<span class="badge gray">${esc(p.pronouns)}</span>` : ""}
+        ${platform ? `<span class="badge gray">${esc(platform === "standalonewindows" ? "PC" : platform === "android" ? "Quest/Android" : platform === "ios" ? "iOS" : platform)}</span>` : ""}
+      </div>
+      ${badgesHtml(p)}
+      ${p.displayName ? `<div class="pcard-bio">${esc(p.bio) || `<i>${t("noBio")}</i>`}</div>`
+        : `<div class="pcard-note">${AUTH.loggedIn ? t("loadingProfile") : t("loginToSee")}</div>`}
+      ${linksHtml(p)}
+      ${langsHtml(p)}
+      ${profileExtras(uid)}
+      <div class="pcard-actions">
+        <button class="btn" onclick="api('copy','${uid}');toast(t('copied', profileName))">${icon("copy")}${t("copyId")}</button>
+        <button class="btn primary" onclick="api('open_profile','${uid}')">${icon("external-link")}${t("openWeb")}</button>
+      </div>
+      <div class="pcard-note" style="font-family:var(--mono)">${esc(uid)}</div>
+    </div>`;
+  const av = makeAvatar(uid, name, "big");
+  $("pcAv").replaceWith(av);
+}
+
+// ---------- Banner / frame / badges / links ----------
+const BANNERS = {};  // uid -> {img, bannerType, bannerColor}
+window.onBanners = (list) => {
+  for (const b of list) BANNERS[b.id] = b;
+  if (view === "friends") renderView();
+  if (profileOpen && list.some(b => b.id === profileOpen)) buildProfile();
+};
+const HEX = /^[0-9a-f]{6}$/i;
+function bannerStyle(uid) {
+  const b = BANNERS[uid] || {}, p = PROFILES[uid] || {};
+  if (b.img) return `background-image:url('${b.img}')`;
+  const c = b.bannerColor || p.bannerColor;
+  return c && HEX.test(c) ? `background:linear-gradient(135deg,#${c},color-mix(in srgb,#${c} 55%,#000))` : "";
+}
+// VRChat trust ranks (colors as in game)
+const RANKS = [["system_trust_veteran", "Trusted User", "#8143e6"], ["system_trust_trusted", "Known User", "#ff7b42"],
+               ["system_trust_known", "User", "#2bcf5c"], ["system_trust_basic", "New User", "#1778ff"]];
+function trustRank(p) {
+  const tags = [...(p.trustTags || []), ...(p.tags || [])];
+  if (!tags.length) return null;
+  const r = RANKS.find(([tag]) => tags.includes(tag));
+  return r ? { name: r[1], color: r[2] } : { name: "Visitor", color: "#8e8e93" };
+}
+function badgesHtml(p) {
+  const list = (p.badges || []).filter(b => !b.hidden && b.badgeImageUrl?.startsWith("https://assets.vrchat.com/"));
+  if (!list.length) return "";
+  return `<div class="badges">${list.map(b => `<img src="${esc(b.badgeImageUrl)}" title="${esc(b.badgeName)}${b.badgeDescription ? " — " + esc(b.badgeDescription) : ""}" draggable="false">`).join("")}</div>`;
+}
+const LINK_NAMES = { "discord.com": "Discord", "discord.gg": "Discord", "x.com": "X", "twitter.com": "X", "youtube.com": "YouTube",
+  "youtu.be": "YouTube", "twitch.tv": "Twitch", "steamcommunity.com": "Steam", "instagram.com": "Instagram", "tiktok.com": "TikTok",
+  "booth.pm": "BOOTH", "github.com": "GitHub", "facebook.com": "Facebook", "bsky.app": "Bluesky", "pixiv.net": "pixiv", "ko-fi.com": "Ko-fi" };
+function linksHtml(p) {
+  const links = (p.bioLinks || []).filter(u => /^https?:\/\//.test(u));
+  if (!links.length) return "";
+  return `<div class="pcard-section"><div class="lbl">${t("links")}</div><div class="links">${links.map(u => {
+    let host = u, path = "";
+    try { const x = new URL(u); host = x.hostname.replace(/^www\.|^m\./, ""); path = decodeURIComponent(x.pathname + x.search).replace(/\/$/, ""); } catch {}
+    const brand = Object.entries(LINK_NAMES).find(([d]) => host === d || host.endsWith("." + d))?.[1];
+    return `<div class="link-row" title="${esc(u)}" onclick="api('open_url','${esc(u).replace(/'/g, "%27")}')">${icon("external-link")}
+      <b>${esc(brand || host)}</b><span>${esc(path)}</span></div>`;
+  }).join("")}</div></div>`;
+}
+const LANG3 = { tha: "th", eng: "en", jpn: "ja", kor: "ko", zho: "zh", spa: "es", fra: "fr", deu: "de", rus: "ru", por: "pt", ita: "it",
+                vie: "vi", ind: "id", msa: "ms", fil: "fil", nld: "nl", pol: "pl", tur: "tr", ara: "ar", hin: "hi", ukr: "uk", swe: "sv" };
+function langsHtml(p) {
+  const langs = p.languages || (p.tags || []).filter(x => x.startsWith("language_")).map(x => x.slice(9));
+  if (!langs.length) return "";
+  let dn = null;
+  try { dn = new Intl.DisplayNames([S.lang], { type: "language" }); } catch {}
+  const name = c => { try { return dn?.of(LANG3[c] || c) || c; } catch { return c; } };
+  return `<div class="pcard-section"><div class="lbl">${t("languages")}</div><div class="chips">${langs.map(c => `<span class="chip lang">${esc(name(c))}</span>`).join("")}</div></div>`;
+}
+
+// ================= VRCX-style pages =================
+const VIEWS = ["log", "friends", "feed", "notifs", "history", "groups", "avatars", "inventory", "search"];
+const NAV = { log: ["scroll-text", "blue"], friends: ["users-round", "green"], feed: ["activity", "orange"],
+              notifs: ["bell", "red"], history: ["history", "purple"], groups: ["users", "teal"], avatars: ["shirt", "indigo"],
+              inventory: ["package", "brown"], search: ["search", "gray"] };
+const FEED_TYPES = ["online", "offline", "location", "status", "name", "avatar", "bio", "friendAdd", "friendRemove"];
+const FEED_STYLE = { online: ["user-check", "green"], offline: ["user-x", "gray"], location: ["map-pin", "blue"],
+  status: ["radio", "orange"], name: ["pencil", "pink"], avatar: ["shirt", "indigo"], bio: ["notebook-pen", "teal"], friendAdd: ["user-plus", "pink"],
+  friendRemove: ["user-minus", "red"] };
+const ITYPE = { public: "Public", "friends+": "Friends+", friends: "Friends", "invite+": "Invite+", invite: "Invite",
+                group: "Group", groupPublic: "Group Public", "group+": "Group+" };
+let view = "log", feed = [], feedOn = {}, lastWorldEv = null;
+const FRIENDS = {}, WORLDS = {};
+let friendsLoaded = false, pipelineOn = false, NOTIFS = [];
+let historyData = null, histOpen = new Set(), histPlayers = {};
+let searchKind = "users", searchRes = null, searching = false;
+let worldOpen = null, worldLoc = "";
+
+function buildNav() {
+  const online = Object.values(FRIENDS).filter(f => f.state === "online").length;
+  $("nav").innerHTML = VIEWS.map(v => {
+    const badge = v === "friends" && online ? `<span class="nav-badge">${online}</span>`
+      : v === "notifs" && NOTIFS.length ? `<span class="nav-badge hot">${NOTIFS.length}</span>` : "";
+    return `<button class="nav-item ${view === v ? "on" : ""}" onclick="setView('${v}')"><span class="tile" style="--c:var(--${NAV[v][1]})">${icon(NAV[v][0])}</span>
+            <span class="label">${t("nav_" + v)}</span>${badge}</button>`;
+  }).join("");
+}
+
+function setView(v, persist = true) {
+  view = v;
+  document.querySelectorAll(".content .view").forEach(el => el.classList.toggle("on", el.id === (v === "log" ? "log" : "v_" + v)));
+  $("pauseBtn").style.display = $("clearBtn").style.display = v === "log" ? "" : "none";
+  $("refreshBtn").style.display = ["friends", "history", "notifs", "groups", "avatars", "inventory"].includes(v) || VIEW_REFRESH[v] ? "" : "none";
+  $("searchBox").style.display = v === "search" ? "none" : "";
+  $("jump").classList.remove("show");
+  if (persist) { S.view = v; save(); }
+  if (v === "history") loadHistory();
+  buildNav(); buildSidebar(); renderView(); updateSubtitle();
+  if (v === "log") { $("world").textContent = lastBatch?.world && lastBatch.world !== "-" ? lastBatch.world : "VRC Nook"; scrollBottom(); }
+  if (v === "search") setTimeout(() => $("sq")?.focus(), 50);
+}
+
+function updateViewTitle() {
+  $("world").textContent = t("nav_" + view);
+  const online = Object.values(FRIENDS).filter(f => f.state === "online").length;
+  $("subtitle").textContent = {
+    friends: AUTH.loggedIn && friendsLoaded ? t("friendsCount", online, Object.keys(FRIENDS).length) : "",
+    feed: t("events", feed.length), notifs: t("notifCount", NOTIFS.length),
+    history: historyData ? t("visits", historyData.length) : "",
+  }[view] || "";
+}
+
+// Pages added by vrclog_more.js register here (page name -> render function / reload function)
+const VIEW_RENDER = {}, VIEW_REFRESH = {};
+let renderTimer = 0;
+function renderView() {
+  if (!ready || view === "log") return;
+  cancelAnimationFrame(renderTimer);
+  renderTimer = requestAnimationFrame(() => {
+    (VIEW_RENDER[view] || window["render" + view[0].toUpperCase() + view.slice(1)])?.();
+    updateSubtitle();
+  });
+}
+function refreshView() {
+  if (view === "history") loadHistory();
+  else if (view === "groups") { GRP.results = null; loadGroups(true); }
+  else if (view === "avatars") loadAvatars(AVA.tab, true);
+  else if (view === "inventory") loadInv(INV.tab, true);
+  else if (VIEW_REFRESH[view]) VIEW_REFRESH[view]();
+  else api("friends_reload");
+  toast(t("refreshing"));
+}
+function needLogin(el) {
+  el.innerHTML = `<div class="empty-state"><span class="tile" style="--c:var(--gray)">${icon("lock")}</span><div>${t("needLogin")}</div>
+    <div><button class="btn primary" onclick="openSettings('login')">${t("signIn")}</button></div></div>`;
+}
+function emptyState(el, ic, msg) {
+  el.innerHTML = `<div class="empty-state"><span class="tile" style="--c:var(--gray)">${icon(ic)}</span><div>${msg}</div></div>`;
+}
+
+// ---------- Location / time ----------
+function parseLoc(loc) {
+  if (!loc || !loc.startsWith("wrld_")) return { type: loc || "offline" };
+  const [wid, rest = ""] = loc.split(":");
+  const parts = rest.split("~");
+  let type = "public", region = "";
+  for (const p of parts.slice(1)) {
+    const m = p.match(/^(\w+)(?:\((.*)\))?$/) || [];
+    if (m[1] === "hidden") type = "friends+";
+    else if (m[1] === "friends") type = "friends";
+    else if (m[1] === "private") type = type === "invite+" ? type : "invite";
+    else if (m[1] === "canRequestInvite") type = "invite+";
+    else if (m[1] === "group") type = "group";
+    else if (m[1] === "groupAccessType") type = m[2] === "public" ? "groupPublic" : m[2] === "plus" ? "group+" : "group";
+    else if (m[1] === "region") region = m[2] || "";
+  }
+  return { type, wid, name: parts[0], region };
+}
+function itypeLabel(L2) { return (ITYPE[L2.type] || L2.type) + (L2.region ? " · " + L2.region.toUpperCase() : ""); }
+function locLabel(loc, state) {
+  if (state === "active") return t("onWeb");
+  if (!loc || loc === "offline") return t("offlineLoc");
+  if (loc === "private") return t("privateLoc");
+  if (loc === "traveling") return t("traveling");
+  const L2 = parseLoc(loc);
+  return L2.wid ? (WORLDS[L2.wid]?.name || L2.wid) : loc;
+}
+function joinButtons(loc) {
+  const L2 = parseLoc(loc);
+  if (!L2.wid || !L2.name) return "";
+  return `<span class="acts"><button class="mini-btn" title="${t("join")}" onclick="event.stopPropagation();doLaunch('${esc(loc)}')">${icon("rocket")}</button>
+          <button class="mini-btn" title="${t("inviteMe")}" onclick="event.stopPropagation();doInvite('${esc(loc)}')">${icon("send")}</button></span>`;
+}
+async function doLaunch(loc) { const r = await api("launch", loc); toast(r?.ok ? t("launched") : t("errGeneric")); }
+async function doInvite(loc) { const r = await api("invite_self", loc); toast(r?.ok ? t("inviteSent") : t("errGeneric")); }
+function fmtDate(ts) { const m = (ts || "").match(/^(\d{4})\.(\d\d)\.(\d\d) (\d\d:\d\d)/); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}` : ts || ""; }
+function fmtShort(ts) { const m = (ts || "").match(/^\d{4}\.(\d\d)\.(\d\d) (\d\d:\d\d)/); return m ? `${m[2]}/${m[1]} ${m[3]}` : ts || ""; }
+function tsDate(ts) { return new Date(ts.replace(/^(\d{4})\.(\d\d)\.(\d\d) /, "$1-$2-$3T")); }
+function fmtDur(ms) { const m = Math.max(1, Math.round(ms / 60000)); return m < 60 ? t("mins", m) : t("hours", Math.floor(m / 60), m % 60); }
+
+// ---------- Incoming friends / worlds / notifications ----------
+window.onFriends = (d) => {
+  for (const k in FRIENDS) delete FRIENDS[k];
+  d.list.forEach(f => FRIENDS[f.id] = f);
+  friendsLoaded = d.loaded;
+  buildNav();
+  renderView();
+};
+window.onFriend = (f) => {
+  FRIENDS[f.id] = f;
+  buildNav();
+  if (view === "friends") renderView();
+  if (profileOpen === f.id) buildProfile();
+};
+window.onFriendRemoved = (uid) => { delete FRIENDS[uid]; buildNav(); renderView(); };
+window.onPipeline = (on) => { pipelineOn = on; if (view === "friends") renderView(); };
+window.onWorlds = (list) => {
+  for (const w of list) WORLDS[w.id] = w;
+  renderView();
+  if (worldOpen && list.some(w => w.id === worldOpen)) buildWorld();
+  else if (profileOpen) buildProfile();
+};
+window.onNotifs = (list) => { NOTIFS = list; buildNav(); if (view === "notifs") renderView(); };
+window.onNewNotif = (n) => toast(t("newNotif", n.name || "?", t("n_" + n.type, n.worldName || "")));
+window.onFeed = (list) => {
+  feed.push(...list);
+  if (feed.length > 5000) feed.splice(0, feed.length - 5000);
+  if (view === "feed") renderView();
+};
+
+// ---------- Friends page ----------
+function renderFriends() {
+  const el = $("v_friends");
+  if (!AUTH.loggedIn) return needLogin(el);
+  if (!friendsLoaded) return emptyState(el, "refresh-cw", t("loadingFriends"));
+  const list = Object.values(FRIENDS).filter(f => !query || (f.displayName || "").toLowerCase().includes(query)
+    || locLabel(f.location, f.state).toLowerCase().includes(query));
+  // Sections: in a visible world / in a private world / online on the web / offline
+  const group = f => f.state !== "online" ? f.state : parseLoc(f.location).wid ? "online" : "private";
+  const by = s => list.filter(f => group(f) === s).sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
+  const scroll = el.scrollTop;
+  el.innerHTML = "";
+  for (const st of ["online", "private", "active", "offline"]) {
+    const arr = by(st);
+    if (st === "online") arr.sort((a, b) => (a.location || "").localeCompare(b.location || ""));  // Players in the same instance stay together
+    if (st === "private" && !arr.length) continue;
+    const head = document.createElement("div");
+    head.className = "sec-head";
+    head.innerHTML = `${t("fs_" + st)} <span class="n">${arr.length}</span>` + (st === "online"
+      ? `<span class="live ${pipelineOn ? "on" : ""}" style="margin-left:auto"><i></i>${t(pipelineOn ? "live" : "notLive")}</span>`
+      : st === "offline" ? `<button class="btn" style="padding:3px 12px" onclick="S.showOffline=!S.showOffline;save();renderView()">${t(S.showOffline ? "hide" : "show")}</button>` : "");
+    el.appendChild(head);
+    if (st === "offline" && !S.showOffline) continue;
+    const grid = document.createElement("div");
+    grid.className = "fgrid";
+    arr.forEach(f => grid.appendChild(friendCard(f)));
+    el.appendChild(grid);
+  }
+  el.scrollTop = scroll;
+}
+
+function avatarWithDot(uid, name, state, status) {
+  const wrap = document.createElement("span");
+  wrap.className = "avwrap";
+  wrap.append(makeAvatar(uid, name));
+  if (state && state !== "offline") {
+    const dot = state === "active" ? "var(--gray)" : STATUS_COLOR[(status || "").toLowerCase()] || "var(--green)";
+    wrap.insertAdjacentHTML("beforeend", `<i class="sdot" style="background:${dot}"></i>`);
+  }
+  return wrap;
+}
+
+function friendCard(f) {
+  const d = document.createElement("div");
+  d.className = "fcard";
+  const st = (f.status || "").toLowerCase();
+  const L2 = parseLoc(f.location);
+  d.innerHTML = `<span class="slot"></span><div class="info"><div class="nm"></div><div class="sub"></div>
+    <div class="loc">${icon(f.state === "online" ? "map-pin" : f.state === "active" ? "monitor" : "clock")}<span></span>
+    ${L2.wid ? `<span class="itype">${esc(itypeLabel(L2))}</span>` : ""}</div></div>${f.state === "online" ? joinButtons(f.location) : ""}`;
+  d.querySelector(".slot").replaceWith(avatarWithDot(f.id, f.displayName || "?", f.state, f.status));
+  d.querySelector(".nm").textContent = f.displayName || f.id;
+  d.querySelector(".sub").textContent = f.statusDescription || (f.state !== "offline" ? L().st?.[st] || "" : "");
+  d.querySelector(".loc span").textContent = locLabel(f.location, f.state);
+  const bs = bannerStyle(f.id);  // Card background is that player's banner (image or color), like in game
+  if (bs) { d.classList.add("bnr"); d.querySelector(".bnr-bg")?.remove(); d.insertAdjacentHTML("afterbegin", `<span class="bnr-bg" style="${bs}"></span>`); }
+  d.onclick = () => showProfile(f.id, f.displayName);
+  return d;
+}
+
+// ---------- Feed ----------
+function buildFeedFilters(root) {
+  $("filterTitle").textContent = t("feedFilter");
+  const g = document.createElement("div");
+  g.className = "group";
+  for (const k of FEED_TYPES) {
+    const [ic, col] = FEED_STYLE[k];
+    const row = document.createElement("label");
+    row.className = "toggle-row";
+    row.innerHTML = `<span class="tile" style="--c:var(--${col})">${icon(ic)}</span><span class="label">${t("ft_" + k)}</span>
+                     <span class="switch"><input type="checkbox" ${feedOn[k] ? "checked" : ""}></span>`;
+    row.querySelector("input").onchange = (ev) => { feedOn[k] = ev.target.checked; S.feedEnabled = feedOn; save(); renderView(); };
+    g.appendChild(row);
+  }
+  root.appendChild(g);
+}
+
+function feedText(e) {
+  const d = e.d || {};
+  switch (e.type) {
+    case "online": return t("ff_online", locLabel(d.location));
+    case "location": return t("ff_location", locLabel(d.location));
+    case "name": return t("ff_name", d.old || "?", d.new || e.name);
+    case "status": return t("ff_status", d.desc || L().st?.[(d.status || "").toLowerCase()] || d.status || "");
+    default: return t("ff_" + e.type);
+  }
+}
+
+let feedWorldsAsked = false;
+function renderFeed() {
+  const el = $("v_feed");
+  const list = feed.filter(e => feedOn[e.type] && (!query || (e.name || "").toLowerCase().includes(query) || feedText(e).toLowerCase().includes(query)));
+  if (!list.length) return emptyState(el, "activity", AUTH.loggedIn || feed.length ? t("noFeed") : t("needLogin"));
+  if (!feedWorldsAsked) {  // Request world names for the latest feed entries (slowly, within the rate limit)
+    feedWorldsAsked = true;
+    const wids = [...new Set(feed.slice(-200).map(e => parseLoc(e.d?.location).wid).filter(Boolean))].slice(-30);
+    api("worlds", wids);
+  }
+  const scroll = el.scrollTop;
+  el.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  for (const e of list.slice(-800).reverse()) {
+    const [ic, col] = FEED_STYLE[e.type] || ["activity", "gray"];
+    const r = document.createElement("div");
+    r.className = "frow";
+    r.innerHTML = `<span class="time"></span><span class="slot"></span><span class="nm"></span>
+      <span class="what"><span class="tile" style="--c:var(--${col});width:20px;height:20px;border-radius:6px">${icon(ic)}</span><span></span></span>`;
+    r.querySelector(".time").textContent = fmtShort(e.t);
+    r.querySelector(".time").title = e.t;
+    r.querySelector(".slot").replaceWith(makeAvatar(e.u, e.name));
+    const nm = r.querySelector(".nm");
+    nm.textContent = e.name || e.u;
+    nm.onclick = () => showProfile(e.u, e.name);
+    const what = r.querySelector(".what span:last-child");
+    what.textContent = feedText(e);
+    const wid = parseLoc(e.d?.location).wid;
+    if (wid) { what.classList.add("link"); what.onclick = () => openWorld(wid, e.d.location); }
+    frag.appendChild(r);
+  }
+  el.appendChild(frag);
+  el.scrollTop = scroll;
+}
+
+// ---------- Notifications ----------
+function renderNotifs() {
+  const el = $("v_notifs");
+  if (!AUTH.loggedIn) return needLogin(el);
+  if (!NOTIFS.length) return emptyState(el, "bell", t("noNotifs"));
+  el.innerHTML = "";
+  for (const n of [...NOTIFS].sort((a, b) => (b.t || "").localeCompare(a.t || ""))) {
+    const wid = parseLoc(n.world).wid;
+    const wname = n.worldName || WORLDS[wid]?.name || "";
+    const c = document.createElement("div");
+    c.className = "ncard";
+    const acts = n.type === "friendRequest"
+      ? `<button class="btn primary" onclick="respond('${n.id}',true)">${t("accept")}</button><button class="btn" onclick="respond('${n.id}',false)">${t("decline")}</button>`
+      : n.type === "invite"
+        ? `<button class="btn primary" onclick="doLaunch('${esc(n.world)}')">${t("join")}</button><button class="btn" onclick="respond('${n.id}',false)">${t("dismiss")}</button>`
+        : `<button class="btn" onclick="respond('${n.id}',false)">${t("dismiss")}</button>`;
+    c.innerHTML = `<span class="slot"></span><div class="info"><div class="nm"></div><div class="sub"></div></div><div class="acts">${acts}</div>`;
+    c.querySelector(".slot").replaceWith(makeAvatar(n.from, n.name));
+    c.querySelector(".nm").textContent = n.name || n.from;
+    c.querySelector(".nm").onclick = () => showProfile(n.from, n.name);
+    const when = n.t ? new Date(n.t).toLocaleString(S.lang) : "";
+    c.querySelector(".sub").textContent = `${t("n_" + n.type, wname)}${n.msg ? ` — “${n.msg}”` : ""} · ${when}`;
+    el.appendChild(c);
+  }
+}
+async function respond(id, accept) {
+  const r = await api("notif_respond", id, accept);
+  toast(r?.ok ? t(accept ? "accepted" : "dismissed") : t("errGeneric"));
+}
+
+// ---------- History ----------
+async function loadHistory() {
+  historyData = (await api("history")) || [];
+  const wids = [...new Set(historyData.slice(0, 40).map(v => parseLoc(v.loc).wid).filter(Boolean))];
+  api("worlds", wids);
+  renderView();
+}
+function renderHistory() {
+  const el = $("v_history");
+  if (!historyData) return emptyState(el, "history", t("loading"));
+  const list = historyData.filter(v => !query || v.name.toLowerCase().includes(query));
+  if (!list.length) return emptyState(el, "history", t("noHistory"));
+  const scroll = el.scrollTop;
+  el.innerHTML = "";
+  list.forEach((v, i) => {
+    const L2 = parseLoc(v.loc), w = WORLDS[L2.wid];
+    const ongoing = !v.end && v === historyData[0];
+    const dur = v.end ? tsDate(v.end) - tsDate(v.t) : ongoing ? Date.now() - tsDate(v.t) : 0;
+    const row = document.createElement("div");
+    row.className = "hrow" + (histOpen.has(v.t) ? " open" : "");
+    row.innerHTML = `<div class="hhead"><div class="thumb" ${w?.img ? `style="background-image:url('${w.img}')"` : ""}>${w?.img ? "" : icon("globe")}</div>
+      <div class="info"><div class="nm"></div><div class="sub"><span>${fmtDate(v.t)}</span>${dur ? `<span>${fmtDur(dur)}${ongoing ? " · " + t("now") : ""}</span>` : ""}
+      <span>${t("playersMet", v.players)}</span>${L2.wid ? `<span class="itype">${esc(itypeLabel(L2))}</span>` : ""}</div></div>
+      ${L2.wid ? `<button class="mini-btn" title="${t("worldInfo")}" onclick="event.stopPropagation();openWorld('${L2.wid}','${esc(v.loc)}')">${icon("info")}</button>` : ""}
+      <span class="chev">${icon("chevron-right")}</span></div><div class="hbody"></div>`;
+    row.querySelector(".nm").textContent = v.name;
+    row.querySelector(".hhead").onclick = () => {
+      if (histOpen.has(v.t)) { histOpen.delete(v.t); row.classList.remove("open"); return; }
+      histOpen.add(v.t); row.classList.add("open"); fillVisit(v, row);
+    };
+    if (histOpen.has(v.t)) fillVisit(v, row);
+    el.appendChild(row);
+  });
+  el.scrollTop = scroll;
+}
+async function fillVisit(v, row) {
+  const body = row.querySelector(".hbody");
+  if (!histPlayers[v.t]) { body.textContent = t("loading"); histPlayers[v.t] = (await api("visit_players", v.t, v.end)) || []; }
+  const ps = histPlayers[v.t];
+  body.innerHTML = ps.length ? "" : `<span style="color:var(--text3)">${t("noPlayers")}</span>`;
+  const chips = document.createElement("div");
+  chips.className = "chips";
+  for (const p of ps) {
+    const c = document.createElement("span");
+    c.className = "chip";
+    const s = document.createElement("span");
+    s.textContent = p.name;
+    c.append(makeAvatar(p.u, p.name), s);
+    c.onclick = () => showProfile(p.u, p.name);
+    chips.append(c);
+  }
+  body.append(chips);
+}
+
+// ---------- Search ----------
+function renderSearch() {
+  const el = $("v_search");
+  if (!AUTH.loggedIn) return needLogin(el);
+  if (!el.querySelector(".search-head")) {
+    el.innerHTML = `<div class="search-head"><input class="field" id="sq" spellcheck="false"><div class="segmented" id="skind"></div>
+      <button class="btn primary" onclick="doSearch()">${icon("search")}</button></div><div id="sres"></div>`;
+    $("sq").onkeydown = e => { if (e.key === "Enter") doSearch(); };
+  }
+  $("sq").placeholder = t(searchKind === "users" ? "searchUsersPh" : "searchWorldsPh");
+  $("skind").innerHTML = ["users", "worlds"].map(k =>
+    `<button class="${searchKind === k ? "on" : ""}" onclick="searchKind='${k}';searchRes=null;renderSearch();doSearch()">${t("s_" + k)}</button>`).join("");
+  const res = $("sres");
+  if (searching) return res.innerHTML = `<div class="empty-state" style="height:200px">${t("searching")}</div>`;
+  if (!searchRes) return res.innerHTML = "";
+  if (searchRes.error) return res.innerHTML = `<div class="empty-state" style="height:200px">${t("errGeneric")}</div>`;
+  if (!searchRes.ids.length) return res.innerHTML = `<div class="empty-state" style="height:200px">${t("noResults")}</div>`;
+  res.innerHTML = "";
+  const grid = document.createElement("div");
+  grid.className = searchRes.kind === "users" ? "fgrid" : "wgrid";
+  for (const id of searchRes.ids) {
+    if (searchRes.kind === "users") {
+      const p = PROFILES[id] || {};
+      const d = document.createElement("div");
+      d.className = "fcard";
+      d.innerHTML = `<span class="slot"></span><div class="info"><div class="nm"></div><div class="sub"></div></div>`;
+      d.querySelector(".slot").replaceWith(makeAvatar(id, p.displayName || "?"));
+      d.querySelector(".nm").textContent = p.displayName || id;
+      d.querySelector(".sub").textContent = p.statusDescription || "";
+      d.onclick = () => showProfile(id, p.displayName);
+      grid.appendChild(d);
+    } else {
+      const w = WORLDS[id] || {};
+      const d = document.createElement("div");
+      d.className = "wcard";
+      d.innerHTML = `<div class="wimg" ${w.img ? `style="background-image:url('${w.img}')"` : ""}></div><div class="winfo"><div class="nm"></div><div class="sub"></div></div>`;
+      d.querySelector(".nm").textContent = w.name || id;
+      d.querySelector(".sub").textContent = [w.authorName, w.capacity ? `${w.capacity} ${t("capacity")}` : ""].filter(Boolean).join(" · ");
+      d.onclick = () => openWorld(id, "");
+      grid.appendChild(d);
+    }
+  }
+  res.appendChild(grid);
+}
+async function doSearch() {
+  const q = $("sq")?.value.trim();
+  if (!q) return;
+  searching = true; renderSearch();
+  const kind = searchKind;
+  const r = await api("search", kind, q);
+  searching = false;
+  searchRes = { ...(r || { ids: [] }), kind };
+  renderSearch();
+}
+
+// ---------- World info card ----------
+function openWorld(wid, loc) {
+  if (!wid) return;
+  profileOpen = null; groupOpen = null; avatarOpen = null; worldOpen = wid; worldLoc = loc || "";
+  buildWorld();
+  $("pOverlay").classList.add("show");
+  api("world", wid);
+}
+function buildWorld() {
+  const w = WORLDS[worldOpen] || {};
+  const card = $("pcard");
+  card.classList.add("wide");
+  const L2 = parseLoc(worldLoc);
+  const stat = (v, label) => v || v === 0 ? `<span><b>${Number(v).toLocaleString()}</b> ${label}</span>` : "";
+  card.innerHTML = `<div class="wc-hero" ${w.img ? `style="background-image:url('${w.img}')"` : ""}></div>
+    <div class="pcard-body">
+      <h3>${esc(w.name || worldOpen)}</h3>
+      ${w.authorName ? `<div class="pcard-status">${t("by", esc(w.authorName))}</div>` : ""}
+      <div class="stats">${stat(w.capacity, t("capacity"))}${w.occupants !== undefined ? stat(w.occupants, t("occupants")) : ""}${stat(w.visits, t("visitsW"))}${stat(w.favorites, t("favorites"))}</div>
+      ${L2.name ? `<div class="pcard-section"><div class="lbl">${t("instance")}</div><div class="locline">${icon("hash")}
+         <span class="w" style="font-family:var(--mono)">#${esc(L2.name)}</span><span class="itype">${esc(itypeLabel(L2))}</span></div></div>` : ""}
+      ${w.description ? `<div class="pcard-bio">${esc(w.description)}</div>` : w.name ? "" : `<div class="pcard-note">${AUTH.loggedIn ? t("loadingWorld") : t("loginToSee")}</div>`}
+      <div class="pcard-actions">
+        ${L2.name && AUTH.loggedIn ? `<button class="btn" onclick="doInvite('${esc(worldLoc)}')">${icon("send")}${t("inviteMe")}</button>` : ""}
+        <button class="btn primary" onclick="doLaunch('${esc(worldLoc || worldOpen)}')">${icon("rocket")}${t(L2.name ? "joinInstance" : "launch")}</button>
+        <button class="btn" title="${t("openWeb")}" onclick="api('open_world','${worldOpen}')">${icon("external-link")}</button>
+      </div>
+      <div class="pcard-note" style="font-family:var(--mono)">${esc(worldOpen)}</div>
+    </div>`;
+}
+
+// ================= Groups / avatars / inventory =================
+// ---------- Thumbnails via Python (images from api.vrchat.cloud need the cookie) ----------
+const THUMBS = {};
+let thumbPending = new Set(), thumbTimer = 0;
+function thumbStyle(url) {
+  if (!url) return "";
+  if (url.startsWith("https://assets.vrchat.com/")) return `background-image:url('${esc(url)}')`;  // Public, can be loaded directly
+  if (THUMBS[url]) return `background-image:url('${THUMBS[url]}')`;
+  thumbPending.add(url);
+  clearTimeout(thumbTimer);
+  thumbTimer = setTimeout(() => { api("thumbs", [...thumbPending]); thumbPending = new Set(); }, 200);
+  return "";
+}
+function thumbAttr(url) { return url ? `data-thumb="${esc(url)}" style="${thumbStyle(url)}"` : ""; }
+window.onThumbs = (list) => {
+  for (const { url, img } of list) {
+    THUMBS[url] = img;
+    document.querySelectorAll(`[data-thumb="${CSS.escape(url)}"]`).forEach(el => el.style.backgroundImage = `url('${img}')`);
+  }
+};
+function apiError(r) { toast(r?.error === 401 ? t("needLogin") : `${t("errGeneric")}${r?.message ? " — " + r.message : ""}`); }
+function confirmBtn(btn, action) {  // First click = ask, second click within 3 s = do it
+  if (btn.dataset.armed) { delete btn.dataset.armed; action(); return; }
+  btn.dataset.armed = "1";
+  const old = btn.innerHTML;
+  btn.classList.add("armed");
+  btn.innerHTML = t("confirm");
+  setTimeout(() => { if (btn.dataset.armed) { delete btn.dataset.armed; btn.classList.remove("armed"); btn.innerHTML = old; } }, 3000);
+}
+
+// ---------- Groups ----------
+const GRP = { mine: null, results: null, q: "", loading: false };
+async function loadGroups(force) {
+  if (GRP.mine && !force) return;
+  GRP.loading = true; renderView();
+  const r = await api("groups_mine");
+  GRP.loading = false;
+  if (r?.ok) GRP.mine = r.ok; else apiError(r);
+  renderView();
+}
+async function searchGroups() {
+  const q = $("gq")?.value.trim() || "";
+  GRP.q = q;
+  if (!q) { GRP.results = null; return renderView(); }
+  GRP.loading = true; renderView();
+  const r = await api("groups_search", q);
+  GRP.loading = false;
+  GRP.results = r?.ok || [];
+  if (!r?.ok) apiError(r);
+  renderView();
+}
+function groupCard(g) {
+  const d = document.createElement("div");
+  d.className = "wcard gcard";
+  d.innerHTML = `<div class="wimg" ${thumbAttr(g.bannerUrl)}></div><div class="gicon" ${thumbAttr(g.iconUrl)}></div>
+    <div class="winfo"><div class="nm"></div><div class="sub"></div></div>`;
+  d.querySelector(".nm").innerHTML = esc(g.name) + (g.isVerified ? ` <span class="verified">${icon("badge-check")}</span>` : "");
+  d.querySelector(".sub").textContent = [`${g.shortCode || ""}.${g.discriminator || ""}`, g.memberCount != null ? t("members", g.memberCount) : ""].filter(Boolean).join(" · ");
+  d.onclick = () => openGroup(g);
+  return d;
+}
+function renderGroups() {
+  const el = $("v_groups");
+  if (!AUTH.loggedIn) return needLogin(el);
+  if (!el.querySelector(".search-head")) {
+    el.innerHTML = `<div class="search-head"><input class="field" id="gq" spellcheck="false"><button class="btn primary" onclick="searchGroups()">${icon("search")}</button></div><div id="gres"></div>`;
+    $("gq").onkeydown = e => { if (e.key === "Enter") searchGroups(); };
+    $("gq").oninput = e => { if (!e.target.value.trim() && GRP.results) { GRP.results = null; renderView(); } };
+  }
+  $("gq").placeholder = t("g_searchPh");
+  const res = $("gres");
+  if (!GRP.mine && !GRP.loading) loadGroups();
+  const list = GRP.results ?? (GRP.mine || []).filter(g => !query || g.name?.toLowerCase().includes(query));
+  res.innerHTML = `<div class="sec-head">${t(GRP.results ? "g_results" : "g_mine")} <span class="n">${list.length}</span></div>`;
+  if (GRP.loading) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("loading")}</div>`);
+  if (!list.length) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("noResults")}</div>`);
+  const grid = document.createElement("div");
+  grid.className = "wgrid";
+  list.forEach(g => grid.appendChild(groupCard(g)));
+  res.appendChild(grid);
+}
+let groupOpen = null;
+async function openGroup(g) {
+  profileOpen = null; worldOpen = null; groupOpen = g;
+  buildGroup(); $("pOverlay").classList.add("show");
+  const r = await api("group", g.id);
+  if (r?.ok && groupOpen?.id === g.id) { groupOpen = { ...g, ...r.ok }; buildGroup(); }
+}
+function buildGroup() {
+  const g = groupOpen, card = $("pcard");
+  card.classList.add("wide");
+  const st = g.membershipStatus;
+  const action = st === "member"
+    ? `<button class="btn danger" onclick="confirmBtn(this,()=>leaveGroup())">${icon("log-out")}${t("leaveGroup")}</button>`
+    : st === "requested" ? `<button class="btn" disabled>${t("requested")}</button>`
+    : g.joinState === "open" ? `<button class="btn primary" onclick="joinGroup()">${icon("plus")}${t("joinGroup")}</button>`
+    : g.joinState === "request" ? `<button class="btn primary" onclick="joinGroup()">${icon("send")}${t("requestJoin")}</button>`
+    : `<button class="btn" disabled>${t("inviteOnly")}</button>`;
+  card.innerHTML = `<div class="wc-hero" ${thumbAttr(g.bannerUrl)}></div>
+    <div class="pcard-body">
+      <div class="gicon big" ${thumbAttr(g.iconUrl)}></div>
+      <h3>${esc(g.name)}${g.isVerified ? ` <span class="verified">${icon("badge-check")}</span>` : ""}</h3>
+      <div class="pcard-status">${esc(g.shortCode || "")}.${esc(g.discriminator || "")}</div>
+      <div class="stats">${g.memberCount != null ? `<span><b>${Number(g.memberCount).toLocaleString()}</b> ${t("membersW")}</span>` : ""}
+        ${g.onlineMemberCount != null ? `<span><b>${g.onlineMemberCount}</b> ${t("onlineW")}</span>` : ""}
+        ${st === "member" ? `<span class="badge">${t("joined")}</span>` : ""}</div>
+      ${g.description ? `<div class="pcard-bio">${esc(g.description)}</div>` : ""}
+      <div class="pcard-actions">${action}
+        <button class="btn" title="${t("openWeb")}" onclick="api('open_url','https://vrchat.com/home/group/${esc(g.id)}')">${icon("external-link")}</button></div>
+      <div class="pcard-note" style="font-family:var(--mono)">${esc(g.id)}</div>
+    </div>`;
+}
+async function joinGroup() {
+  const r = await api("group_join", groupOpen.id);
+  if (!r?.ok) return apiError(r);
+  groupOpen.membershipStatus = r.ok.membershipStatus;
+  toast(t(r.ok.membershipStatus === "member" ? "joinedToast" : "requestedToast"));
+  buildGroup(); GRP.mine = null;
+}
+async function leaveGroup() {
+  const r = await api("group_leave", groupOpen.id);
+  if (!r || "error" in r) return apiError(r);
+  groupOpen.membershipStatus = null;
+  toast(t("leftToast")); buildGroup(); GRP.mine = null; renderView();
+}
+
+// ---------- Avatars ----------
+const AVA_TABS = ["mine", "fav"];  // vrclog_more.js adds the licensed tab
+const AVA = { tab: "mine", mine: null, fav: null, current: null, loading: false };
+async function loadAvatars(tab, force) {
+  if (AVA[tab] && !force) return;
+  AVA.loading = true; renderView();
+  const r = await api("avatars", tab);
+  AVA.loading = false;
+  if (r?.ok) { AVA[tab] = r.ok.list; AVA.current = r.ok.current; } else apiError(r);
+  renderView();
+}
+function renderAvatars() {
+  const el = $("v_avatars");
+  if (!AUTH.loggedIn) return needLogin(el);
+  if (!AVA[AVA.tab] && !AVA.loading) loadAvatars(AVA.tab);
+  const list = (AVA[AVA.tab] || []).filter(a => !query || a.name?.toLowerCase().includes(query) || a.authorName?.toLowerCase().includes(query));
+  el.innerHTML = `<div class="search-head"><div class="segmented">${AVA_TABS.map(k =>
+      `<button class="${AVA.tab === k ? "on" : ""}" onclick="AVA.tab='${k}';renderView()">${t("a_" + k)}</button>`).join("")}</div>
+    <span class="hint-inline">${t("a_searchHint")}</span></div>
+    <div class="sec-head">${t("a_" + AVA.tab)} <span class="n">${list.length}</span></div>`;
+  if (AVA.loading) return el.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("loading")}</div>`);
+  if (!list.length) return el.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("noResults")}</div>`);
+  const grid = document.createElement("div");
+  grid.className = "wgrid";
+  for (const a of list) {
+    const d = document.createElement("div");
+    d.className = "wcard" + (a.id === AVA.current ? " current" : "");
+    d.innerHTML = `<div class="wimg" ${thumbAttr(a.thumb)}>${a.id === AVA.current ? `<span class="wear">${t("wearing")}</span>` : ""}</div>
+      <div class="winfo"><div class="nm"></div><div class="sub"></div></div>`;
+    d.querySelector(".nm").textContent = a.name;
+    d.querySelector(".sub").textContent = [a.authorName, a.releaseStatus].filter(Boolean).join(" · ");
+    d.onclick = () => openAvatar(a);
+    grid.appendChild(d);
+  }
+  el.appendChild(grid);
+}
+let avatarOpen = null;
+function openAvatar(a) { profileOpen = null; worldOpen = null; groupOpen = null; avatarOpen = a; buildAvatar(); $("pOverlay").classList.add("show"); }
+function buildAvatar() {
+  const a = avatarOpen, card = $("pcard");
+  card.classList.add("wide");
+  const PL = { standalonewindows: "PC", android: "Quest/Android", ios: "iOS" };
+  card.innerHTML = `<div class="wc-hero" ${thumbAttr(a.image || a.thumb)}></div>
+    <div class="pcard-body">
+      <h3>${esc(a.name)}</h3>
+      <div class="pcard-status">${t("by", esc(a.authorName || ""))}</div>
+      <div>${a.releaseStatus ? `<span class="badge gray">${esc(a.releaseStatus)}</span>` : ""}
+        ${(a.platforms || []).map(p => `<span class="badge gray">${esc(PL[p] || p)}</span>`).join("")}
+        ${a.id === AVA.current ? `<span class="badge">${t("wearing")}</span>` : ""}</div>
+      ${a.description ? `<div class="pcard-bio">${esc(a.description)}</div>` : ""}
+      ${a.updated ? `<div class="pcard-note">${t("updated")} ${new Date(a.updated).toLocaleString(S.lang)}</div>` : ""}
+      <div class="pcard-actions">
+        <button class="btn primary" ${a.id === AVA.current ? "disabled" : ""} onclick="useAvatar()">${icon("shirt")}${t("useAvatar")}</button>
+        <button class="btn" title="${t("openWeb")}" onclick="api('open_url','https://vrchat.com/home/avatar/${esc(a.id)}')">${icon("external-link")}</button>
+      </div>
+      <div class="pcard-note" style="font-family:var(--mono)">${esc(a.id)}</div>
+    </div>`;
+}
+async function useAvatar() {
+  const r = await api("avatar_select", avatarOpen.id);
+  if (!r?.ok) return apiError(r);
+  AVA.current = avatarOpen.id;
+  toast(t("avatarChanged")); buildAvatar(); renderView();
+}
+
+// ---------- Inventory ----------
+const INV_TABS = { gallery: ["image", "blue"], emoji: ["smile", "orange"], sticker: ["sticker", "pink"], items: ["gift", "purple"], cosmetics: ["sparkles", "indigo"] };
+const INV = { tab: "gallery", data: {}, loading: false, uploading: false };
+async function loadInv(tab, force) {
+  if (INV.data[tab] && !force) return;
+  INV.loading = true; renderView();
+  let r;
+  if (tab === "items" || tab === "cosmetics") r = await api("inventory", tab);
+  else if (tab === "emoji") {
+    const [a, b] = await Promise.all([api("files", "emoji"), api("files", "emojianimated")]);
+    r = a?.ok && b?.ok ? { ok: [...b.ok, ...a.ok] } : (a?.ok ? a : b);
+  } else r = await api("files", tab);
+  INV.loading = false;
+  if (r?.ok) INV.data[tab] = r.ok; else apiError(r);
+  renderView();
+}
+function renderInventory() {
+  const el = $("v_inventory");
+  if (!AUTH.loggedIn) return needLogin(el);
+  const tab = INV.tab;
+  if (!INV.data[tab] && !INV.loading) loadInv(tab);
+  const isFile = ["gallery", "emoji", "sticker", "icon"].includes(tab);
+  const list = (INV.data[tab] || []).filter(x => !(tab === "cosmetics" && (x.equipSlots || []).every(s => s === "wear") && x.equipSlots?.length)).filter(x => !query || (x.name || "").toLowerCase().includes(query) || (x.itemTypeLabel || x.itemType || "").toLowerCase().includes(query));
+  el.innerHTML = `<div class="search-head"><div class="segmented inv-tabs">${Object.entries(INV_TABS).map(([k, [ic]]) =>
+      `<button class="${tab === k ? "on" : ""}" onclick="INV.tab='${k}';renderView()">${icon(ic)}${t("i_" + k)}</button>`).join("")}</div>
+    ${isFile && tab !== "emoji" ? `<button class="btn primary" ${INV.uploading ? "disabled" : ""} onclick="$('upFile').click()">${icon("upload")}${t(INV.uploading ? "uploading" : "upload")}</button>
+      <input type="file" id="upFile" accept="image/*" hidden onchange="uploadFile(this.files[0]);this.value=''">` : ""}
+    ${tab === "emoji" ? `<button class="btn primary" onclick="openEmk()">${icon("sparkles")}${t("emk_new")}</button>` : ""}</div>
+    <div class="sec-head">${t("i_" + tab)} <span class="n">${list.length}</span>${["gallery", "emoji", "sticker", "icon"].includes(tab) ? `<span class="hint-inline" style="margin-left:auto">${t("i_hint_" + tab)}</span>` : ""}</div>`;
+  if (INV.loading) return el.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("loading")}</div>`);
+  if (!list.length) return el.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("noItems")}</div>`);
+  if (tab === "cosmetics") return renderCosmetics(el, list);
+  const grid = document.createElement("div");
+  grid.className = "igrid" + (tab === "gallery" ? " photos" : "");
+  for (const x of list) {
+    const d = document.createElement("div");
+    d.className = "itile" + (x.isArchived ? " dim" : "");
+    const anim = tab === "emoji" && x.frames > 1;
+    const url = isFile ? x.url + (anim ? "#full" : "") : x.imageUrl;
+    d.innerHTML = `<div class="iimg" ${thumbAttr(url)}
+      ${anim ? `data-frames="${+x.frames}" data-fps="${+x.framesOverTime || 10}" data-loop="${esc(x.loopStyle || "")}"` : ""}></div>${isFile ? "" : `<div class="iname"></div><div class="isub"></div>`}
+      ${isFile ? `<button class="mini-btn del" title="${t("del")}">${icon("trash-2")}</button>` : ""}
+      ${x.animationStyle && tab === "emoji" ? `<span class="itag">${esc(x.animationStyle)}</span>` : ""}
+      ${anim ? `<span class="ianim" title="${t("i_anim")} · ${+x.frames} frames · ${+x.framesOverTime || 10} fps">${icon("play")}${t("i_anim")}</span>` : ""}`;
+    if (!isFile) {
+      d.querySelector(".iname").textContent = x.name || "";
+      d.querySelector(".isub").textContent = x.itemTypeLabel || x.itemType || "";
+      d.title = x.description || "";
+    } else {
+      d.querySelector(".del").onclick = (ev) => { ev.stopPropagation(); confirmBtn(ev.currentTarget, () => deleteFile(x.id)); };
+      d.onclick = () => api("open_url", `https://vrchat.com/home/${tab === "gallery" ? "gallery" : tab === "emoji" ? "emojis" : "stickers"}`);
+    }
+    grid.appendChild(d);
+  }
+  el.appendChild(grid);
+}
+function renderCosmetics(el, list) {
+  const slots = {};
+  // The "wear" slot is avatars stored as items — duplicates the avatars page, so it's not shown here
+  for (const x of list) for (const s of (x.equipSlots?.length ? x.equipSlots : [x.itemType])) if (s !== "wear") (slots[s] ||= []).push(x);
+  for (const [slot, items] of Object.entries(slots)) {
+    const equipped = items.find(x => x.equipSlot);
+    el.insertAdjacentHTML("beforeend", `<div class="sec-head">${esc(t("slot_" + slot) || slot)} <span class="n">${items.length}</span>
+      ${equipped ? `<button class="btn" style="padding:3px 12px" onclick="doUnequip('${esc(slot)}')">${t("unequip")}</button>` : ""}</div>`);
+    const grid = document.createElement("div");
+    grid.className = "igrid";
+    for (const x of items) {
+      const d = document.createElement("div");
+      const on = x.equipSlot === slot;
+      d.className = "itile" + (on ? " on" : "");
+      d.innerHTML = `<div class="iimg" ${thumbAttr(x.imageUrl)}></div><div class="iname"></div>
+        <div class="isub">${on ? `<b style="color:var(--accent)">${t("equipped")}</b>` : `<span class="link">${t("equip")}</span>`}</div>`;
+      d.querySelector(".iname").textContent = x.name || "";
+      d.title = x.description || "";
+      if (!on) d.onclick = () => doEquip(x.id, slot);
+      grid.appendChild(d);
+    }
+    el.appendChild(grid);
+  }
+}
+async function doEquip(id, slot) {
+  const r = await api("equip", id, slot);
+  if (!r?.ok) return apiError(r);
+  toast(t("equippedToast")); loadInv("cosmetics", true);
+}
+async function doUnequip(slot) {
+  const r = await api("unequip", slot);
+  if (!r || "error" in r) return apiError(r);
+  toast(t("unequippedToast")); loadInv("cosmetics", true);
+}
+async function deleteFile(fid) {
+  const r = await api("delete_file", fid);
+  if (!r || "error" in r) return apiError(r);
+  for (const k of ["gallery", "emoji", "sticker", "icon"]) if (INV.data[k]) INV.data[k] = INV.data[k].filter(x => x.id !== fid);
+  toast(t("deleted")); renderView();
+}
+// Convert the image to PNG and shrink it to VRChat's size limit before uploading
+async function uploadFile(file) {
+  if (!file) return;
+  const tab = INV.tab, max = tab === "gallery" ? 2048 : 1024;
+  if (tab === "emoji") return openEmk([file]);
+  const img = await new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = bad; i.src = URL.createObjectURL(file); })
+    .catch(() => null);
+  if (!img) return toast(t("errGeneric"));
+  let w = img.naturalWidth, h = img.naturalHeight;
+  const scale = Math.min(1, max / Math.max(w, h));
+  if (tab !== "gallery") { w = h = Math.round(Math.min(max, Math.max(w, h) * scale)); }  // Emoji/stickers are square
+  else { w = Math.round(w * scale); h = Math.round(h * scale); }
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d");
+  if (tab === "gallery") ctx.drawImage(img, 0, 0, w, h);
+  else {  // Center with contain
+    const s = Math.min(w / img.naturalWidth, h / img.naturalHeight), dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+    ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  }
+  INV.uploading = true; renderView();
+  const r = await api("upload_image", tab, c.toDataURL("image/png"), tab === "sticker" ? { maskTag: "square" } : {});
+  INV.uploading = false;
+  if (!r?.ok) { renderView(); return apiError(r); }
+  (INV.data[tab] ||= []).unshift(r.ok);
+  toast(t("uploaded")); renderView();
+}
+
+// ---------- Animated emoji maker (idea from VRCEmoji by Wakamu: github.com/Wakamu/VRCEmoji) ----------
+// VRChat takes animated emoji as a 1024×1024 PNG sprite sheet, frames left→right, top→bottom
+// Grid size depends on frame count: ≤4 = 2×2 (512px per frame), ≤16 = 4×4 (256px), ≤64 = 8×8 (128px)
+const EMK_STYLES = ["aura", "bats", "bees", "bounce", "cloud", "confetti", "crying", "dislike", "fire", "idea", "lasers", "like", "magnet",
+  "mistletoe", "money", "noise", "orbit", "pizza", "rain", "rotate", "shake", "snow", "snowball", "spin", "splash", "stop", "zzz"];
+const EMK = { frames: [], start: 0, end: 0, count: 16, fps: 10, autoFps: true, fit: "contain", key: false, keyColor: [0, 255, 0], tol: 60,
+              loop: "linear", style: "aura", busy: false, name: "emoji", sheet: null, raw: null, timer: 0, timerFps: 0, tick: 0, shown: 0, q: 0 };
+const emkGrid = n => n <= 1 ? 1 : n <= 4 ? 2 : n <= 16 ? 4 : 8;
+// Frame to show at this tick (pingpong = forward then backward)
+function emkIndex(tick, n, loop) {
+  if (loop === "pingpong" && n > 2) { const i = tick % (2 * n - 2); return i < n ? i : 2 * n - 2 - i; }
+  return tick % n;
+}
+
+function openEmk(files) {
+  if (S.emkStyle && EMK_STYLES.includes(S.emkStyle)) EMK.style = S.emkStyle;
+  $("eOverlay").classList.add("show");
+  buildEmk();
+  if (files?.length) emkLoad(files);
+}
+function closeEmk() { $("eOverlay").classList.remove("show"); clearInterval(EMK.timer); EMK.timer = EMK.timerFps = 0; }
+
+async function sniffType(file) {
+  const b = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  const s = String.fromCharCode(...b);
+  if (s.startsWith("GIF8")) return "image/gif";
+  if (s.startsWith("RIFF") && s.slice(8, 12) === "WEBP") return "image/webp";
+  if (b[0] === 0x89 && s.slice(1, 4) === "PNG") return "image/png";
+  if (b[0] === 0xff && b[1] === 0xd8) return "image/jpeg";
+  if (s.slice(4, 8) === "ftyp") return /^avi[fs]/.test(s.slice(8, 12)) ? "image/avif" : "video/mp4";
+  if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return "video/webm";
+  return file.type || "";
+}
+// Read a file into frames [{bmp, d: milliseconds}], scaled to at most 512px to save memory
+async function emkDecode(file) {
+  const type = await sniffType(file);
+  const MAX = 512, LIMIT = 400, out = [];
+  const size = (w, h) => { const k = Math.min(1, MAX / Math.max(w, h)); return { resizeWidth: Math.max(1, Math.round(w * k)), resizeHeight: Math.max(1, Math.round(h * k)), resizeQuality: "high" }; };
+  if (type.startsWith("video/")) {
+    const v = document.createElement("video");
+    v.muted = true; v.preload = "auto"; v.src = URL.createObjectURL(file);
+    try {
+      await new Promise((ok, bad) => { v.onloadeddata = ok; v.onerror = bad; });
+      const step = 1 / 20, dur = Math.min(v.duration || 0, 20);  // 20 fps, at most 20 seconds
+      for (let t = step / 2; t < dur && out.length < LIMIT; t += step) {
+        await new Promise(ok => { v.onseeked = ok; v.currentTime = t; });
+        out.push({ bmp: await createImageBitmap(v, size(v.videoWidth, v.videoHeight)), d: step * 1000 });
+      }
+    } finally { URL.revokeObjectURL(v.src); }
+  } else if (type === "image/gif" && !window.ImageDecoder) {
+    return gifFrames(file, size, LIMIT);
+  } else if (type === "image/webp" && !window.ImageDecoder) {
+    const fr = await webpFrames(file, size, LIMIT).catch(e => (console.warn(e), []));
+    if (fr.length) return fr;
+    const b = await createImageBitmap(file);
+    out.push({ bmp: await createImageBitmap(b, size(b.width, b.height)), d: 100 });
+    b.close();
+  } else if (window.ImageDecoder && type && await ImageDecoder.isTypeSupported(type)) {
+    const dec = new ImageDecoder({ data: await file.arrayBuffer(), type });
+    try {
+      await dec.completed;
+      await dec.tracks.ready;
+      const n = Math.min(dec.tracks.selectedTrack.frameCount, LIMIT);
+      for (let i = 0; i < n; i++) {
+        const { image } = await dec.decode({ frameIndex: i });
+        const d = (image.duration || 0) / 1000;
+        out.push({ bmp: await createImageBitmap(image, size(image.displayWidth, image.displayHeight)), d: d > 10 ? d : 100 });  // Browsers play GIF delays ≤10ms at 100ms
+        image.close();
+      }
+    } finally { dec.close(); }
+    if (type === "image/gif" && out.length <= 1) {
+      const more = await gifFrames(file, size, LIMIT).catch(e => (console.warn(e), []));
+      if (more.length > out.length) { out.forEach(f => f.bmp.close()); return more; }
+    }
+    if (type === "image/webp" && out.length <= 1) {  // Decode animated WebP ourselves if ImageDecoder only returns the first frame
+      const more = await webpFrames(file, size, LIMIT).catch(e => (console.warn(e), []));
+      if (more.length > out.length) { out.forEach(f => f.bmp.close()); return more; }
+    }
+  } else {
+    const b = await createImageBitmap(file);
+    out.push({ bmp: await createImageBitmap(b, size(b.width, b.height)), d: 100 });
+    b.close();
+  }
+  return out;
+}
+
+// Decode GIF ourselves (LZW + disposal) — used when the browser has no ImageDecoder
+async function gifFrames(file, size, LIMIT) {
+  const u = new Uint8Array(await file.arrayBuffer());
+  const W = u[6] | u[7] << 8, H = u[8] | u[9] << 8;
+  let p = 13, gct = null;
+  if (u[10] & 0x80) { const n = 2 << (u[10] & 7); gct = u.subarray(p, p + 3 * n); p += 3 * n; }
+  const canvas = new Uint8ClampedArray(W * H * 4), out = [];
+  let gce = { delay: 0, trans: -1, disp: 0 };
+  const subBlocks = () => {
+    const parts = []; let len = 0;
+    while (p < u.length && u[p]) { parts.push(u.subarray(p + 1, p + 1 + u[p])); len += u[p]; p += u[p] + 1; }
+    p++;
+    const d = new Uint8Array(len); let o = 0;
+    for (const x of parts) { d.set(x, o); o += x.length; }
+    return d;
+  };
+  while (p < u.length && out.length < LIMIT) {
+    const c = u[p++];
+    if (c === 0x21) {
+      const label = u[p++];
+      if (label === 0xF9) {
+        const f = u[p + 1];
+        gce = { disp: f >> 2 & 7, trans: f & 1 ? u[p + 4] : -1, delay: (u[p + 2] | u[p + 3] << 8) * 10 };
+      }
+      subBlocks();
+    } else if (c === 0x2C) {
+      const fx = u[p] | u[p + 1] << 8, fy = u[p + 2] | u[p + 3] << 8, fw = u[p + 4] | u[p + 5] << 8, fh = u[p + 6] | u[p + 7] << 8, f = u[p + 8];
+      p += 9;
+      let ct = gct;
+      if (f & 0x80) { const n = 2 << (f & 7); ct = u.subarray(p, p + 3 * n); p += 3 * n; }
+      const minCode = u[p++], idx = gifLzw(minCode, subBlocks(), fw * fh);
+      const saved = gce.disp === 3 ? canvas.slice() : null;
+      // Interlaced rows: 0,8,16.. / 4,12.. / 2,6.. / 1,3..
+      const rows = [];
+      if (f & 0x40) for (const [st, step] of [[0, 8], [4, 8], [2, 4], [1, 2]]) for (let y = st; y < fh; y += step) rows.push(y);
+      else for (let y = 0; y < fh; y++) rows.push(y);
+      for (let r = 0; r < fh; r++) {
+        const y = fy + rows[r];
+        if (y >= H) continue;
+        for (let x = 0; x < fw; x++) {
+          const k = idx[r * fw + x];
+          if (k === gce.trans || !ct || fx + x >= W) continue;
+          const o = (y * W + fx + x) * 4;
+          canvas[o] = ct[k * 3]; canvas[o + 1] = ct[k * 3 + 1]; canvas[o + 2] = ct[k * 3 + 2]; canvas[o + 3] = 255;
+        }
+      }
+      out.push({ bmp: await createImageBitmap(new ImageData(canvas.slice(), W, H), size(W, H)), d: gce.delay > 10 ? gce.delay : 100 });
+      if (gce.disp === 2) for (let y = fy; y < Math.min(H, fy + fh); y++) canvas.fill(0, (y * W + fx) * 4, (y * W + Math.min(W, fx + fw)) * 4);
+      else if (saved) canvas.set(saved);
+      gce = { delay: 0, trans: -1, disp: 0 };
+    } else break;  // 0x3B = end of file
+  }
+  return out;
+}
+function gifLzw(minCode, data, npix) {
+  const clear = 1 << minCode, eoi = clear + 1, out = new Uint8Array(npix);
+  const prefix = new Int16Array(4096), suffix = new Uint8Array(4096), stack = new Uint8Array(4097);
+  for (let i = 0; i < clear; i++) suffix[i] = i;
+  let size = minCode + 1, mask = (1 << size) - 1, next = eoi + 1, old = -1, first = 0, bits = 0, datum = 0, op = 0;
+  for (let i = 0; i < data.length && op < npix; i++) {
+    datum |= data[i] << bits; bits += 8;
+    while (bits >= size && op < npix) {
+      let code = datum & mask;
+      datum >>>= size; bits -= size;
+      if (code === clear) { size = minCode + 1; mask = (1 << size) - 1; next = eoi + 1; old = -1; continue; }
+      if (code === eoi) return out;
+      if (old === -1) { out[op++] = suffix[code]; old = first = code; continue; }
+      const cur = code;
+      let sp = 0;
+      if (code >= next) { stack[sp++] = first; code = old; }
+      while (code >= clear) { stack[sp++] = suffix[code]; code = prefix[code]; }
+      first = suffix[code];
+      stack[sp++] = first;
+      while (sp && op < npix) out[op++] = stack[--sp];
+      if (next < 4096) {
+        prefix[next] = old; suffix[next] = first; next++;
+        if (!(next & mask) && next < 4096) { size++; mask = (1 << size) - 1; }
+      }
+      old = cur;
+    }
+  }
+  return out;
+}
+
+// Split animated WebP (ANMF) into frames and composite them ourselves using offset / blend / dispose
+async function webpFrames(file, size, LIMIT) {
+  const u = new Uint8Array(await file.arrayBuffer());
+  const le = (p, n) => { let v = 0; for (let i = n - 1; i >= 0; i--) v = v * 256 + u[p + i]; return v; };
+  const chunks = (from, to) => { const r = []; for (let p = from; p + 8 <= to;) { const n = le(p + 4, 4); r.push({ id: String.fromCharCode(...u.subarray(p, p + 4)), p: p + 8, n }); p += 8 + n + (n & 1); } return r; };
+  const top = chunks(12, u.length), x = top.find(c => c.id === "VP8X");
+  if (!x) return [];
+  const W = le(x.p + 4, 3) + 1, H = le(x.p + 7, 3) + 1;
+  const cv = new OffscreenCanvas(W, H), g = cv.getContext("2d"), out = [];
+  const riff = parts => {
+    const len = 4 + parts.reduce((a, b) => a + b.length, 0), h = new Uint8Array(8);
+    h.set([82, 73, 70, 70, len & 255, len >> 8 & 255, len >> 16 & 255, len >>> 24]);
+    return new Blob([h, new Uint8Array([87, 69, 66, 80]), ...parts], { type: "image/webp" });
+  };
+  for (const f of top.filter(c => c.id === "ANMF").slice(0, LIMIT)) {
+    const fx = le(f.p, 3) * 2, fy = le(f.p + 3, 3) * 2, fw = le(f.p + 6, 3) + 1, fh = le(f.p + 9, 3) + 1;
+    const dur = le(f.p + 12, 3), flags = u[f.p + 15];
+    const sub = chunks(f.p + 16, f.p + f.n), alph = sub.find(c => c.id === "ALPH");
+    const raw = c => u.subarray(c.p - 8, c.p + c.n + (c.n & 1));
+    const parts = sub.filter(c => /^(ALPH|VP8 |VP8L)$/.test(c.id)).map(raw);
+    if (alph) {  // Frames with separate alpha need a VP8X header in front
+      const v = new Uint8Array(18); v.set([86, 80, 56, 88, 10, 0, 0, 0, 16]);
+      v.set([(fw - 1) & 255, (fw - 1) >> 8 & 255, (fw - 1) >> 16 & 255, (fh - 1) & 255, (fh - 1) >> 8 & 255, (fh - 1) >> 16 & 255], 12);
+      parts.unshift(v);
+    }
+    const bmp = await createImageBitmap(riff(parts));
+    if (flags & 2) g.clearRect(fx, fy, fw, fh);  // no-blend = replace the area
+    g.drawImage(bmp, fx, fy); bmp.close();
+    out.push({ bmp: await createImageBitmap(cv, size(W, H)), d: dur > 10 ? dur : 100 });
+    if (flags & 1) g.clearRect(fx, fy, fw, fh);  // dispose to background
+  }
+  return out;
+}
+
+async function emkLoad(files) {
+  files = [...files];
+  if (!files.length || EMK.busy) return;
+  EMK.busy = "decode"; buildEmk();
+  try {
+    let frames = [];
+    if (files.length > 1) {  // Multiple files = one frame per file, sorted by name
+      files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      for (const f of files.slice(0, 400)) frames.push({ bmp: (await emkDecode(f))[0].bmp, d: 100 });
+    } else frames = await emkDecode(files[0]);
+    if (!frames.length) throw new Error("no frames");
+    if (frames.length === 1 && files.length === 1) toast(t("emk_still"));
+    EMK.frames.forEach(f => f.bmp.close());
+    Object.assign(EMK, { frames, start: 0, end: frames.length - 1, count: Math.min(frames.length, 16), want: Math.min(frames.length, 16), autoFps: true,
+                         name: files[0].name.replace(/\.[^.]+$/, "") || "emoji" });
+  } catch (e) { console.warn(e); toast(t("emk_err")); }
+  EMK.busy = false; buildEmk();
+}
+
+function emkSet(k, v, rebuild) {
+  EMK[k] = v;
+  if (k === "start" && EMK.end < v) EMK.end = v;
+  if (k === "end" && EMK.start > v) EMK.start = v;
+  if (k === "count") EMK.want = v;
+  // Selected range has a single frame = 1 still cell; otherwise use the user's chosen count (kept when the range moves)
+  EMK.count = EMK.end === EMK.start ? 1 : EMK.want || EMK.count;
+  if (k === "fps") EMK.autoFps = false;
+  if (rebuild) buildEmk(); else emkQueue();
+}
+function emkQueue() { if (!EMK.q) EMK.q = requestAnimationFrame(() => { EMK.q = 0; emkRender(); }); }
+
+function emkRow(ic, col, label, control, hint, hintId) {
+  return `<div class="srow"><span class="tile" style="--c:var(--${col})">${icon(ic)}</span>
+    <span class="label">${label}${hint !== undefined ? `<span class="hint" ${hintId ? `id="${hintId}"` : ""}>${hint}</span>` : ""}</span>${control}</div>`;
+}
+function emkSeg(key, options) {
+  return `<div class="segmented">${Object.entries(options).map(([v, label]) =>
+    `<button class="${String(EMK[key]) === v ? "on" : ""}" onclick="emkSet('${key}',${JSON.stringify(v).replace(/"/g, "'")},true)">${label}</button>`).join("")}</div>`;
+}
+function emkRange(id, min, max, val, key) {
+  return `<input type="range" id="${id}" min="${min}" max="${max}" value="${val}" oninput="emkSet('${key}',+this.value)"><span class="val" id="${id}v"></span>`;
+}
+
+function buildEmk() {
+  const n = EMK.frames.length, has = n > 0 && !EMK.busy;
+  const total = EMK.frames.reduce((a, f) => a + f.d, 0);
+  const hex = "#" + EMK.keyColor.map(v => v.toString(16).padStart(2, "0")).join("");
+  $("esheet").innerHTML = `
+    <div class="sheet-head"><h1>${t("emk_title")}</h1>
+      ${xBtn("closeEmk()")}</div>
+    <div class="emk">
+      <div class="emk-left">
+        ${has ? `<canvas class="pv checker" id="emkPv" width="512" height="512" title="${t("emk_preview")}"></canvas>
+                 <canvas class="sh checker" id="emkSh" width="512" height="512" title="${t("emk_sheet")}"></canvas>`
+              : `<div class="emk-drop" id="emkDrop">${EMK.busy ? t("emk_decoding") : `${icon("upload")}<div>${t("emk_drop")}</div>`}</div>`}
+        <input type="file" id="emkFile" hidden multiple accept="image/gif,image/webp,image/apng,image/png,image/jpeg,video/*" onchange="emkLoad(this.files);this.value=''">
+      </div>
+      <div class="emk-right">
+        <div class="card">${emkRow("folder-open", "blue", t("emk_open"),
+          `<button class="btn" ${EMK.busy ? "disabled" : ""} onclick="$('emkFile').click()">${t("emk_choose")}</button>`,
+          n ? esc(EMK.name) + " · " + t("emk_src", n, (total / 1000).toFixed(2)) : "")}</div>
+        ${has ? `
+        <div class="card">
+          ${emkRow("play", "green", t("emk_start"), emkRange("emkS", 0, n - 1, EMK.start, "start"))}
+          ${emkRow("pause", "red", t("emk_end"), emkRange("emkE", 0, n - 1, EMK.end, "end"))}
+        </div>
+        <div class="card">
+          ${emkRow("sparkles", "purple", t("emk_quality"), `<div class="segmented" id="emkQ">${[4, 16, 64].map(q =>
+            `<button data-q="${q}" onclick="emkSet('count',${q})">${t("emk_q" + q)} ${q}</button>`).join("")}</div>`)}
+          ${emkRow("image", "orange", t("emk_frames"), emkRange("emkN", 1, 64, EMK.count, "count"), "", "emkGh")}
+          ${emkRow("timer", "indigo", t("emk_fps"), `<button class="btn sm" id="emkAuto" onclick="EMK.autoFps=true;emkQueue()">${t("emk_auto")}</button>${emkRange("emkF", 1, 64, EMK.fps, "fps")}`, t("emk_autoHint"))}
+          ${emkRow("rotate-ccw", "teal", t("emk_loop"), emkSeg("loop", { linear: t("emk_linear"), pingpong: t("emk_pingpong") }))}
+          ${emkRow("compass", "blue", t("emk_fit"), emkSeg("fit", { contain: t("emk_contain"), cover: t("emk_cover") }))}
+          ${emkRow("sparkles", "pink", t("emk_style"), `<select onchange="emkSet('style',this.value)">
+            ${EMK_STYLES.map(x => `<option value="${x}" ${EMK.style === x ? "selected" : ""}>${x}</option>`).join("")}</select>`)}
+        </div>
+        <div class="card">
+          ${emkRow("eraser", "gray", t("emk_key"), `<label class="switch"><input type="checkbox" ${EMK.key ? "checked" : ""} onchange="emkSet('key',this.checked,true)"></label>`, t("emk_keyHint"))}
+          ${EMK.key ? emkRow("droplet", "green", t("emk_tol"), `<input type="color" id="emkC" value="${hex}"
+              oninput="emkSet('keyColor',[1,3,5].map(i=>parseInt(this.value.substr(i,2),16)))">${emkRange("emkT", 1, 200, EMK.tol, "tol")}`) : ""}
+        </div>
+        <div class="emk-actions">
+          <button class="btn" title="${t("emk_saveHint")}" onclick="emkSave()">${icon("download")}${t("emk_save")}</button>
+          <button class="btn primary" onclick="emkUpload()">${icon("upload")}${t("emk_upload")}</button>
+        </div>` : ""}
+      </div>
+    </div>`;
+  const drop = $("emkDrop");
+  if (drop) {
+    if (!EMK.busy) drop.onclick = () => $("emkFile").click();
+    drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+    drop.ondragleave = () => drop.classList.remove("over");
+    drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); emkLoad(e.dataTransfer.files); };
+  }
+  const pv = $("emkPv");
+  if (pv) {
+    pv.onclick = e => emkPick(e, pv);
+    emkRender();
+  } else { clearInterval(EMK.timer); EMK.timer = EMK.timerFps = 0; }
+}
+
+// Pick frames from the chosen range spread evenly over time (so the speed matches the original)
+function emkPicks() {
+  const fr = EMK.frames.slice(EMK.start, EMK.end + 1);
+  const total = fr.reduce((a, f) => a + f.d, 0), picks = [];
+  for (let k = 0; k < EMK.count; k++) {
+    let t = total * k / EMK.count, i = 0;
+    while (i < fr.length - 1 && t >= fr[i].d) { t -= fr[i].d; i++; }
+    picks.push(fr[i]);
+  }
+  return { picks, total };
+}
+
+function emkRender() {
+  if (!EMK.frames.length || !$("emkPv")) return;
+  const { picks, total } = emkPicks();
+  if (EMK.autoFps) EMK.fps = Math.max(1, Math.min(64, Math.round(EMK.count * 1000 / total)));
+  const g = emkGrid(EMK.count), cell = 1024 / g;
+  const c = EMK.sheet ||= document.createElement("canvas");
+  c.width = c.height = 1024;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.clearRect(0, 0, 1024, 1024);
+  ctx.imageSmoothingQuality = "high";
+  picks.forEach((f, k) => {
+    const b = f.bmp, sc = (EMK.fit === "cover" ? Math.max : Math.min)(cell / b.width, cell / b.height);
+    const w = b.width * sc, h = b.height * sc, x = (k % g) * cell, y = Math.floor(k / g) * cell;
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, cell, cell); ctx.clip();
+    ctx.drawImage(b, x + (cell - w) / 2, y + (cell - h) / 2, w, h);
+    ctx.restore();
+  });
+  EMK.raw = ctx.getImageData(0, 0, 1024, 1024);
+  if (EMK.key) {  // Chroma key: colors near the picked color become transparent, with slightly soft edges
+    const out = new ImageData(new Uint8ClampedArray(EMK.raw.data), 1024, 1024), d = out.data;
+    const [kr, kg, kb] = EMK.keyColor, t1 = EMK.tol, t2 = t1 * 1.35, t1q = t1 * t1, t2q = t2 * t2;
+    for (let p = 0; p < d.length; p += 4) {
+      const dr = d[p] - kr, dg = d[p + 1] - kg, db = d[p + 2] - kb, q = dr * dr + dg * dg + db * db;
+      if (q < t1q) d[p + 3] = 0;
+      else if (q < t2q) d[p + 3] = Math.min(d[p + 3], 255 * (Math.sqrt(q) - t1) / (t2 - t1));
+    }
+    ctx.putImageData(out, 0, 0);
+  }
+  const sh = $("emkSh").getContext("2d");
+  sh.clearRect(0, 0, 512, 512);
+  sh.drawImage(c, 0, 0, 512, 512);
+  // Numbers and controls that depend on other values
+  const set = (id, v, txt) => { const el = $(id); if (el) { el.value = v; $(id + "v").textContent = txt ?? v; } };
+  set("emkS", EMK.start, EMK.start + 1); set("emkE", EMK.end, EMK.end + 1);
+  set("emkN", EMK.count); set("emkF", EMK.fps); set("emkT", EMK.tol);
+  $("emkGh").textContent = EMK.count === 1 ? t("emk_static") : t("emk_grid", g, cell);
+  $("emkAuto").classList.toggle("on", EMK.autoFps);
+  document.querySelectorAll("#emkQ button").forEach(b => b.classList.toggle("on", +b.dataset.q === EMK.count));
+  if (EMK.timerFps !== EMK.fps || !EMK.timer) emkAnimate();
+}
+
+function emkAnimate() {
+  clearInterval(EMK.timer);
+  EMK.timerFps = EMK.fps;
+  EMK.timer = setInterval(() => {
+    const pv = $("emkPv");
+    if (!pv || !EMK.sheet) return;
+    const n = EMK.count, g = emkGrid(n), cell = 1024 / g, i = EMK.shown = emkIndex(EMK.tick++, n, EMK.loop);
+    const ctx = pv.getContext("2d");
+    ctx.clearRect(0, 0, 512, 512);
+    ctx.drawImage(EMK.sheet, (i % g) * cell, Math.floor(i / g) * cell, cell, cell, 0, 0, 512, 512);
+  }, 1000 / EMK.fps);
+}
+
+// Click the preview = pick a color from the source image (before background removal) and turn on chroma key
+function emkPick(e, pv) {
+  if (!EMK.raw) return;
+  const r = pv.getBoundingClientRect(), g = emkGrid(EMK.count), cell = 1024 / g, i = EMK.shown;
+  const x = Math.min(cell - 1, Math.floor((e.clientX - r.left) / r.width * cell)) + (i % g) * cell;
+  const y = Math.min(cell - 1, Math.floor((e.clientY - r.top) / r.height * cell)) + Math.floor(i / g) * cell;
+  const p = (y * 1024 + x) * 4, d = EMK.raw.data;
+  if (d[p + 3] < 10) return;  // Already-transparent pixel
+  EMK.keyColor = [d[p], d[p + 1], d[p + 2]];
+  emkSet("key", true, true);
+}
+
+function emkFlush() { if (EMK.q) { cancelAnimationFrame(EMK.q); EMK.q = 0; emkRender(); } }
+function emkFileName() { return `${EMK.name}_${EMK.count}frames_${EMK.fps}fps`; }
+async function emkSave() {
+  emkFlush();
+  if (!EMK.sheet) return;
+  if (await api("save_png", EMK.sheet.toDataURL("image/png"), emkFileName())) toast(t("emk_saved"));
+}
+async function emkUpload() {
+  emkFlush();
+  if (!EMK.sheet || EMK.busy) return;
+  const png = EMK.sheet.toDataURL("image/png");
+  const animated = EMK.count > 1;
+  const fields = { animationStyle: EMK.style || "aura", maskTag: "square",
+                   ...(animated ? { frames: EMK.count, framesOverTime: EMK.fps, loopStyle: EMK.loop } : {}) };
+  S.emkStyle = fields.animationStyle; save();
+  EMK.busy = "upload";
+  document.querySelectorAll(".emk-actions .btn").forEach(b => b.disabled = true);
+  document.querySelector(".emk-actions .primary").lastChild.textContent = t("uploading");
+  const r = await api("upload_image", animated ? "emojianimated" : "emoji", png, fields);
+  EMK.busy = false;
+  if (!r?.ok) { buildEmk(); return apiError(r); }
+  (INV.data.emoji ||= []).unshift(r.ok);
+  toast(t("uploaded")); closeEmk();
+  if (view === "inventory") renderView();
+}
+
+// Play the animated emoji in a tile (shift the sprite sheet one frame at a time)
+setInterval(() => {
+  const now = performance.now() / 1000;
+  document.querySelectorAll(".iimg[data-frames]").forEach(el => {
+    const n = +el.dataset.frames, g = emkGrid(n), i = emkIndex(Math.floor(now * (+el.dataset.fps || 10)), n, el.dataset.loop);
+    el.style.backgroundSize = `${g * 100}% ${g * 100}%`;
+    el.style.backgroundPosition = `${(i % g) / (g - 1) * 100}% ${Math.floor(i / g) / (g - 1) * 100}%`;
+  });
+}, 33);
+
+// ---------- Toolbar buttons ----------
+function togglePause() {
+  paused = !paused;
+  $("pauseBtn").innerHTML = icon(paused ? "play" : "pause");
+  $("pauseBtn").title = t(paused ? "resume" : "pause");
+  $("pauseBtn").classList.toggle("on", paused);
+  if (!paused) render();
+  updateSubtitle();
+}
+function clearLog() { events = []; render(); updateSubtitle(); }
+function toggleInspector(force, persist = true) {
+  const show = force === undefined ? $("inspector").classList.contains("hidden") : force;
+  $("inspector").classList.toggle("hidden", !show);
+  $("inspBtn").classList.toggle("on", show);
+  if (persist) { S.inspector = show; save(); }
+}
+
+// ---------- Settings page ----------
+let settingsOpen = false, resetArmed = false, settingsView = "main", login = {};
+function openSettings(view = "main") {
+  settingsOpen = true; resetArmed = false; settingsView = view; login = {};
+  buildSettings(); $("overlay").classList.add("show");
+}
+function closeSettings() { settingsOpen = false; $("overlay").classList.remove("show"); }
+function setS(key, value) {
+  S[key] = value;
+  save();
+  if (key === "lang") applyLang();
+  if (["showDate", "showPics"].includes(key)) render();
+  if (key === "animFrames") document.querySelectorAll(".avatar[data-av]").forEach(fillAvatar);
+  if (key === "onTop") api("set_on_top", value);
+  applyAppearance();
+  buildSettings();
+}
+
+function srow(ic, col, label, control, hint) {
+  return `<div class="srow"><span class="tile" style="--c:var(--${col})">${icon(ic)}</span>
+          <span class="label">${label}${hint ? `<span class="hint">${hint}</span>` : ""}</span>${control}</div>`;
+}
+function seg(key, options) {
+  return `<div class="segmented">${Object.entries(options).map(([v, label]) =>
+    `<button class="${S[key] === v ? "on" : ""}" onclick="setS('${key}','${v}')">${label}</button>`).join("")}</div>`;
+}
+function sw(key) {
+  return `<label class="switch"><input type="checkbox" ${S[key] ? "checked" : ""} onchange="setS('${key}',this.checked)"></label>`;
+}
+
+// ---------- login ----------
+function buildLogin() {
+  const is2fa = settingsView === "2fa";
+  const methods = login.methods || [];
+  const email = methods.includes("emailOtp");
+  const method = login.recovery ? "otp" : email ? "emailOtp" : "totp";
+  $("sheet").innerHTML = `
+    <div class="sheet-head">
+      <button class="btn" onclick="settingsView='main';buildSettings()">${t("back")}</button>
+      <h1 style="text-align:center">${t(is2fa ? "twoFA" : "account")}</h1>${xBtn("closeSettings()")}
+    </div>
+    <div class="sheet-body">
+      <div class="card"><form class="form" onsubmit="event.preventDefault();${is2fa ? `doVerify('${method}')` : "doLogin()"}">
+        ${is2fa ? `
+          <div style="text-align:center;color:var(--text2)">${t(login.recovery ? "useRecovery" : email ? "twoFAEmail" : "twoFAApp")}</div>
+          <input class="field code-field" id="fCode" autocomplete="one-time-code" inputmode="${login.recovery ? "text" : "numeric"}" maxlength="${login.recovery ? 20 : 6}">
+          ${!email && !login.recovery && methods.includes("otp") ? `<a href="#" style="color:var(--accent);text-align:center;font-size:12px" onclick="login.recovery=true;buildLogin();return false">${t("useRecovery")}</a>` : ""}
+        ` : `
+          <input class="field" id="fUser" placeholder="${t("username")}" autocomplete="username" spellcheck="false">
+          <input class="field" id="fPass" type="password" placeholder="${t("password")}" autocomplete="current-password">
+        `}
+        <div class="err" id="fErr"></div>
+        <button class="btn primary" id="fBtn" type="submit">${icon(is2fa ? "shield-check" : "log-in")}<span>${t(is2fa ? "verify" : "signIn")}</span></button>
+        ${is2fa ? "" : `<div class="note">${icon("lock")}<span>${t("pwNote")}</span></div>
+`}
+      </form></div>
+    </div>`;
+  setTimeout(() => $(is2fa ? "fCode" : "fUser")?.focus(), 50);
+}
+
+function loginError(code, is2fa) {
+  return t(code === 0 ? "errNet" : code === 429 ? "errRate" : is2fa ? "errCode" : "errLogin");
+}
+function busy(on, label, ic) {
+  const b = $("fBtn"); if (b) { b.disabled = on; b.innerHTML = (on ? '<i class="btn-spin"></i>' : icon(ic)) + `<span>${esc(label)}</span>`; }
+}
+
+async function doLogin() {
+  const user = $("fUser").value.trim(), pass = $("fPass").value;
+  if (!user || !pass) return;
+  busy(true, t("signingIn"));
+  const res = await api("vrc_login", user, pass);
+  $("fPass") && ($("fPass").value = "");
+  if (res?.need2fa) { login = { methods: res.need2fa }; settingsView = "2fa"; buildLogin(); return; }
+  if (res?.ok) { settingsView = "main"; buildSettings(); return; }
+  busy(false, t("signIn"), "log-in");
+  $("fErr").textContent = loginError(res?.error, false);
+}
+
+async function doVerify(method) {
+  const code = $("fCode").value.trim();
+  if (!code) return;
+  busy(true, t("signingIn"));
+  const res = await api("vrc_verify", method, code);
+  if (res?.ok) { settingsView = "main"; buildSettings(); return; }
+  busy(false, t("verify"), "shield-check");
+  $("fErr").textContent = loginError(res?.error, true);
+  $("fCode").select();
+}
+
+function accountCard() {
+  if (!AUTH.loggedIn) {
+    return srow("circle-user-round", "gray", `${t("notSignedIn")}`,
+      `<button class="btn primary" onclick="settingsView='login';buildLogin()">${t("signIn")}</button>`, t("signInHint"));
+  }
+  return `<div class="srow"><span id="meAv"></span>
+            <span class="label"><b>${esc(AUTH.name)}</b><span class="hint">${t("signedIn")}</span></span>
+            <button class="btn" onclick="api('vrc_logout')">${t("signOut")}</button></div>`;
+}
+
+function buildSettings() {
+  if (settingsView !== "main") return buildLogin();
+  const themes = ["auto", "light", "dark"].map(v => `
+    <button class="theme-opt ${S.theme === v ? "on" : ""}" onclick="setS('theme','${v}')">
+      <span class="theme-prev prev-${v}"></span>${t("theme" + v[0].toUpperCase() + v.slice(1))}</button>`).join("");
+  const accents = Object.entries(ACCENTS).map(([k, c]) =>
+    `<button class="dot ${S.accent === k ? "on" : ""}" style="--d:${c}" title="${k}" onclick="setS('accent','${k}')">${icon("check")}</button>`).join("");
+  const d = dark() ? 0 : 1;
+  const walls = Object.entries(WALLPAPERS).map(([k, w]) =>
+    `<button class="swatch ${S.wallpaper === k ? "on" : ""}" title="${L().wp[k]}" onclick="setS('wallpaper','${k}')"
+       style="background:linear-gradient(135deg,${w[d][0]},${w[d][1]} 45%,${w[d][2]})"></button>`).join("");
+
+  $("sheet").innerHTML = `
+    <div class="sheet-head"><h1>${t("settings")}</h1>${xBtn("closeSettings()")}</div>
+    <div class="sheet-body">
+      <div class="sec-title">${t("account")}</div>
+      <div class="card">
+        ${accountCard()}
+        ${srow("user-round", "purple", t("showPics"), sw("showPics"))}
+      </div>
+
+      <div class="sec-title">${t("general")}</div>
+      <div class="card">
+        ${srow("languages", "indigo", t("language"), `<select class="fsel" onchange="setS('lang',this.value)">${Object.entries(LANGS)
+          .map(([k, v]) => `<option value="${k}" ${S.lang === k ? "selected" : ""}>${v}</option>`).join("")}</select>`)}
+        ${srow("a-large-small", "blue", t("textSize"), seg("size", { s: t("sizeS"), m: t("sizeM"), l: t("sizeL") }))}
+        ${srow("type", "purple", t("font"), fontSelect())}
+        ${srow("calendar", "red", t("showDate"), sw("showDate"))}
+        ${srow("list", "gray", t("compact"), sw("compact"), t("compactHint"))}
+        ${srow("pin", "orange", t("onTop"), sw("onTop"), t("onTopHint"))}
+      </div>
+
+      <div class="sec-title">${t("appearance")}</div>
+      <div class="card">
+        <div class="themes">${themes}</div>
+        ${srow("palette", "pink", t("accent"), `<div class="dots">${accents}</div>`)}
+        ${srow("image", "teal", t("wallpaper"), `<div class="swatches">${walls}</div>`)}
+        ${srow("droplet", "blue", t("glass"),
+          `<input type="range" min="0" max="100" value="${S.glass}" oninput="S.glass=+this.value;applyAppearance()" onchange="setS('glass',+this.value)">`,
+          t("glassHint"))}
+      </div>
+
+      <div class="card" style="margin-top:8px">${srow("sparkles", "orange", t("animFrames"), sw("animFrames"), t("animFramesHint"))}</div>
+
+      <div class="sec-title">${t("data")}</div>
+      <div class="card">
+        ${srow("trash-2", "gray", t("clearCache"),
+          `<button class="btn" onclick="api('vrc_clear_cache');toast(t('cacheCleared'))">${t("clear2")}</button>`)}
+        ${srow("rotate-ccw", "red", t("resetAll"),
+          `<button class="btn danger ${resetArmed ? "armed" : ""}" onclick="resetAll()">${t(resetArmed ? "confirm" : "reset")}</button>`)}
+      </div>
+
+      <div class="sec-title">${t("upd_sec")}</div>
+      <div class="card">
+        ${srow("refresh-cw", "green", t("upd_check"), updButton(), updStatus())}
+        ${srow("download", "blue", t("upd_auto"), sw("autoUpdate"), t("upd_autoHint"))}
+      </div>
+
+      <div class="sec-title">${t("about")}</div>
+      <div class="card about">
+        <div class="app-icon">${LOGO_SVG}</div>
+        <b>VRC Nook</b>
+        <span>${t("version", VERSION)}</span><br>
+        <strong style="color:var(--text)">iriewiew</strong><br>
+        <span>${t("credits")}</span>
+      </div>
+    </div>`;
+  if (AUTH.loggedIn) $("meAv")?.replaceWith(makeAvatar(AUTH.id, AUTH.name));
+}
+
+function resetAll() {
+  if (!resetArmed) { resetArmed = true; buildSettings(); setTimeout(() => { if (resetArmed) { resetArmed = false; if (settingsOpen) buildSettings(); } }, 3000); return; }
+  resetArmed = false;
+  S = { ...DEFAULTS };
+  for (const n in KINDS) enabled[n] = KINDS[n].default;
+  save();
+  api("set_on_top", false);
+  applyAppearance();
+  toggleInspector(true, false);
+  applyLang();
+  buildSettings();
+  toast(t("resetDone"));
+}
+
+// ---------- Shortcuts / search / misc ----------
+let searchTimer;
+$("search").addEventListener("input", e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { query = e.target.value.trim().toLowerCase(); render(); renderView(); }, 150);
+});
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "f") { e.preventDefault(); $("search").focus(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === ",") { e.preventDefault(); openSettings(); }
+  if (e.key === "Escape") {
+    if ($("pOverlay").classList.contains("show")) closeProfile();
+    else if (settingsOpen) closeSettings();
+    else if (document.activeElement === $("search")) { $("search").value = ""; query = ""; render(); }
+  }
+});
+
+let toastTimer;
+function toast(msg) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
+}
+
+// Resize the window from the bottom-right corner (frameless window)
+$("grip").addEventListener("mousedown", e => {
+  e.preventDefault();
+  const sx = e.screenX, sy = e.screenY, w = window.outerWidth, h = window.outerHeight;
+  let raf = 0;
+  const move = ev => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => api("resize", w + ev.screenX - sx, h + ev.screenY - sy));
+  };
+  const up = () => { removeEventListener("mousemove", move); removeEventListener("mouseup", up); };
+  addEventListener("mousemove", move);
+  addEventListener("mouseup", up);
+});
+</script>
+</body>
+</html>
