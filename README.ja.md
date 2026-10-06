@@ -22,9 +22,15 @@
 ## スクリーンショット
 
 <table>
-<tr><td><img src="docs/screenshots/friends-dark.png" alt="ダークテーマ"><br><sub>ダークテーマ</sub></td><td><img src="docs/screenshots/log.png" alt="ゲームログ"><br><sub>ゲームログ</sub></td></tr>
-<tr><td><img src="docs/screenshots/chat.png" alt="チャットボックス"><br><sub>チャットボックス</sub></td><td><img src="docs/screenshots/keyboard.png" alt="VR キーボード"><br><sub>VR キーボード</sub></td></tr>
-<tr><td><img src="docs/screenshots/settings.png" alt="設定"><br><sub>設定</sub></td><td><img src="docs/screenshots/login.png" alt="言語選択付きのサインイン"><br><sub>言語選択付きのサインイン</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="フレンド(ダークテーマ)"><br><sub>フレンド(ダークテーマ)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="プロフィールカード"><br><sub>プロフィールカード</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="フィード"><br><sub>フィード</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="通知"><br><sub>通知</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/log.png" alt="ゲームログ"><br><sub>ゲームログ</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="ワールド履歴"><br><sub>ワールド履歴</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="チャットボックス"><br><sub>チャットボックス</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="VR キーボード"><br><sub>VR キーボード</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="フローティングキーボード: Windows モード"><br><sub>フローティングキーボード: Windows モード</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="フローティングキーボード: ゲーム内チャットモード"><br><sub>フローティングキーボード: ゲーム内チャットモード</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="絵文字メーカー: VRChat エフェクトのプレビュー"><br><sub>絵文字メーカー: VRChat エフェクトのプレビュー</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="絵文字メーカー: スプライトシート"><br><sub>絵文字メーカー: スプライトシート</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="設定"><br><sub>設定</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="テーマとアクセントカラー"><br><sub>テーマとアクセントカラー</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="タイ語 UI"><br><sub>タイ語 UI</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="日本語 UI"><br><sub>日本語 UI</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/login.png" alt="言語選択付きのサインイン"><br><sub>言語選択付きのサインイン</sub></td><td></td></tr>
 </table>
 
 <sub>スクリーンショットは架空のデモデータです。</sub>

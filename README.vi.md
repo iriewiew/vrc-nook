@@ -22,9 +22,15 @@ Hãy đặt file trong thư mục có quyền ghi như Documents. Đừng dùng 
 ## Ảnh chụp màn hình
 
 <table>
-<tr><td><img src="docs/screenshots/friends-dark.png" alt="Giao diện tối"><br><sub>Giao diện tối</sub></td><td><img src="docs/screenshots/log.png" alt="Nhật ký game"><br><sub>Nhật ký game</sub></td></tr>
-<tr><td><img src="docs/screenshots/chat.png" alt="Chatbox"><br><sub>Chatbox</sub></td><td><img src="docs/screenshots/keyboard.png" alt="Bàn phím VR"><br><sub>Bàn phím VR</sub></td></tr>
-<tr><td><img src="docs/screenshots/settings.png" alt="Cài đặt"><br><sub>Cài đặt</sub></td><td><img src="docs/screenshots/login.png" alt="Đăng nhập có chọn ngôn ngữ"><br><sub>Đăng nhập có chọn ngôn ngữ</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="Bạn bè (giao diện tối)"><br><sub>Bạn bè (giao diện tối)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="Thẻ hồ sơ"><br><sub>Thẻ hồ sơ</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="Bảng tin"><br><sub>Bảng tin</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="Thông báo"><br><sub>Thông báo</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/log.png" alt="Nhật ký game"><br><sub>Nhật ký game</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="Lịch sử thế giới"><br><sub>Lịch sử thế giới</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="Chatbox"><br><sub>Chatbox</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="Bàn phím VR"><br><sub>Bàn phím VR</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="Bàn phím nổi: chế độ Windows"><br><sub>Bàn phím nổi: chế độ Windows</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="Bàn phím nổi: chế độ chat trong game"><br><sub>Bàn phím nổi: chế độ chat trong game</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="Tạo emoji: xem trước hiệu ứng VRChat"><br><sub>Tạo emoji: xem trước hiệu ứng VRChat</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="Tạo emoji: sprite sheet"><br><sub>Tạo emoji: sprite sheet</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="Cài đặt"><br><sub>Cài đặt</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="Giao diện và màu nhấn"><br><sub>Giao diện và màu nhấn</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="Giao diện tiếng Thái"><br><sub>Giao diện tiếng Thái</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="Giao diện tiếng Nhật"><br><sub>Giao diện tiếng Nhật</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/login.png" alt="Đăng nhập có chọn ngôn ngữ"><br><sub>Đăng nhập có chọn ngôn ngữ</sub></td><td></td></tr>
 </table>
 
 <sub>Ảnh chụp dùng dữ liệu mẫu giả lập.</sub>

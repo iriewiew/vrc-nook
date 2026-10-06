@@ -22,9 +22,15 @@
 ## Скриншоты
 
 <table>
-<tr><td><img src="docs/screenshots/friends-dark.png" alt="Тёмная тема"><br><sub>Тёмная тема</sub></td><td><img src="docs/screenshots/log.png" alt="Игровой лог"><br><sub>Игровой лог</sub></td></tr>
-<tr><td><img src="docs/screenshots/chat.png" alt="Чатбокс"><br><sub>Чатбокс</sub></td><td><img src="docs/screenshots/keyboard.png" alt="VR-клавиатура"><br><sub>VR-клавиатура</sub></td></tr>
-<tr><td><img src="docs/screenshots/settings.png" alt="Настройки"><br><sub>Настройки</sub></td><td><img src="docs/screenshots/login.png" alt="Вход с выбором языка"><br><sub>Вход с выбором языка</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="Друзья (тёмная тема)"><br><sub>Друзья (тёмная тема)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="Карточка профиля"><br><sub>Карточка профиля</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="Лента"><br><sub>Лента</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="Уведомления"><br><sub>Уведомления</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/log.png" alt="Игровой лог"><br><sub>Игровой лог</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="История миров"><br><sub>История миров</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="Чатбокс"><br><sub>Чатбокс</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="VR-клавиатура"><br><sub>VR-клавиатура</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="Плавающая клавиатура: режим Windows"><br><sub>Плавающая клавиатура: режим Windows</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="Плавающая клавиатура: игровой чат"><br><sub>Плавающая клавиатура: игровой чат</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="Редактор эмодзи: превью эффекта VRChat"><br><sub>Редактор эмодзи: превью эффекта VRChat</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="Редактор эмодзи: спрайт-лист"><br><sub>Редактор эмодзи: спрайт-лист</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="Настройки"><br><sub>Настройки</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="Темы и акцентные цвета"><br><sub>Темы и акцентные цвета</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="Интерфейс на тайском"><br><sub>Интерфейс на тайском</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="Интерфейс на японском"><br><sub>Интерфейс на японском</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/login.png" alt="Вход с выбором языка"><br><sub>Вход с выбором языка</sub></td><td></td></tr>
 </table>
 
 <sub>На скриншотах вымышленные демо-данные.</sub>

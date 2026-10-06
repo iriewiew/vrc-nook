@@ -22,9 +22,15 @@
 ## 스크린샷
 
 <table>
-<tr><td><img src="docs/screenshots/friends-dark.png" alt="다크 테마"><br><sub>다크 테마</sub></td><td><img src="docs/screenshots/log.png" alt="게임 로그"><br><sub>게임 로그</sub></td></tr>
-<tr><td><img src="docs/screenshots/chat.png" alt="채팅박스"><br><sub>채팅박스</sub></td><td><img src="docs/screenshots/keyboard.png" alt="VR 키보드"><br><sub>VR 키보드</sub></td></tr>
-<tr><td><img src="docs/screenshots/settings.png" alt="설정"><br><sub>설정</sub></td><td><img src="docs/screenshots/login.png" alt="언어 선택이 있는 로그인"><br><sub>언어 선택이 있는 로그인</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="친구 (다크 테마)"><br><sub>친구 (다크 테마)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="프로필 카드"><br><sub>프로필 카드</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="피드"><br><sub>피드</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="알림"><br><sub>알림</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/log.png" alt="게임 로그"><br><sub>게임 로그</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="월드 기록"><br><sub>월드 기록</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="채팅박스"><br><sub>채팅박스</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="VR 키보드"><br><sub>VR 키보드</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="플로팅 키보드: Windows 모드"><br><sub>플로팅 키보드: Windows 모드</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="플로팅 키보드: 게임 채팅 모드"><br><sub>플로팅 키보드: 게임 채팅 모드</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="이모지 제작기: VRChat 효과 미리보기"><br><sub>이모지 제작기: VRChat 효과 미리보기</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="이모지 제작기: 스프라이트 시트"><br><sub>이모지 제작기: 스프라이트 시트</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="설정"><br><sub>설정</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="테마와 강조 색상"><br><sub>테마와 강조 색상</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="태국어 UI"><br><sub>태국어 UI</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="일본어 UI"><br><sub>일본어 UI</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/login.png" alt="언어 선택이 있는 로그인"><br><sub>언어 선택이 있는 로그인</sub></td><td></td></tr>
 </table>
 
 <sub>스크린샷은 가상의 데모 데이터입니다.</sub>

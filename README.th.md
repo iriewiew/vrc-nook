@@ -22,9 +22,15 @@
 ## ภาพหน้าจอ
 
 <table>
-<tr><td><img src="docs/screenshots/friends-dark.png" alt="ธีมมืด"><br><sub>ธีมมืด</sub></td><td><img src="docs/screenshots/log.png" alt="Game Log"><br><sub>Game Log</sub></td></tr>
-<tr><td><img src="docs/screenshots/chat.png" alt="แชทขึ้น Chatbox"><br><sub>แชทขึ้น Chatbox</sub></td><td><img src="docs/screenshots/keyboard.png" alt="คีย์บอร์ด VR"><br><sub>คีย์บอร์ด VR</sub></td></tr>
-<tr><td><img src="docs/screenshots/settings.png" alt="ตั้งค่า"><br><sub>ตั้งค่า</sub></td><td><img src="docs/screenshots/login.png" alt="หน้าเข้าสู่ระบบพร้อมเลือกภาษา"><br><sub>หน้าเข้าสู่ระบบพร้อมเลือกภาษา</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="เพื่อน (ธีมมืด)"><br><sub>เพื่อน (ธีมมืด)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="การ์ดโปรไฟล์"><br><sub>การ์ดโปรไฟล์</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="Feed"><br><sub>Feed</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="การแจ้งเตือน"><br><sub>การแจ้งเตือน</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/log.png" alt="Game Log"><br><sub>Game Log</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="ประวัติโลก"><br><sub>ประวัติโลก</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="แชทขึ้น Chatbox"><br><sub>แชทขึ้น Chatbox</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="คีย์บอร์ด VR"><br><sub>คีย์บอร์ด VR</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="คีย์บอร์ดลอย: โหมดคีย์บอร์ด Windows"><br><sub>คีย์บอร์ดลอย: โหมดคีย์บอร์ด Windows</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="คีย์บอร์ดลอย: โหมดแชทในเกม"><br><sub>คีย์บอร์ดลอย: โหมดแชทในเกม</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="ทำอีโมจิ: ตัวอย่างเอฟเฟกต์ VRChat"><br><sub>ทำอีโมจิ: ตัวอย่างเอฟเฟกต์ VRChat</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="ทำอีโมจิ: sprite sheet"><br><sub>ทำอีโมจิ: sprite sheet</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="ตั้งค่า"><br><sub>ตั้งค่า</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="ธีมและสีหลัก"><br><sub>ธีมและสีหลัก</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="หน้าแอปภาษาไทย"><br><sub>หน้าแอปภาษาไทย</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="หน้าแอปภาษาญี่ปุ่น"><br><sub>หน้าแอปภาษาญี่ปุ่น</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/login.png" alt="หน้าเข้าสู่ระบบพร้อมเลือกภาษา"><br><sub>หน้าเข้าสู่ระบบพร้อมเลือกภาษา</sub></td><td></td></tr>
 </table>
 
 <sub>ภาพหน้าจอใช้ข้อมูลตัวอย่างที่สมมติขึ้น</sub>

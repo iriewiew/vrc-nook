@@ -22,9 +22,15 @@
 ## 截图
 
 <table>
-<tr><td><img src="docs/screenshots/friends-dark.png" alt="深色主题"><br><sub>深色主题</sub></td><td><img src="docs/screenshots/log.png" alt="游戏日志"><br><sub>游戏日志</sub></td></tr>
-<tr><td><img src="docs/screenshots/chat.png" alt="聊天框"><br><sub>聊天框</sub></td><td><img src="docs/screenshots/keyboard.png" alt="VR 键盘"><br><sub>VR 键盘</sub></td></tr>
-<tr><td><img src="docs/screenshots/settings.png" alt="设置"><br><sub>设置</sub></td><td><img src="docs/screenshots/login.png" alt="带语言选择的登录"><br><sub>带语言选择的登录</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="好友(深色主题)"><br><sub>好友(深色主题)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="个人资料卡"><br><sub>个人资料卡</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="动态"><br><sub>动态</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="通知"><br><sub>通知</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/log.png" alt="游戏日志"><br><sub>游戏日志</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="世界历史"><br><sub>世界历史</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="聊天框"><br><sub>聊天框</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="VR 键盘"><br><sub>VR 键盘</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="悬浮键盘:Windows 模式"><br><sub>悬浮键盘:Windows 模式</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="悬浮键盘:游戏聊天模式"><br><sub>悬浮键盘:游戏聊天模式</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="表情制作器:VRChat 特效预览"><br><sub>表情制作器:VRChat 特效预览</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="表情制作器:精灵图"><br><sub>表情制作器:精灵图</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="设置"><br><sub>设置</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="主题与强调色"><br><sub>主题与强调色</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="泰语界面"><br><sub>泰语界面</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="日语界面"><br><sub>日语界面</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/login.png" alt="带语言选择的登录"><br><sub>带语言选择的登录</sub></td><td></td></tr>
 </table>
 
 <sub>截图使用的是虚构的演示数据。</sub>

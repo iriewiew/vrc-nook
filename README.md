@@ -22,9 +22,15 @@ Put it in a folder you can write to, such as Documents. Don't use Program Files,
 ## Screenshots
 
 <table>
-<tr><td><img src="docs/screenshots/friends-dark.png" alt="Dark theme"><br><sub>Dark theme</sub></td><td><img src="docs/screenshots/log.png" alt="Game log"><br><sub>Game log</sub></td></tr>
-<tr><td><img src="docs/screenshots/chat.png" alt="Chatbox"><br><sub>Chatbox</sub></td><td><img src="docs/screenshots/keyboard.png" alt="VR keyboard"><br><sub>VR keyboard</sub></td></tr>
-<tr><td><img src="docs/screenshots/settings.png" alt="Settings"><br><sub>Settings</sub></td><td><img src="docs/screenshots/login.png" alt="Sign-in with language picker"><br><sub>Sign-in with language picker</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="Friends (dark theme)"><br><sub>Friends (dark theme)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="Profile card"><br><sub>Profile card</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="Feed"><br><sub>Feed</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="Notifications"><br><sub>Notifications</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/log.png" alt="Game log"><br><sub>Game log</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="World history"><br><sub>World history</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="Chatbox"><br><sub>Chatbox</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="VR keyboard"><br><sub>VR keyboard</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="Floating keyboard: Windows mode"><br><sub>Floating keyboard: Windows mode</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="Floating keyboard: in-game chat mode"><br><sub>Floating keyboard: in-game chat mode</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="Emoji maker: VRChat effect preview"><br><sub>Emoji maker: VRChat effect preview</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="Emoji maker: sprite sheet"><br><sub>Emoji maker: sprite sheet</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="Settings"><br><sub>Settings</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="Themes and accent colors"><br><sub>Themes and accent colors</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="Thai UI"><br><sub>Thai UI</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="Japanese UI"><br><sub>Japanese UI</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/login.png" alt="Sign-in with language picker"><br><sub>Sign-in with language picker</sub></td><td></td></tr>
 </table>
 
 <sub>Screenshots use made-up demo data.</sub>
