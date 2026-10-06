@@ -132,7 +132,7 @@ python vrclog_mac.py          # run
 
 - Made by **iriewiew**
 - Icons: [Lucide](https://lucide.dev) (ISC License)
-- Animated emoji idea: [VRCEmoji](https://github.com/Wakamu/VRCEmoji) by Wakamu
+- Animated emoji maker idea from [VRCEmoji](https://github.com/Wakamu/VRCEmoji) by Wakamu. Written from scratch, no shared code.
 - API reference: [vrchat.community](https://vrchat.community)
 - Ideas inspired by [VRCX](https://github.com/vrcx-team/VRCX). VRC Nook is written from scratch and shares no code with it.
 

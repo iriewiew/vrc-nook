@@ -121,7 +121,7 @@ Mô tả từng file có trong [README tiếng Anh](README.md#build-from-source)
 
 - Tác giả: **iriewiew**
 - Biểu tượng: [Lucide](https://lucide.dev) (ISC License)
-- Ý tưởng emoji động: [VRCEmoji](https://github.com/Wakamu/VRCEmoji) của Wakamu
+- Ý tưởng công cụ tạo emoji động từ [VRCEmoji](https://github.com/Wakamu/VRCEmoji) của Wakamu. Viết hoàn toàn mới, không dùng chung mã nguồn.
 - Tài liệu API: [vrchat.community](https://vrchat.community)
 - Ý tưởng lấy cảm hứng từ [VRCX](https://github.com/vrcx-team/VRCX). VRC Nook được viết hoàn toàn mới và không dùng chung mã nguồn.
 

@@ -121,7 +121,7 @@ python vrclog_mac.py          # 実行
 
 - 作者: **iriewiew**
 - アイコン: [Lucide](https://lucide.dev) (ISC License)
-- アニメーション絵文字のアイデア: Wakamu さんの [VRCEmoji](https://github.com/Wakamu/VRCEmoji)
+- アニメーション絵文字メーカーのアイデアは Wakamu さんの [VRCEmoji](https://github.com/Wakamu/VRCEmoji) から。ゼロから書かれており、コードは共有していません。
 - API リファレンス: [vrchat.community](https://vrchat.community)
 - アイデアは [VRCX](https://github.com/vrcx-team/VRCX) から着想を得ました。VRC Nook はゼロから書かれており、コードは共有していません。
 

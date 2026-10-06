@@ -121,7 +121,7 @@ python vrclog_mac.py          # 运行
 
 - 作者:**iriewiew**
 - 图标:[Lucide](https://lucide.dev) (ISC License)
-- 动态表情的灵感:Wakamu 的 [VRCEmoji](https://github.com/Wakamu/VRCEmoji)
+- 动态表情制作器的创意来自 Wakamu 的 [VRCEmoji](https://github.com/Wakamu/VRCEmoji)。从零编写,未使用其任何代码。
 - API 参考:[vrchat.community](https://vrchat.community)
 - 创意灵感来自 [VRCX](https://github.com/vrcx-team/VRCX)。VRC Nook 从零编写,未使用其任何代码。
 

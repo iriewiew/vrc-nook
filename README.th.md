@@ -121,7 +121,7 @@ python vrclog_mac.py          # รัน
 
 - สร้างโดย **iriewiew**
 - ไอคอน: [Lucide](https://lucide.dev) (ISC License)
-- แนวคิดทำอีโมจิเคลื่อนไหว: [VRCEmoji](https://github.com/Wakamu/VRCEmoji) โดย Wakamu
+- ไอเดียเครื่องมือทำอีโมจิเคลื่อนไหวจาก [VRCEmoji](https://github.com/Wakamu/VRCEmoji) โดย Wakamu เขียนขึ้นใหม่ทั้งหมด ไม่ได้ใช้โค้ดร่วมกัน
 - ข้อมูล API: [vrchat.community](https://vrchat.community)
 - ได้ไอเดียจาก [VRCX](https://github.com/vrcx-team/VRCX) แต่ VRC Nook เขียนขึ้นใหม่ทั้งหมด ไม่ได้ใช้โค้ดร่วมกัน
 
