@@ -11,7 +11,8 @@ from PIL import Image, ImageDraw
 
 log = logging.getLogger("vrclog")
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-APP_NAME = "VRChatLogViewer"  # Keep the old name as the autostart key so it overwrites the previous entry
+APP_NAME = "VRC Nook"  # Autostart value name (shown in Task Manager → Startup apps)
+OLD_NAMES = ("VRChatLogViewer",)  # Pre-rename entries — still detected, removed on the next toggle
 
 
 def make_icon(size=64):
@@ -57,7 +58,7 @@ class Tray:
     def __init__(self, on_show, on_quit, labels=("Open", "Quit")):
         menu = pystray.Menu(pystray.MenuItem(labels[0], lambda icon, item: on_show(), default=True),
                             pystray.MenuItem(labels[1], lambda icon, item: on_quit()))
-        self.icon = pystray.Icon(APP_NAME, make_icon(), "VRC Nook", menu)
+        self.icon = pystray.Icon("VRC Nook", make_icon(), "VRC Nook", menu)
         threading.Thread(target=self.icon.run, daemon=True).start()
 
     def notify(self, title, message):
@@ -84,19 +85,43 @@ def _command():
 def autostart_get():
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as k:
-            winreg.QueryValueEx(k, APP_NAME)
-            return True
+            for name in (APP_NAME, *OLD_NAMES):
+                try:
+                    winreg.QueryValueEx(k, name)
+                    return True
+                except OSError:
+                    pass
     except OSError:
-        return False
+        pass
+    return False
 
 
 def autostart_set(on):
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_SET_VALUE) as k:
-        if on:
-            winreg.SetValueEx(k, APP_NAME, 0, winreg.REG_SZ, _command())
-        else:
+        for name in (OLD_NAMES if on else (APP_NAME, *OLD_NAMES)):
             try:
-                winreg.DeleteValue(k, APP_NAME)
+                winreg.DeleteValue(k, name)
             except FileNotFoundError:
                 pass
+        if on:
+            winreg.SetValueEx(k, APP_NAME, 0, winreg.REG_SZ, _command())
     return autostart_get()
+
+
+def autostart_migrate():
+    """Rename a pre-rename autostart entry to APP_NAME (pointing at this exe) once"""
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as k:
+            if not any(_has(k, n) for n in OLD_NAMES):
+                return
+        autostart_set(True)
+    except OSError as e:
+        log.warning("autostart migrate failed: %s", e)
+
+
+def _has(k, name):
+    try:
+        winreg.QueryValueEx(k, name)
+        return True
+    except OSError:
+        return False

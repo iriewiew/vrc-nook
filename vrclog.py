@@ -18,7 +18,33 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-LOG_DIR = Path(os.environ["USERPROFILE"]) / "AppData/LocalLow/VRChat/VRChat"
+def _locallow():
+    """Ask Windows where LocalLow is (it can be redirected), fall back to %USERPROFILE%\\AppData\\LocalLow"""
+    try:
+        import ctypes
+        guid = (ctypes.c_byte * 16).from_buffer_copy(  # FOLDERID_LocalAppDataLow {A520A1A4-1780-4FF6-BD18-167343C5AF16}
+            bytes.fromhex("a4a120a58017f64fbd18167343c5af16"))
+        out = ctypes.c_wchar_p()
+        if ctypes.windll.shell32.SHGetKnownFolderPath(ctypes.byref(guid), 0, None, ctypes.byref(out)) == 0:
+            p = out.value
+            ctypes.windll.ole32.CoTaskMemFree(out)
+            if p:
+                return Path(p)
+    except Exception:
+        pass
+    return Path(os.environ.get("USERPROFILE") or Path.home()) / "AppData/LocalLow"
+
+
+DEFAULT_LOG_DIR = _locallow() / "VRChat/VRChat"
+LOG_DIR = DEFAULT_LOG_DIR  # The app may point this at a folder the user picked
+
+
+def find_log_dir(d: Path) -> Path:
+    """Accept the log folder itself or a parent of it (LocalLow, VRChat) — return the folder holding output_log files"""
+    for c in (d, d / "VRChat", d / "VRChat/VRChat"):
+        if any(c.glob("output_log_*.txt")):
+            return c
+    return d
 
 LINE_RE = re.compile(r"^(\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2}) (\w+)\s+-\s+(.*)$")
 
@@ -121,6 +147,14 @@ def parse_line(line: str):
     return None
 
 
+def newest_log():
+    """Newest output_log, or None when VRChat hasn't written one yet (folder may not exist either)"""
+    try:
+        return max(LOG_DIR.glob("output_log_*.txt"), key=lambda p: p.stat().st_mtime, default=None)
+    except OSError:  # A file vanished between glob and stat
+        return None
+
+
 def log_files(all_files: bool):
     files = sorted(LOG_DIR.glob("output_log_*.txt"), key=lambda p: p.stat().st_mtime)
     if not files:
@@ -146,7 +180,7 @@ def follow_lines(path: Path, auto_switch=True, on_switch=None):
                 yield buf.rstrip("\n")
                 buf = ""
             continue
-        newest = log_files(False)[0] if auto_switch else path
+        newest = (newest_log() or path) if auto_switch else path
         if newest != path:
             f.close()
             path = newest

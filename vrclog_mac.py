@@ -31,7 +31,7 @@ from vrclog import KINDS, Room, parse_line
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w", encoding="utf-8")
 
-VERSION = "0.4.2"
+VERSION = "0.4.3"
 log = logging.getLogger("vrclog")
 UPLOAD_FIELDS = ("animationStyle", "maskTag", "frames", "framesOverTime", "loopStyle")
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
@@ -126,8 +126,28 @@ class Api:
         SETTINGS.parent.mkdir(parents=True, exist_ok=True)
         SETTINGS.write_text(json.dumps(settings, ensure_ascii=False), encoding="utf-8")
 
+    def log_dir_info(self):
+        return {"path": str(vrclog.LOG_DIR), "custom": vrclog.LOG_DIR != vrclog.DEFAULT_LOG_DIR,
+                "found": bool(vrclog.newest_log())}
+
+    def pick_log_dir(self):
+        """Folder picker for people who moved VRChat's log folder. Returns the folder to save, or None"""
+        r = self._window.create_file_dialog(webview.FileDialog.FOLDER, directory=str(vrclog.LOG_DIR.parent))
+        if not r:
+            return None
+        d = vrclog.find_log_dir(Path(r[0]))
+        self.set_log_dir(str(d))
+        return str(d)
+
+    def set_log_dir(self, path):
+        """'' = back to the default folder. The live reader follows the newest log in the new folder by itself"""
+        _apply_log_dir(path)
+        threading.Thread(target=self._store.import_logs, kwargs={"skip": self._pump.path}, daemon=True).start()
+        return self.log_dir_info()
+
     def open_folder(self):
-        os.startfile(vrclog.LOG_DIR)
+        d = vrclog.LOG_DIR
+        os.startfile(d if d.is_dir() else d.parent if d.parent.is_dir() else vrclog._locallow())
 
     def open_profile(self, uid):
         if re.fullmatch(r"usr_[\w-]+", uid):
@@ -750,16 +770,21 @@ class Pump:
         if self.started:
             return
         self.started = True
-        self.path = vrclog.log_files(False)[0]
         threading.Thread(target=self._read, daemon=True).start()
         threading.Thread(target=self._flush, daemon=True).start()
-        # Import old logs into the database in the background (the first run may take a while)
-        threading.Thread(target=lambda: self.api._store.import_logs(skip=self.path), daemon=True).start()
 
     def _read(self):
+        # A fresh PC may have no log yet (VRChat never started) — wait for one instead of giving up
+        while not (path := vrclog.newest_log()):
+            time.sleep(3)
+        self.path = path
+        log.info("reading %s", path)
+        # Import old logs into the database in the background (the first run may take a while)
+        threading.Thread(target=lambda: self.api._store.import_logs(skip=path), daemon=True).start()
+
         def switched(p):
             self.path = p
-        for line in vrclog.follow_lines(self.path, on_switch=switched):
+        for line in vrclog.follow_lines(path, on_switch=switched):
             ev = parse_line(line)
             if not ev:
                 continue
@@ -820,11 +845,20 @@ def _setting(key):
         return None
 
 
+def _apply_log_dir(path):
+    """Use a custom VRChat log folder (setting "logDir"), or the default one when empty / gone"""
+    p = Path(path) if path else None
+    vrclog.LOG_DIR = p if p and p.is_dir() else vrclog.DEFAULT_LOG_DIR
+    log.info("log folder: %s", vrclog.LOG_DIR)
+
+
 def main():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     updater.cleanup()
+    tray.autostart_migrate()
     handler = RotatingFileHandler(DATA_DIR / "debug.log", maxBytes=1_000_000, backupCount=1, encoding="utf-8")
     logging.basicConfig(handlers=[handler], level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    _apply_log_dir(_setting("logDir"))
     webview.settings["DRAG_REGION_DIRECT_TARGET_ONLY"] = True  # Clicking toolbar buttons doesn't drag the window
     js = Bridge()
     api = Api(js)

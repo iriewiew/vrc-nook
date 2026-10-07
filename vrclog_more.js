@@ -3440,3 +3440,53 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .upd-spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--track); border-top-color: var(--accent);
             animation: btnspin .8s linear infinite; display: inline-block; }
 </style>`);
+
+// ---------- VRChat log folder (for people who moved it) ----------
+tx({
+  ld_title: ["โฟลเดอร์ Cache ของ VRChat", "VRChat cache folder", "VRChat のキャッシュフォルダ"],
+  ld_default: ["ค่าเริ่มต้น", "Default", "既定"],
+  ld_none: ["ยังไม่พบไฟล์ log ในโฟลเดอร์นี้ — เปิด VRChat ก่อน หรือเลือกโฟลเดอร์ที่ย้ายไว้", "No logs here yet — start VRChat, or pick the folder you moved it to",
+    "ここにログがありません — VRChat を起動するか、移動先のフォルダを選んでください"],
+  ld_pick: ["เปลี่ยน", "Change", "変更"], ld_reset: ["ใช้ค่าเริ่มต้น", "Use default", "既定に戻す"],
+  ld_set: ["เปลี่ยนโฟลเดอร์ log แล้ว", "Log folder changed", "ログフォルダを変更しました"],
+});
+Object.assign(UPD_I18N.ko, { ld_title: "VRChat 캐시 폴더", ld_default: "기본값", ld_none: "아직 로그가 없습니다 — VRChat을 실행하거나 옮긴 폴더를 선택하세요",
+  ld_pick: "변경", ld_reset: "기본값 사용", ld_set: "로그 폴더를 변경했습니다" });
+Object.assign(UPD_I18N.ru, { ld_title: "Папка кэша VRChat", ld_default: "По умолчанию", ld_none: "Логов пока нет — запустите VRChat или выберите папку, куда вы их перенесли",
+  ld_pick: "Изменить", ld_reset: "По умолчанию", ld_set: "Папка логов изменена" });
+Object.assign(UPD_I18N.vi, { ld_title: "Thư mục cache VRChat", ld_default: "Mặc định", ld_none: "Chưa có log ở đây — hãy mở VRChat hoặc chọn thư mục bạn đã chuyển tới",
+  ld_pick: "Đổi", ld_reset: "Dùng mặc định", ld_set: "Đã đổi thư mục log" });
+Object.assign(UPD_I18N.zh, { ld_title: "VRChat 缓存文件夹", ld_default: "默认", ld_none: "这里还没有日志 —— 请启动 VRChat，或选择你移动到的文件夹",
+  ld_pick: "更改", ld_reset: "恢复默认", ld_set: "已更改日志文件夹" });
+
+let LOGDIR = null;
+async function ldRefresh() { LOGDIR = await api("log_dir_info"); if (settingsOpen) buildSettings(); }
+async function ldPick() {
+  const p = await api("pick_log_dir");
+  if (!p) return;
+  setS("logDir", p);
+  toast(t("ld_set"));
+  ldRefresh();
+}
+async function ldReset() { await api("set_log_dir", ""); setS("logDir", ""); ldRefresh(); }
+const _buildSettingsL = buildSettings;
+buildSettings = function () {
+  _buildSettingsL();
+  if (settingsView !== "main" || !LOGDIR) return;
+  const anchor = [...$("sheet").querySelectorAll(".sec-title")].find(el => el.textContent === t("data"));
+  const card = anchor?.nextElementSibling;
+  if (!card) return;
+  const hint = `<span class="ld-path">${esc(LOGDIR.path)}</span>${LOGDIR.found ? "" : `<br><span class="ld-warn">${t("ld_none")}</span>`}`;
+  card.insertAdjacentHTML("afterbegin", srow("folder-open", "blue", LOGDIR.custom ? t("ld_title") : `${t("ld_title")} · ${t("ld_default")}`,
+    `<div class="ld-btns">${LOGDIR.custom ? `<button class="btn" onclick="ldReset()">${t("ld_reset")}</button>` : ""}
+     <button class="btn" onclick="api('open_folder')">${t("open")}</button>
+     <button class="btn" onclick="ldPick()">${t("ld_pick")}</button></div>`, hint));
+};
+const _resetAllL = resetAll;
+resetAll = function () { _resetAllL(); if (!S.logDir && LOGDIR?.custom) api("set_log_dir", "").then(ldRefresh); };
+window.addEventListener("pywebviewready", ldRefresh);
+document.head.insertAdjacentHTML("beforeend", `<style>
+.ld-path { word-break: break-all; }
+.ld-warn { color: var(--orange, #ff9f0a); }
+.ld-btns { display: flex; gap: 6px; flex-shrink: 0; }
+</style>`);
