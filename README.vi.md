@@ -62,6 +62,7 @@ Hãy đặt file trong thư mục có quyền ghi như Documents. Đừng dùng 
 - **Đọc log VRChat theo thời gian thực:** vào thế giới, người chơi vào/ra, video, ảnh chụp, sticker, mất kết nối và nhiều hơn nữa.
 - **Bộ lọc:** chọn loại sự kiện muốn hiển thị.
 - **Lịch sử lâu dài:** lưu trong cơ sở dữ liệu SQLite trên máy. VRChat tự xóa log cũ, nhưng VRC Nook vẫn giữ lại.
+- **Đã chuyển thư mục VRChat?** Chọn trong Cài đặt → Dữ liệu → *Thư mục cache VRChat* (chọn chính thư mục đó hoặc thư mục cha). Chuyển ngay và nhập cả log cũ. Nếu chưa có log (máy mới), VRC Nook sẽ đợi đến khi VRChat ghi log.
 - **Lịch sử thế giới:** mọi thế giới và instance bạn đã ghé, kèm những người đã gặp.
 
 ### Nội dung VRChat

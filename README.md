@@ -62,6 +62,7 @@ Put it in a folder you can write to, such as Documents. Don't use Program Files,
 - **Live VRChat log reader:** worlds joined, players joining and leaving, videos, screenshots, stickers, disconnects and more.
 - **Filters:** choose which event types to show.
 - **Permanent history:** stored in a local SQLite database. VRChat deletes its own old logs, but VRC Nook keeps them.
+- **Moved your VRChat folder?** Pick it in Settings → Data → *VRChat cache folder* (the folder itself or a parent of it). It switches right away and imports older logs. If no log exists yet (fresh PC), VRC Nook waits until VRChat writes one.
 - **World history:** every world and instance you visited, with the players you met.
 
 ### VRChat content
