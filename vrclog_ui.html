@@ -314,7 +314,9 @@ input[type=range]::-webkit-slider-thumb { appearance: none; width: 20px; height:
 .mini-btn svg { width: 14px; height: 14px; }
 .itype { font-size: 10px; font-weight: 700; padding: 0 6px; border-radius: 99px; background: var(--track); color: var(--text2); flex-shrink: 0; line-height: 16px; }
 .avwrap { position: relative; flex-shrink: 0; display: block; }
-.avwrap .sdot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--sheet); }
+.avwrap .sdot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid var(--sheet); z-index: 2; }
+/* Icon frames are drawn 1.3× the avatar: keep the dot on top, at the frame's edge */
+.avwrap:has(.avatar.has-frame) .sdot { right: -4px; bottom: -4px; }
 .pcard { max-height: calc(100vh / var(--z, 1) - 40px); overflow-y: auto; }
 
 /* ---------- Feed / Notifications / History ---------- */
@@ -1840,7 +1842,9 @@ function groupCard(g) {
   d.className = "wcard gcard";
   d.innerHTML = `<div class="wimg" ${thumbAttr(g.bannerUrl)}></div><div class="gicon" ${thumbAttr(g.iconUrl)}></div>
     <div class="winfo"><div class="nm"></div><div class="sub"></div></div>`;
-  d.querySelector(".nm").innerHTML = esc(g.name) + (g.isVerified ? ` <span class="verified">${icon("badge-check")}</span>` : "");
+  d.querySelector(".nm").innerHTML = esc(g.name) + (g.isVerified ? ` <span class="verified">${icon("badge-check")}</span>` : "")
+    + (g.ownerId && g.ownerId === AUTH.id ? ` <span class="badge owner" title="${t("g_owner")}">${icon("crown")}</span>`
+       : typeof gCanManage === "function" && gCanManage(GRP.perms?.[g.id]) ? ` <span class="badge owner admin" title="${t("g_manager")}">${icon("shield")}</span>` : "");
   d.querySelector(".sub").textContent = [`${g.shortCode || ""}.${g.discriminator || ""}`, g.memberCount != null ? t("members", g.memberCount) : ""].filter(Boolean).join(" · ");
   d.onclick = () => openGroup(g);
   return d;

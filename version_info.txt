@@ -1,17 +1,17 @@
 # PyInstaller --version-file: the name Windows shows for the tray icon, notifications and Task Manager
 VSVersionInfo(
-  ffi=FixedFileInfo(filevers=(0, 4, 3, 0), prodvers=(0, 4, 3, 0), mask=0x3f, flags=0x0, OS=0x40004,
+  ffi=FixedFileInfo(filevers=(0, 4, 4, 0), prodvers=(0, 4, 4, 0), mask=0x3f, flags=0x0, OS=0x40004,
                     fileType=0x1, subtype=0x0, date=(0, 0)),
   kids=[
     StringFileInfo([StringTable("040904B0", [
       StringStruct("CompanyName", "iriewiew"),
       StringStruct("FileDescription", "VRC Nook"),
-      StringStruct("FileVersion", "0.4.3"),
+      StringStruct("FileVersion", "0.4.4"),
       StringStruct("InternalName", "VRCNook"),
       StringStruct("LegalCopyright", "(c) 2026 iriewiew, MIT License"),
       StringStruct("OriginalFilename", "VRCNook.exe"),
       StringStruct("ProductName", "VRC Nook"),
-      StringStruct("ProductVersion", "0.4.3")])]),
+      StringStruct("ProductVersion", "0.4.4")])]),
     VarFileInfo([VarStruct("Translation", [1033, 1200])])
   ]
 )

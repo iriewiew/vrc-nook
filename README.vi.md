@@ -70,10 +70,14 @@ Hãy đặt file trong thư mục có quyền ghi như Documents. Đừng dùng 
 - **Yêu thích:** bạn bè, thế giới và avatar.
 - **Sự kiện:** lịch sự kiện của VRChat và Jams.
 - **Nhóm:** xem và quản lý (thành viên, lời mời, yêu cầu, cấm, instance của nhóm).
+  - Nhóm bạn sở hữu hoặc quản lý có tab riêng, và có thể tạo nhóm mới.
+  - Chủ nhóm và người quản lý có tab Quản lý: yêu cầu tham gia, mời bất kỳ ai (không chỉ bạn bè), cấm, vai trò và thứ tự, nhật ký kiểm tra, sửa tên, biểu tượng, ảnh bìa và hiển thị trong tìm kiếm.
 - **Avatar:**
   - Đổi avatar, xem dung lượng file và hiệu năng theo từng nền tảng.
   - Tìm avatar công khai qua avtrdb.com.
+  - Cảnh báo khi avatar bị xếp hạng Very Poor (người khác sẽ thấy avatar dự phòng của bạn).
 - **Kho đồ:** biểu tượng VRC+, ảnh, prints, emoji, sticker và props.
+  - Cắt và thu phóng ảnh và biểu tượng trước khi tải lên, có đường gióng cho ảnh bìa nhóm và xem trước bảng tên.
 - **Tìm kiếm:** người dùng, thế giới, nhóm và sự kiện. Chỉ cần dán liên kết hoặc ID.
 - **Tài khoản của tôi:** sửa tiểu sử, liên kết và trạng thái. Quản lý danh sách chặn và tắt tiếng.
 

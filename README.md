@@ -70,10 +70,14 @@ Put it in a folder you can write to, such as Documents. Don't use Program Files,
 - **Favorites:** friends, worlds and avatars.
 - **Events:** VRChat's event calendar and Jams.
 - **Groups:** browse and manage groups, including members, invites, requests, bans and group instances.
+  - Groups you own or can manage have their own tab, and you can create new groups.
+  - Owners and managers get a Manage tab: join requests, invites (anyone, not just friends), bans, roles and their order, the audit log, and editing the name, icon, banner and search visibility.
 - **Avatars:**
   - Switch avatars and see file size and performance per platform.
   - Public avatar search through avtrdb.com.
+  - A warning when an avatar is rated Very Poor (others will see your fallback avatar instead).
 - **Inventory:** VRC+ icons, photos, prints, emoji, stickers and props.
+  - Crop and zoom photos and icons before uploading, with a group banner guide and nameplate previews.
 - **Search:** users, worlds, groups and events. You can also paste a link or ID.
 - **My account:** edit your bio, links and status. Manage blocks and mutes.
 

@@ -50,6 +50,7 @@ OPS = {
     "getUserGroups": Op("GET", "/users/{userId}/groups"),
     "getUserRepresentedGroup": Op("GET", "/users/{userId}/groups/represented"),
     "getInvitedGroups": Op("GET", "/users/{me}/groups/invited"),
+    "getMyGroupPermissions": Op("GET", "/users/{me}/groups/permissions", ("groupIds",)),  # {groupId: [permission, …]} for every group
     "getUserGroupRequests": Op("GET", "/users/{me}/groups/requested"),
     "getBlockedGroups": Op("GET", "/users/{me}/groups/userblocked"),
     "getUserGroupInstances": Op("GET", "/users/{me}/instances/groups"),
@@ -162,8 +163,11 @@ OPS = {
     "getGroupPermissions": Op("GET", "/groups/{groupId}/permissions"),
 
     # ---------- Groups (admin — VRChat checks permissions) ----------
+    "createGroup": Op("POST", "/groups", (), ("name", "shortCode", "description", "joinState", "iconId", "bannerId",
+                                               "privacy", "roleTemplate")),
+    "deleteGroup": Op("DELETE", "/groups/{groupId}"),
     "updateGroup": Op("PUT", "/groups/{groupId}", (), ("name", "shortCode", "description", "joinState", "iconId", "bannerId",
-                                                       "languages", "links", "rules", "tags")),
+                                                       "languages", "links", "rules", "tags", "privacy")),
     "createGroupAnnouncement": Op("POST", "/groups/{groupId}/announcement", (), ("title", "text", "imageId", "sendNotification")),
     "deleteGroupAnnouncement": Op("DELETE", "/groups/{groupId}/announcement"),
     "addGroupPost": Op("POST", "/groups/{groupId}/posts", (), POST_FIELDS),

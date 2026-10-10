@@ -769,6 +769,9 @@ tx({
   a_fallbackSet: ["ตั้งเป็นอวตารสำรองแล้ว", "Fallback avatar set", "フォールバックに設定しました"],
   a_edit: ["แก้ไขอวตาร", "Edit avatar", "アバターを編集"], a_release: ["การเผยแพร่", "Release status", "公開設定"],
   a_analysis: ["ขนาดและประสิทธิภาพ", "Size & performance", "サイズとパフォーマンス"], a_size: ["ขนาดไฟล์", "Download", "ダウンロード"],
+  a_vpBlocked: [p => `อวตารนี้จะถูกบล็อกโดยค่าเริ่มต้นเพราะ performance ต่ำ (${p}) คนอื่นจะเห็นอวตารสำรองของคุณแทน`,
+    p => `This avatar will be blocked by default due to performance (${p}). Your fallback will be shown instead.`,
+    p => `このアバターはパフォーマンスのため既定でブロックされます (${p})。代わりにフォールバックが表示されます。`],
   a_unc: ["เมื่อแตกไฟล์", "Uncompressed", "展開後"], a_perf: ["Performance", "Performance", "パフォーマンス"],
   a_polys: ["โพลิกอน", "Polygons", "ポリゴン"], a_mats: ["วัสดุ", "Materials", "マテリアル"], a_bones: ["กระดูก", "Bones", "ボーン"],
   a_pb: ["PhysBones", "PhysBones", "PhysBones"], a_skinned: ["Skinned mesh", "Skinned meshes", "スキンメッシュ"], a_meshes: ["Mesh", "Meshes", "メッシュ"],
@@ -863,7 +866,11 @@ function avatarMore() {
   if (x.analysis?.length) {
     const PL = { standalonewindows: "PC", android: "Quest / Android", ios: "iOS" };
     const num = v => v == null ? null : Number(v).toLocaleString();
-    html += `<div class="pcard-section"><div class="lbl">${t("a_analysis")}</div><div class="pstats">${x.analysis.map(r => {
+    // Same warning VRChat shows: Very Poor avatars are blocked by default and others see your fallback instead
+    const vp = x.analysis.filter(r => (r.performanceRating || r.perf || raw.performance?.[r.platform] || "").replace(/\s/g, "") === "VeryPoor")
+      .map(r => PL[r.platform] || r.platform);
+    const warn = vp.length ? `<div class="perf-warn">${icon("circle-alert")}<span>${t("a_vpBlocked", vp.join(", "))}</span></div>` : "";
+    html += `<div class="pcard-section"><div class="lbl">${t("a_analysis")}</div>${warn}<div class="pstats">${x.analysis.map(r => {
       const st = r.avatarStats || {}, perf = r.performanceRating || r.perf || raw.performance?.[r.platform] || "";
       const rows = [[t("a_size"), fmtBytes(r.fileSize)], [t("a_unc"), fmtBytes(r.uncompressedSize)], [t("a_polys"), num(st.totalPolygons)],
         [t("a_mats"), st.materialCount ?? st.materialSlotsUsed], [t("a_bones"), num(st.boneCount)],
@@ -935,11 +942,11 @@ tx({
   g_invited: ["ส่งคำเชิญแล้ว", "Invite sent", "招待を送りました"], g_noAdmin: ["ไม่มีสิทธิ์จัดการส่วนนี้", "No permission for this", "この操作の権限がありません"],
   g_cancelled: ["ยกเลิกคำขอแล้ว", "Request canceled", "申請を取り消しました"],
 });
-const GX = { tab: "info", admin: "requests", gallery: null, memberQ: "", memberOff: 0 };
+const GX = { tab: "info", admin: "requests", gallery: null, memberQ: "", memberOff: 0, memberRole: "", reqBlocked: false, auditType: "", auditOff: 0 };
 openGroup = async function (g) {
   profileOpen = null; worldOpen = null; avatarOpen = null;
   groupOpen = { ...g };
-  Object.assign(GX, { tab: "info", admin: "requests", gallery: null, memberQ: "", memberOff: 0 });
+  Object.assign(GX, { tab: "info", admin: "requests", gallery: null, memberQ: "", memberOff: 0, memberRole: "", reqBlocked: false, auditType: "", auditOff: 0, newIcon: null, newBanner: null });
   dropCache("g_");
   buildGroup();
   $("pOverlay").classList.add("show");
@@ -955,7 +962,13 @@ openGroup = async function (g) {
 function openGroupId(gid) { closeX(); openGroup({ id: gid }); }
 const gPerms = () => groupOpen?.myMember?.permissions || [];
 const gCan = (...p) => gPerms().includes("*") || p.some(x => gPerms().includes(x));
-const gIsAdmin = () => gPerms().some(p => p === "*" || /manage|kick|ban|invite|assign|audit|remove|edit|announcement|calendar/.test(p));
+// Sections of the Manage tab and the permission each one needs
+const G_ADMIN = [["requests", "user-plus", "group-members-manage"], ["invites", "send", "group-invites-manage"], ["bans", "ban", "group-bans-manage"],
+  ["roles", "user-cog", "group-roles-manage"], ["audit", "scroll-text", "group-audit-view"], ["edit", "pencil", "group-data-manage"]];
+// "Can manage" = at least one Manage-tab section is available (same rule as the tab itself)
+const G_MANAGE_PERMS = G_ADMIN.map(x => x[2]);
+const gAdminTabs = () => G_ADMIN.filter(([, , perm]) => gCan(perm));
+const gIsAdmin = () => gAdminTabs().length > 0;
 function gTab(tab) { GX.tab = tab; buildGroup(); gLoad(); }
 function gAdminTab(tab) { GX.admin = tab; buildGroup(); gLoad(); }
 // Load data for the current tab
@@ -968,15 +981,18 @@ function gLoad(force) {
   else if (tab === "instances") loadOp("g_inst", "getGroupInstances", { groupId: gid }, force);
   else if (tab === "members") GX.memberQ
     ? loadOp("g_mem", "searchGroupMembers", { groupId: gid, query: GX.memberQ, n: 50 }, true)
-    : loadOp("g_mem", "getGroupMembers", { groupId: gid, n: 50, offset: GX.memberOff, sort: "joinedAt:desc" }, force);
+    : loadOp("g_mem", "getGroupMembers", { groupId: gid, n: 50, offset: GX.memberOff, sort: "joinedAt:desc", ...(GX.memberRole ? { roleId: GX.memberRole } : {}) }, force);
   else if (tab === "gallery" && GX.gallery) loadOp("g_gal_" + GX.gallery, "getGroupGalleryImages", { groupId: gid, groupGalleryId: GX.gallery, n: 60 }, force);
   else if (tab === "events") loadOp("g_evt", "getGroupCalendarEvents", { groupId: gid, n: 30 }, force);
   else if (tab === "admin") {
     const a = GX.admin;
-    if (a === "requests") loadOp("g_req", "getGroupRequests", { groupId: gid, n: 100 }, force);
+    if (a === "requests") loadOp("g_req", "getGroupRequests", { groupId: gid, n: 100, ...(GX.reqBlocked ? { blocked: true } : {}) }, force);
     else if (a === "invites") loadOp("g_inv", "getGroupInvites", { groupId: gid, n: 100 }, force);
     else if (a === "bans") loadOp("g_bans", "getGroupBans", { groupId: gid, n: 100 }, force);
-    else if (a === "audit") loadOp("g_audit", "getGroupAuditLogs", { groupId: gid, n: 50 }, force);
+    else if (a === "audit") {
+      loadOp("g_auditTypes", "getGroupAuditLogEntryTypes", { groupId: gid });
+      loadOp("g_audit", "getGroupAuditLogs", { groupId: gid, n: 50, offset: GX.auditOff, ...(GX.auditType ? { eventTypes: GX.auditType } : {}) }, force);
+    }
     else if (a === "roles") loadOp("g_perms", "getGroupPermissions", { groupId: gid });
   }
 }
@@ -991,13 +1007,13 @@ buildGroup = function () {
   let action = "";
   const menu = [];
   if (st === "member") {
-    action = `<span class="badge" style="margin:0">${icon("circle-check")} ${t("joined")}</span>`;
+    action = `<span class="gpill member">${icon("circle-check")}${t("joined")}</span>`;
     menu.push({ ic: "log-out", label: t("leaveGroup"), fn: "leaveGroup()", danger: true });
   } else if (st === "requested") action = btn(t("g_cancelReq"), "gCancelRequest()", "", "circle-x");
   else if (st === "invited") {
     action = btn(t("g_acceptInvite"), "joinGroup()", "primary", "circle-check") + btn(t("g_decline"), "gDecline(false)", "", "circle-x");
     menu.push({ ic: "ban", label: t("g_declineBlock"), fn: "gDecline(true)", danger: true });
-  } else if (st === "userblocked") action = `<span class="badge gray" style="margin:0">${t("g_blocked")}</span>`;
+  } else if (st === "userblocked") action = `<span class="gpill">${icon("ban")}${t("g_blocked")}</span>`;
   else {
     action = g.joinState === "open" ? btn(t("joinGroup"), "joinGroup()", "primary", "plus")
       : g.joinState === "request" ? btn(t("requestJoin"), "joinGroup()", "primary", "send") : `<button class="btn" disabled>${t("inviteOnly")}</button>`;
@@ -1015,8 +1031,10 @@ buildGroup = function () {
       <div class="pcard-status">${esc(g.shortCode || "")}.${esc(g.discriminator || "")}</div>
       <div class="stats">${g.memberCount != null ? `<span><b>${Number(g.memberCount).toLocaleString()}</b> ${t("membersW")}</span>` : ""}
         ${g.onlineMemberCount != null ? `<span><b>${g.onlineMemberCount}</b> ${t("onlineW")}</span>` : ""}
-        ${me.isRepresenting ? `<span class="badge">★</span>` : ""}</div>
-      <div class="pact">${action}${menuBtn(menu)}</div>
+      </div>
+      <div class="pact">${g.ownerId && g.ownerId === AUTH.id ? `<span class="gpill owner">${icon("crown")}${t("g_owner")}</span>`
+        : gIsAdmin() ? `<span class="gpill admin">${icon("shield")}${t("g_manager")}</span>` : ""}${action}
+        ${me.isRepresenting ? `<span class="gpill rep" title="${escA(t("g_represent"))}">${icon("star")}${t("g_repShort")}</span>` : ""}${menuBtn(menu)}</div>
       ${AUTH.loggedIn && g.id ? `<div class="ptabs">${tabsHtml(tabs, GX.tab, "gTab")}</div><div class="ptab-body" id="gBody">${gBody()}</div>` : ""}
       <div class="pcard-note" style="font-family:var(--mono)">${iid}</div>
     </div>`;
@@ -1047,16 +1065,19 @@ function gBody() {
   }
   if (tab === "instances") {
     const c = CACHE.g_inst;
-    return stateHtml(c) || c.data.map(i => lrow({ thumb: imgUrl(i.world), name: i.world?.name || i.location,
+    const canOpen = gCan("group-instance-open-create", "group-instance-plus-create", "group-instance-public-create");
+    return (canOpen ? `<div class="toolbar">${btn(t("g_newInst"), "gNewInstance()", "primary sm", "circle-plus")}</div>` : "") + (stateHtml(c) || c.data.map(i => lrow({ thumb: imgUrl(i.world), name: i.world?.name || i.location,
       sub: `${esc(itypeLabel(parseLoc(i.location)))} · ${t("people2", i.memberCount ?? "?")}`, onclick: `openWorld('${esc(i.world?.id || parseLoc(i.location).wid)}','${esc(i.location)}')`,
       acts: `<button class="mini-btn" title="${t("join")}" onclick="doLaunch('${esc(i.location)}')">${icon("rocket")}</button>
-             <button class="mini-btn" title="${t("inviteMe")}" onclick="doInvite('${esc(i.location)}')">${icon("send")}</button>` })).join("");
+             <button class="mini-btn" title="${t("inviteMe")}" onclick="doInvite('${esc(i.location)}')">${icon("send")}</button>` })).join(""));
   }
   if (tab === "members") {
     const c = CACHE.g_mem, roles = g.roles || [];
     const canKick = gCan("group-members-remove"), canBan = gCan("group-bans-manage"), canRole = gCan("group-roles-assign");
     return `<div class="toolbar"><input class="field grow" id="gmq" placeholder="${t("searchPh")}" value="${escA(GX.memberQ)}"
-        onkeydown="if(event.key==='Enter'){GX.memberQ=this.value.trim();GX.memberOff=0;gLoad(true)}"></div>
+        onkeydown="if(event.key==='Enter'){GX.memberQ=this.value.trim();GX.memberOff=0;gLoad(true)}">
+        ${roles.length > 1 && !GX.memberQ ? `<select class="field" style="width:auto" onchange="GX.memberRole=this.value;GX.memberOff=0;buildGroup();gLoad(true)">
+          <option value="">${t("g_allRoles")}</option>${roles.map(r => `<option value="${escA(r.id)}" ${GX.memberRole === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select>` : ""}</div>
       ${stateHtml(c) || c.data.map(m => lrow({ uid: m.userId, name: m.user?.displayName || m.userId,
         sub: `${t("g_joined", fmtIso(m.joinedAt || m.createdAt, true))}${(m.roleIds || []).length ? " · " + (m.roleIds || []).map(r => esc(roles.find(x => x.id === r)?.name || "")).filter(Boolean).join(", ") : ""}`,
         onclick: `showProfile('${esc(m.userId)}')`,
@@ -1093,44 +1114,66 @@ function gBody() {
   return "";
 }
 function gAdminBody() {
-  const g = groupOpen, a = GX.admin;
-  const tabs = { requests: t("g_requests"), invites: t("g_invites"), bans: t("g_bans"), roles: t("g_roles"), audit: t("g_audit"), edit: t("g_edit") };
-  let inner = "";
+  const g = groupOpen, allowed = gAdminTabs();
+  if (!allowed.some(x => x[0] === GX.admin)) GX.admin = allowed[0]?.[0];
+  const a = GX.admin;
+  const TITLE = { requests: "g_requests", invites: "g_invites", bans: "g_bans", roles: "g_roles", audit: "g_audit", edit: "g_edit" };
+  let inner = "", head = "";
   if (a === "requests") {
     const c = CACHE.g_req;
-    inner = stateHtml(c) || c.data.map(m => lrow({ uid: m.userId, name: m.user?.displayName || m.userId, sub: fmtIso(m.createdAt), onclick: `showProfile('${esc(m.userId)}')`,
+    head = `<div class="segmented sm">${[["open", "g_reqPending"], ["blocked", "g_blockedReq"]].map(([k, l]) =>
+      `<button class="${(GX.reqBlocked ? "blocked" : "open") === k ? "on" : ""}" onclick="gReqTab('${k}')">${t(l)}</button>`).join("")}</div>`;
+    inner = (stateHtml(c) || c.data.map(m => lrow({ uid: m.userId, name: m.user?.displayName || m.userId, sub: fmtIso(m.createdAt), onclick: `showProfile('${esc(m.userId)}')`,
       acts: btn(t("g_accept"), `gDo('respondGroupJoinRequest',{userId:'${esc(m.userId)}',action:'accept'},'done','g_req')`, "primary sm")
         + btn(t("g_reject"), `gDo('respondGroupJoinRequest',{userId:'${esc(m.userId)}',action:'reject'},'done','g_req')`, "sm")
-        + `<button class="btn sm danger" onclick="confirmBtn(this,()=>gDo('respondGroupJoinRequest',{userId:'${esc(m.userId)}',action:'reject',block:true},'done','g_req'))">${t("g_rejectBlock")}</button>` })).join("");
+        + (GX.reqBlocked ? "" : `<button class="btn sm danger" onclick="confirmBtn(this,()=>gDo('respondGroupJoinRequest',{userId:'${esc(m.userId)}',action:'reject',block:true},'done','g_req'))">${t("g_rejectBlock")}</button>`) })).join(""));
   } else if (a === "invites") {
     const c = CACHE.g_inv;
-    inner = `<div class="toolbar">${btn(t("g_inviteFriend"), "gInviteDialog()", "primary sm", "user-plus")}</div>`
-      + (stateHtml(c) || c.data.map(m => lrow({ uid: m.userId, name: m.user?.displayName || m.userId, sub: fmtIso(m.createdAt), onclick: `showProfile('${esc(m.userId)}')`,
+    head = btn(t("g_inviteUser"), "gUserPicker('invite')", "sm", "search") + btn(t("g_inviteFriend"), "gInviteDialog()", "primary sm", "user-plus");
+    inner = (stateHtml(c) || c.data.map(m => lrow({ uid: m.userId, name: m.user?.displayName || m.userId, sub: fmtIso(m.createdAt), onclick: `showProfile('${esc(m.userId)}')`,
         acts: `<button class="mini-btn" title="${t("remove")}" onclick="gDo('deleteGroupInvite',{userId:'${esc(m.userId)}'},'done','g_inv')">${icon("x")}</button>` })).join(""));
   } else if (a === "bans") {
     const c = CACHE.g_bans;
-    inner = stateHtml(c) || c.data.map(m => lrow({ uid: m.userId, name: m.user?.displayName || m.userId, sub: fmtIso(m.bannedAt || m.createdAt), onclick: `showProfile('${esc(m.userId)}')`,
-      acts: btn(t("g_unban"), `gDo('unbanGroupMember',{userId:'${esc(m.userId)}'},'done','g_bans')`, "sm") })).join("");
+    head = btn(t("g_banUser"), "gUserPicker('ban')", "sm danger", "ban");
+    inner = (stateHtml(c) || c.data.map(m => lrow({ uid: m.userId, name: m.user?.displayName || m.userId, sub: fmtIso(m.bannedAt || m.createdAt), onclick: `showProfile('${esc(m.userId)}')`,
+      acts: btn(t("g_unban"), `gDo('unbanGroupMember',{userId:'${esc(m.userId)}'},'done','g_bans')`, "sm") })).join(""));
   } else if (a === "roles") {
-    inner = `<div class="toolbar">${btn(t("g_newRole"), "gRoleDialog()", "primary sm", "circle-plus")}</div>`
-      + (g.roles || []).sort((x, y) => (x.order ?? 0) - (y.order ?? 0)).map(r => lrow({ thumb: "", name: r.name,
+    head = btn(t("g_newRole"), "gRoleDialog()", "primary sm", "circle-plus");
+    inner = (g.roles || []).sort((x, y) => (x.order ?? 0) - (y.order ?? 0)).map((r, i, all) => lrow({ thumb: "", name: r.name,
         sub: `${esc(r.description || "")}${r.permissions?.length ? ` · ${r.permissions.length} ${t("g_perms")}` : ""}`,
-        acts: btn(t("edit"), `gRoleDialog('${esc(r.id)}')`, "sm") + (r.isManagementRole || r.defaultRole ? ""
+        acts: (r.isManagementRole || r.defaultRole ? "" : (i > 0 && !all[i - 1].isManagementRole ? `<button class="mini-btn" title="${t("g_up")}" onclick="gMoveRole('${esc(r.id)}',-1)">${icon("arrow-up")}</button>` : "")
+            + (i < all.length - 1 && !all[i + 1].defaultRole ? `<button class="mini-btn" title="${t("g_down")}" onclick="gMoveRole('${esc(r.id)}',1)">${icon("arrow-down")}</button>` : ""))
+          + btn(t("edit"), `gRoleDialog('${esc(r.id)}')`, "sm") + (r.isManagementRole || r.defaultRole ? ""
           : `<button class="mini-btn" title="${t("del")}" onclick="confirmBtn(this,()=>gDo('deleteGroupRole',{groupRoleId:'${esc(r.id)}'},'deleted',null,true))">${icon("trash-2")}</button>`) })
         .replace('<span class="lthumb" ></span>', "")).join("");
   } else if (a === "audit") {
-    const c = CACHE.g_audit, list = c?.data?.results;
-    inner = stateHtml(c && { ...c, data: list }) || list.map(l => `<div class="lrow"><div class="info"><div class="nm">${esc(l.description || l.eventType)}</div>
-      <div class="sub">${esc(l.actorDisplayName || "")} · ${fmtIso(l.created_at)} · ${esc(l.eventType)}</div></div></div>`).join("");
+    const c = CACHE.g_audit, list = c?.data?.results, types = got("g_auditTypes") || [];
+    const more = c?.data?.hasNext ?? list?.length === 50;
+    head = types.length ? `<select class="field sm" onchange="GX.auditType=this.value;GX.auditOff=0;buildGroup();gLoad(true)">
+        <option value="">${t("g_allTypes")}</option>${types.map(x => `<option value="${escA(x)}" ${GX.auditType === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>` : "";
+    inner = (stateHtml(c && { ...c, data: list }) || list.map(l => `<div class="lrow"><div class="info"><div class="nm">${esc(l.description || l.eventType)}</div>
+      <div class="sub">${esc(l.actorDisplayName || "")} · ${fmtIso(l.created_at)} · ${esc(l.eventType)}</div></div></div>`).join(""))
+      + (GX.auditOff || more ? `<div class="form-actions">${GX.auditOff ? btn("‹", "GX.auditOff-=50;gLoad(true)", "sm") : ""}${more ? btn("›", "GX.auditOff+=50;gLoad(true)", "sm") : ""}</div>` : "");
   } else if (a === "edit") {
-    inner = `${fRow(t("desc"), fArea("geDesc", g.description, 4))}
+    const ic = GX.newIcon?.url || g.iconUrl, bn = GX.newBanner?.url || g.bannerUrl;
+    inner = `${fRow(t("name"), fInput("geName", g.name))}
+      ${fRow(t("g_icon"), `<div class="g-imgpick"><div class="gicon" ${thumbAttr(ic)}></div>${btn(t("g_pickImage"), "gPickImage('icon')", "sm", "image")}</div>`, t("g_pickHint"))}
+      ${fRow(t("g_banner"), `<div class="g-imgpick"><div class="g-banner" ${thumbAttr(bn)}></div>${btn(t("g_pickImage"), "gPickImage('banner')", "sm", "image")}</div>`)}
+      ${fRow(t("desc"), fArea("geDesc", g.description, 4))}
       ${fRow(t("g_rules"), fArea("geRules", g.rules, 4))}
       ${fRow(t("g_links"), fArea("geLinks", (g.links || []).join("\n"), 3), "1 / line")}
       ${fRow(t("languages"), langPicker("geLangs", g.languages || [], 0))}
       ${fRow(t("g_joinState"), fSelect("geJoin", { open: t("g_js_open"), request: t("g_js_request"), invite: t("g_js_invite"), closed: t("g_js_closed") }, g.joinState))}
-      <div class="form-actions">${btn(t("save"), "gSaveEdit()", "primary", "save")}</div>`;
+      ${fRow(t("g_privacy"), fSelect("gePriv", { default: t("g_pv_default"), private: t("g_pv_private") }, g.privacy || "default"))}
+      <div class="form-actions">${btn(t("save"), "gSaveEdit()", "primary", "save")}</div>
+      ${g.ownerId && g.ownerId === AUTH.id ? `<div class="pcard-section g-danger"><div class="lbl">${t("g_danger")}</div>
+        ${fRow(t("g_delete"), fInput("geDelName", "", `placeholder="${escA(g.name || "")}"`), t("g_deleteHint"))}
+        <div class="form-actions"><button class="btn danger" onclick="gDeleteGroup()">${icon("trash-2")}${t("g_delete")}</button></div></div>` : ""}`;
   }
-  return `<div class="toolbar">${tabsHtml(tabs, a, "gAdminTab")}</div>${inner}`;
+  if (!a) return `<div class="empty-state" style="height:120px">${t("g_noAdmin")}</div>`;
+  const nav = allowed.map(([k, ic]) => `<button class="${k === a ? "on" : ""}" onclick="gAdminTab('${k}')">${icon(ic)}<span>${t(TITLE[k])}</span></button>`).join("");
+  return `<div class="gadm"><nav class="gadm-nav">${nav}</nav>
+    <div class="gadm-main"><div class="gadm-head"><h4>${t(TITLE[a])}</h4><span class="grow"></span>${head}</div>${inner}</div></div>`;
 }
 // Call an endpoint for the open group, then reload the affected parts (reloadGroup = reload all group data)
 async function gDo(op, params, okKey, cacheKey, reloadGroup) {
@@ -1246,7 +1289,8 @@ function gInviteDialog() {
   });
 }
 async function gSaveEdit() {
-  const body = { description: fv("geDesc"), rules: fv("geRules"), joinState: fv("geJoin"),
+  const body = { name: fv("geName") || groupOpen.name, description: fv("geDesc"), rules: fv("geRules"), joinState: fv("geJoin"), privacy: fv("gePriv"),
+    ...(GX.newIcon ? { iconId: GX.newIcon.id } : {}), ...(GX.newBanner ? { bannerId: GX.newBanner.id } : {}),
     links: fv("geLinks").split("\n").map(s => s.trim()).filter(Boolean), languages: fv("geLangs").split(/[,\s]+/).filter(Boolean) };
   await gDo("updateGroup", body, "saved", null, true);
 }
@@ -1266,13 +1310,30 @@ renderGroups = function () {
     $("gq").oninput = e => { if (!e.target.value.trim() && GRP.results) { GRP.results = null; renderView(); } };
   }
   $("gq").placeholder = t("g_searchPh");
-  $("gtabs").innerHTML = GRP.results ? "" : tabsHtml({ mine: t("gt_mine"), invited: t("gt_invited"), requested: t("gt_requested"),
+  $("gtabs").innerHTML = GRP.results ? "" : tabsHtml({ mine: t("gt_mine"), owned: t("gt_owned"), invited: t("gt_invited"), requested: t("gt_requested"),
     blocked: t("gt_blocked"), instances: t("gt_instances") }, GT.tab, "gtSet");
   const res = $("gres");
-  if (GRP.results || GT.tab === "mine") {
+  if (GRP.results || GT.tab === "mine" || GT.tab === "owned") {
     if (!GRP.mine && !GRP.loading) loadGroups();
-    const list = GRP.results ?? (GRP.mine || []).filter(g => !query || g.name?.toLowerCase().includes(query));
-    res.innerHTML = `<div class="sec-head">${t(GRP.results ? "g_results" : "g_mine")} <span class="n">${list.length}</span></div>`;
+    const owned = !GRP.results && GT.tab === "owned";
+    if (owned && !GRP.perms) gLoadPerms();
+    const match = g => !query || g.name?.toLowerCase().includes(query);
+    const list = GRP.results ?? (GRP.mine || []).filter(g => match(g) && (!owned || g.ownerId === AUTH.id));
+    res.innerHTML = `<div class="sec-head">${t(GRP.results ? "g_results" : owned ? "gt_owned" : "g_mine")} <span class="n">${list.length}</span>
+      ${owned ? `<span class="grow"></span>${btn(t("g_create"), "gCreateDialog()", "primary sm", "circle-plus")}` : ""}</div>`;
+    if (owned) {
+      const managed = (GRP.mine || []).filter(g => match(g) && g.ownerId !== AUTH.id && gCanManage(GRP.perms?.[g.id]));
+      if (GRP.loading) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("loading")}</div>`);
+      const grid = cls => { const d = document.createElement("div"); d.className = "wgrid" + (cls ? " " + cls : ""); return d; };
+      const a = grid(); list.forEach(g => a.appendChild(groupCard(g)));
+      if (list.length) res.appendChild(a);
+      else res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:100px">${t("noResults")}</div>`);
+      res.insertAdjacentHTML("beforeend", `<div class="sec-head" style="margin-top:18px">${t("g_canManage")} <span class="n">${GRP.perms ? managed.length : "…"}</span></div>`);
+      if (!GRP.perms) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:100px">${t("loading")}</div>`);
+      if (!managed.length) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:100px">${t("noResults")}</div>`);
+      const b = grid(); managed.forEach(g => b.appendChild(groupCard(g)));
+      return res.appendChild(b);
+    }
     if (GRP.loading) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("loading")}</div>`);
     if (!list.length) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("noResults")}</div>`);
     const grid = document.createElement("div");
@@ -3489,4 +3550,553 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .ld-path { word-break: break-all; }
 .ld-warn { color: var(--orange, #ff9f0a); }
 .ld-btns { display: flex; gap: 6px; flex-shrink: 0; }
+</style>`);
+
+Object.assign(UPD_I18N.ko, { a_vpBlocked: p => `이 아바타는 퍼포먼스 때문에 기본적으로 차단됩니다 (${p}). 대신 폴백 아바타가 표시됩니다.` });
+Object.assign(UPD_I18N.ru, { a_vpBlocked: p => `Этот аватар по умолчанию блокируется из-за производительности (${p}). Вместо него будет показан запасной.` });
+Object.assign(UPD_I18N.vi, { a_vpBlocked: p => `Avatar này sẽ bị chặn mặc định do hiệu năng (${p}). Avatar dự phòng của bạn sẽ được hiển thị thay thế.` });
+Object.assign(UPD_I18N.zh, { a_vpBlocked: p => `此模型因性能问题默认会被屏蔽 (${p})。将改为显示你的备用模型。` });
+document.head.insertAdjacentHTML("beforeend", `<style>
+.perf-warn { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; margin-bottom: 10px; border-radius: 10px;
+             background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--text); font-size: 13px; line-height: 1.4; }
+.perf-warn svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--red); margin-top: 1px; }
+</style>`);
+
+// ======================= Owned groups: create / delete, invite or ban anyone, roles order, images, new instance =======================
+tx({
+  gt_owned: ["ที่เป็นเจ้าของ", "Owned", "オーナー"], g_owner: ["เจ้าของ", "Owner", "オーナー"],
+  g_create: ["สร้างกลุ่ม", "Create group", "グループを作成"],
+  g_createHint: ["ต้องมี VRChat+ และ VRChat จำกัดจำนวนกลุ่มที่เป็นเจ้าของได้", "Needs VRChat+. VRChat limits how many groups you can own.", "VRChat+ が必要です。オーナーになれるグループ数には上限があります。"],
+  g_shortCode: ["ชื่อย่อ", "Short code", "ショートコード"], g_shortHint: ["3–6 ตัวอักษร A–Z / 0–9", "3–6 letters or digits", "英数字 3〜6 文字"],
+  g_created: ["สร้างกลุ่มแล้ว", "Group created", "グループを作成しました"],
+  g_privacy: ["การค้นหา", "Search", "検索"], g_pv_default: ["แสดงในผลการค้นหา", "Shown in search", "検索に表示"],
+  g_pv_private: ["ไม่แสดงในผลการค้นหา", "Hidden from search", "検索に表示しない"],
+  g_icon: ["ไอคอน", "Icon", "アイコン"], g_banner: ["แบนเนอร์", "Banner", "バナー"], g_pickImage: ["เลือกรูป", "Choose", "選択"],
+  g_pickHint: ["อัปโหลดรูปในหน้าคลังของก่อน (ไอคอน / รูปภาพ)", "Upload on the Inventory page first (Icons / Photos)", "先にインベントリ (アイコン / 写真) にアップロードしてください"],
+  g_inviteUser: ["เชิญผู้ใช้", "Invite a user", "ユーザーを招待"], g_banUser: ["แบนผู้ใช้", "Ban a user", "ユーザーを BAN"],
+  g_userPh: ["ชื่อผู้ใช้ หรือ usr_…", "Name or usr_…", "名前または usr_…"],
+  g_blockedReq: ["คำขอที่บล็อกไว้", "Blocked", "ブロック済み"], g_allRoles: ["ทุกบทบาท", "All roles", "すべてのロール"],
+  g_allTypes: ["ทุกประเภท", "All types", "すべての種類"], g_up: ["เลื่อนขึ้น", "Move up", "上へ"], g_down: ["เลื่อนลง", "Move down", "下へ"],
+  g_newInst: ["สร้างห้องกลุ่ม", "New group instance", "グループインスタンスを作成"], g_pickWorld: ["เลือกโลก", "Pick a world", "ワールドを選択"],
+  g_worldPh: ["wrld_… หรือลิงก์โลก", "wrld_… or a world link", "wrld_… またはワールドのリンク"], g_recentWorlds: ["โลกที่ไปล่าสุด", "Recent worlds", "最近のワールド"],
+  g_danger: ["โซนอันตราย", "Danger zone", "危険な操作"], g_delete: ["ลบกลุ่ม", "Delete group", "グループを削除"],
+  g_deleteHint: ["ลบถาวร ย้อนกลับไม่ได้ พิมพ์ชื่อกลุ่มให้ตรงเพื่อยืนยัน", "Permanent. Type the group name to confirm.", "元に戻せません。確認のためグループ名を入力してください。"],
+  g_deleteMismatch: ["ชื่อกลุ่มไม่ตรง", "The name doesn't match", "名前が一致しません"], g_deleted: ["ลบกลุ่มแล้ว", "Group deleted", "グループを削除しました"],
+});
+Object.assign(UPD_I18N.ko, { gt_owned: "소유", g_owner: "소유자", g_create: "그룹 만들기", g_createHint: "VRChat+가 필요합니다. 소유할 수 있는 그룹 수에는 제한이 있습니다.",
+  g_shortCode: "짧은 코드", g_shortHint: "영문/숫자 3–6자", g_created: "그룹을 만들었습니다", g_privacy: "검색", g_pv_default: "검색에 표시", g_pv_private: "검색에 표시 안 함",
+  g_icon: "아이콘", g_banner: "배너", g_pickImage: "선택", g_pickHint: "먼저 인벤토리(아이콘 / 사진)에 업로드하세요", g_inviteUser: "사용자 초대", g_banUser: "사용자 차단(밴)",
+  g_userPh: "이름 또는 usr_…", g_blockedReq: "차단됨", g_allRoles: "모든 역할", g_allTypes: "모든 유형", g_up: "위로", g_down: "아래로",
+  g_newInst: "그룹 인스턴스 만들기", g_pickWorld: "월드 선택", g_worldPh: "wrld_… 또는 월드 링크", g_recentWorlds: "최근 월드",
+  g_danger: "위험 구역", g_delete: "그룹 삭제", g_deleteHint: "되돌릴 수 없습니다. 확인을 위해 그룹 이름을 입력하세요.", g_deleteMismatch: "이름이 일치하지 않습니다", g_deleted: "그룹을 삭제했습니다" });
+Object.assign(UPD_I18N.ru, { gt_owned: "Мои (владелец)", g_owner: "Владелец", g_create: "Создать группу", g_createHint: "Нужен VRChat+. Число групп, которыми можно владеть, ограничено.",
+  g_shortCode: "Короткий код", g_shortHint: "3–6 букв или цифр", g_created: "Группа создана", g_privacy: "Поиск", g_pv_default: "Показывать в поиске", g_pv_private: "Скрыть из поиска",
+  g_icon: "Иконка", g_banner: "Баннер", g_pickImage: "Выбрать", g_pickHint: "Сначала загрузите в Инвентарь (Иконки / Фото)", g_inviteUser: "Пригласить пользователя", g_banUser: "Забанить пользователя",
+  g_userPh: "Имя или usr_…", g_blockedReq: "Заблокированные", g_allRoles: "Все роли", g_allTypes: "Все типы", g_up: "Выше", g_down: "Ниже",
+  g_newInst: "Новая инстанция группы", g_pickWorld: "Выберите мир", g_worldPh: "wrld_… или ссылка на мир", g_recentWorlds: "Недавние миры",
+  g_danger: "Опасная зона", g_delete: "Удалить группу", g_deleteHint: "Навсегда. Введите название группы для подтверждения.", g_deleteMismatch: "Название не совпадает", g_deleted: "Группа удалена" });
+Object.assign(UPD_I18N.vi, { gt_owned: "Sở hữu", g_owner: "Chủ sở hữu", g_create: "Tạo nhóm", g_createHint: "Cần VRChat+. VRChat giới hạn số nhóm bạn có thể sở hữu.",
+  g_shortCode: "Mã ngắn", g_shortHint: "3–6 chữ hoặc số", g_created: "Đã tạo nhóm", g_privacy: "Tìm kiếm", g_pv_default: "Hiện trong tìm kiếm", g_pv_private: "Ẩn khỏi tìm kiếm",
+  g_icon: "Biểu tượng", g_banner: "Ảnh bìa", g_pickImage: "Chọn", g_pickHint: "Tải lên ở trang Kho đồ trước (Biểu tượng / Ảnh)", g_inviteUser: "Mời người dùng", g_banUser: "Cấm người dùng",
+  g_userPh: "Tên hoặc usr_…", g_blockedReq: "Đã chặn", g_allRoles: "Mọi vai trò", g_allTypes: "Mọi loại", g_up: "Lên", g_down: "Xuống",
+  g_newInst: "Tạo phòng nhóm", g_pickWorld: "Chọn thế giới", g_worldPh: "wrld_… hoặc liên kết thế giới", g_recentWorlds: "Thế giới gần đây",
+  g_danger: "Vùng nguy hiểm", g_delete: "Xóa nhóm", g_deleteHint: "Vĩnh viễn. Nhập tên nhóm để xác nhận.", g_deleteMismatch: "Tên không khớp", g_deleted: "Đã xóa nhóm" });
+Object.assign(UPD_I18N.zh, { gt_owned: "我拥有的", g_owner: "所有者", g_create: "创建群组", g_createHint: "需要 VRChat+。可拥有的群组数量有上限。",
+  g_shortCode: "短代码", g_shortHint: "3–6 个字母或数字", g_created: "已创建群组", g_privacy: "搜索", g_pv_default: "在搜索中显示", g_pv_private: "不在搜索中显示",
+  g_icon: "图标", g_banner: "横幅", g_pickImage: "选择", g_pickHint: "请先在物品栏（图标 / 照片）上传", g_inviteUser: "邀请用户", g_banUser: "封禁用户",
+  g_userPh: "名称或 usr_…", g_blockedReq: "已屏蔽", g_allRoles: "所有角色", g_allTypes: "所有类型", g_up: "上移", g_down: "下移",
+  g_newInst: "创建群组房间", g_pickWorld: "选择世界", g_worldPh: "wrld_… 或世界链接", g_recentWorlds: "最近的世界",
+  g_danger: "危险操作", g_delete: "删除群组", g_deleteHint: "永久删除，无法恢复。请输入群组名称以确认。", g_deleteMismatch: "名称不一致", g_deleted: "已删除群组" });
+
+function gReqTab(v) { GX.reqBlocked = v === "blocked"; delete CACHE.g_req; buildGroup(); gLoad(true); }
+
+// Search any VRChat user (or paste usr_…) to invite or ban
+function gUserPicker(mode) {
+  let q = "", res = null, busy = false;
+  const run = async () => {
+    q = fv("gupq") || "";
+    if (!q) return;
+    const id = q.match(/usr_[\w-]+/)?.[0];
+    if (id) { res = [{ id, displayName: id }]; return buildX(); }
+    busy = true; buildX();
+    const r = await vrc("searchUsers", { search: q, n: 20 });
+    busy = false;
+    res = r.ok || [];
+    if (r.error) apiError(r);
+    buildX();
+  };
+  window._gupRun = run;
+  openX(t(mode === "ban" ? "g_banUser" : "g_inviteUser"), () => `<input class="field" id="gupq" placeholder="${t("g_userPh")}" value="${escA(q)}" style="margin-bottom:10px">
+    ${busy ? `<div class="empty-state" style="height:80px">${t("loading")}</div>` : !res ? "" : !res.length ? `<div class="empty-state" style="height:80px">${t("noResults")}</div>`
+      : res.map(u => lrow({ uid: u.id, name: u.displayName, sub: "", acts: mode === "ban"
+        ? `<button class="btn sm danger" onclick="confirmBtn(this,()=>gDo('banGroupMember',{userId:'${esc(u.id)}'},'done','g_bans'))">${icon("ban")}${t("g_ban")}</button>`
+        : btn(t("inv_send"), `gDo('createGroupInvite',{userId:'${esc(u.id)}'},'g_invited','g_inv')`, "primary sm", "send") })).join("")}`,
+  () => { const i = $("gupq"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); i.onkeydown = e => { if (e.key === "Enter") _gupRun(); }; });
+}
+
+// Swap a role with its neighbour (VRChat orders roles by "order")
+async function gMoveRole(rid, dir) {
+  const roles = [...(groupOpen.roles || [])].sort((x, y) => (x.order ?? 0) - (y.order ?? 0));
+  const i = roles.findIndex(r => r.id === rid), j = i + dir;
+  if (i < 0 || !roles[j]) return;
+  const a = roles[i], b = roles[j];
+  const oa = a.order ?? i, ob = b.order ?? j;
+  if ((await vrcDo("updateGroupRole", { groupId: groupOpen.id, groupRoleId: a.id, order: ob === oa ? ob + dir : ob })) === undefined) return;
+  if ((await vrcDo("updateGroupRole", { groupId: groupOpen.id, groupRoleId: b.id, order: oa }, "saved")) === undefined) return;
+  openGroupKeepTab();
+}
+
+// Icon from the Icons inventory, banner from Photos — saved with the rest of the edit form
+async function gPickImage(kind) {
+  const tab = kind === "icon" ? "icon" : "gallery";
+  if (!INV.data[tab]) await loadInv(tab);
+  openX(t(kind === "icon" ? "g_icon" : "g_banner"), () => `<div class="igrid ${kind === "icon" ? "" : "photos"}">${(INV.data[tab] || []).map(f =>
+    `<div class="itile" onclick="gSetImage('${kind}','${esc(f.id)}','${escA(f.url)}')"><div class="iimg" ${thumbAttr(f.url)}></div></div>`).join("")
+    || `<div class="empty-state" style="height:100px">${t("g_pickHint")}</div>`}</div>`, null, true);
+}
+function gSetImage(kind, id, url) {
+  // Keep what's typed in the edit form across the re-render
+  const keep = ["geName", "geDesc", "geRules", "geLinks", "geJoin", "gePriv"].map(k => [k, $(k)?.value]);
+  GX[kind === "icon" ? "newIcon" : "newBanner"] = { id, url };
+  closeX(); buildGroup();
+  for (const [k, v] of keep) if ($(k) && v != null) $(k).value = v;
+}
+
+async function gDeleteGroup() {
+  if (fv("geDelName") !== groupOpen.name) return toast(t("g_deleteMismatch"));
+  if ((await vrcDo("deleteGroup", { groupId: groupOpen.id }, "g_deleted")) === undefined) return;
+  closeProfile();
+  GRP.mine = null;
+  loadGroups(true);
+}
+
+function gCreateDialog() {
+  openX(t("g_create"), () => `<div class="pcard-note" style="margin:0 0 10px">${t("g_createHint")}</div>
+    ${fRow(t("name"), fInput("gcName"))}
+    ${fRow(t("g_shortCode"), fInput("gcCode", "", `maxlength="6" style="text-transform:uppercase"`), t("g_shortHint"))}
+    ${fRow(t("desc"), fArea("gcDesc", "", 3))}
+    ${fRow(t("g_joinState"), fSelect("gcJoin", { open: t("g_js_open"), request: t("g_js_request"), invite: t("g_js_invite"), closed: t("g_js_closed") }, "request"))}
+    ${fRow(t("g_privacy"), fSelect("gcPriv", { default: t("g_pv_default"), private: t("g_pv_private") }, "default"))}
+    <div class="form-actions">${btn(t("create"), "gCreate()", "primary", "circle-plus")}</div>`);
+}
+async function gCreate() {
+  const name = fv("gcName"), shortCode = (fv("gcCode") || "").toUpperCase();
+  if (!name || !/^[A-Z0-9]{3,6}$/.test(shortCode)) return toast(t("g_shortHint"));
+  const r = await vrcDo("createGroup", { name, shortCode, description: fv("gcDesc"), joinState: fv("gcJoin"), privacy: fv("gcPriv"), roleTemplate: "default" }, "g_created");
+  if (!r) return;
+  closeX();
+  GRP.mine = null;
+  loadGroups(true);
+  if (r.id) openGroup(r);
+}
+
+// Pick a world (recent ones or a pasted ID / link), then reuse the instance dialog preset to this group
+async function gNewInstance() {
+  const gid = groupOpen.id;
+  const hist = await api("history") || [];
+  const seen = new Set(), recent = [];
+  for (const v of hist) {
+    const wid = (v.loc || "").split(":")[0];
+    if (wid.startsWith("wrld_") && !seen.has(wid)) { seen.add(wid); recent.push({ wid, name: v.name }); }
+    if (recent.length >= 12) break;
+  }
+  openX(t("g_pickWorld"), () => `<div class="toolbar"><input class="field grow" id="gnwq" placeholder="${t("g_worldPh")}">${btn("›", "gNewInstanceGo(fv('gnwq'))", "primary sm")}</div>
+    ${recent.length ? `<div class="pcard-section"><div class="lbl">${t("g_recentWorlds")}</div>${recent.map(w =>
+      lrow({ thumb: "", name: w.name, sub: "", onclick: `gNewInstanceGo('${esc(w.wid)}')` }).replace('<span class="lthumb" ></span>', "")).join("")}</div>` : ""}`,
+  () => { $("gnwq").onkeydown = e => { if (e.key === "Enter") gNewInstanceGo($("gnwq").value); }; });
+  window._gniGroup = gid;
+}
+async function gNewInstanceGo(text) {
+  const wid = (text || "").match(/wrld_[\w-]+/)?.[0];
+  if (!wid) return toast(t("g_worldPh"));
+  const gid = window._gniGroup;
+  if (!GRP.mine) await loadGroups();
+  closeX();
+  createInstanceDialog(wid);
+  const set = () => { if (!$("ciType")) return; $("ciType").value = "group"; $("ciGrp").value = gid; $("ciType").onchange(); };
+  set();
+  const _after = X.after;
+  X.after = () => { _after?.(); set(); };
+}
+
+document.head.insertAdjacentHTML("beforeend", `<style>
+.g-imgpick { display: flex; align-items: center; gap: 10px; }
+.g-imgpick .gicon { position: static; width: 48px; height: 48px; margin: 0; border-width: 0; }
+.g-banner { width: 160px; height: 54px; border-radius: 8px; background: var(--track) center / cover no-repeat; }
+.g-danger { margin-top: 18px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--red) 35%, transparent); }
+.g-danger .lbl { color: var(--red); }
+.badge.owner { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+               background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
+.badge.owner svg { width: 12px; height: 12px; }
+</style>`);
+
+// ---------- Groups you can manage (one request: permissions for every group) ----------
+tx({
+  g_canManage: ["กลุ่มที่จัดการได้", "Groups you can manage", "管理できるグループ"], g_manager: ["ผู้จัดการ", "Manager", "管理者"],
+  g_repShort: ["แสดงบนโปรไฟล์", "Representing", "代表中"], g_reqPending: ["รออนุมัติ", "Pending", "保留中"],
+});
+Object.assign(UPD_I18N.ko, { g_canManage: "관리할 수 있는 그룹", g_manager: "관리자", g_repShort: "대표 그룹", g_reqPending: "대기 중" });
+Object.assign(UPD_I18N.ru, { g_canManage: "Группы, которыми вы управляете", g_manager: "Управляющий", g_repShort: "Представляю", g_reqPending: "Ожидают" });
+Object.assign(UPD_I18N.vi, { g_canManage: "Nhóm bạn có thể quản lý", g_manager: "Quản lý", g_repShort: "Đang đại diện", g_reqPending: "Đang chờ" });
+Object.assign(UPD_I18N.zh, { g_canManage: "可管理的群组", g_manager: "管理员", g_repShort: "代表中", g_reqPending: "待处理" });
+const permName = p => typeof p === "string" ? p : p?.name || "";
+// Same rule as the group card's "Manage" tab: any management-type permission counts
+const gCanManage = perms => (perms || []).map(permName).some(p => p === "*" || G_MANAGE_PERMS.includes(p));
+async function gLoadPerms() {
+  if (GRP.permsLoading) return;
+  GRP.permsLoading = true;
+  const r = await vrc("getMyGroupPermissions");
+  GRP.permsLoading = false;
+  GRP.perms = r.ok && typeof r.ok === "object" ? r.ok : {};
+  if (r.error) apiError(r);
+  if (view === "groups") renderView();
+}
+const _loadGroupsP = loadGroups;
+loadGroups = async function (force) { if (force) GRP.perms = null; return _loadGroupsP(force); };
+document.head.insertAdjacentHTML("beforeend", `<style>
+.gpill { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 13px; border-radius: 99px; white-space: nowrap;
+         font: 600 12.5px var(--font); background: var(--track); color: var(--text2); }
+.gpill svg { width: 14px; height: 14px; flex-shrink: 0; }
+.gpill.member { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.gpill.owner { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
+.gpill.admin { background: color-mix(in srgb, var(--indigo, #5e5ce6) 16%, transparent); color: var(--indigo, #5e5ce6); }
+.gpill.rep { background: color-mix(in srgb, var(--yellow) 22%, transparent); color: color-mix(in srgb, var(--yellow) 70%, var(--text)); }
+.pact .btn.icon-only { width: 30px; height: 30px; padding: 0; justify-content: center; }
+</style>`);
+document.head.insertAdjacentHTML("beforeend", `<style>
+.badge.owner.admin { background: color-mix(in srgb, var(--indigo) 16%, transparent); color: var(--indigo); }
+.gcard .badge.owner { margin: 0 0 0 2px; padding: 2px 6px; vertical-align: 1px; }
+</style>`);
+
+document.head.insertAdjacentHTML("beforeend", `<style>
+.gadm { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 18px; margin-top: 12px; text-align: left; }
+.gadm-nav { display: flex; flex-direction: column; gap: 2px; padding-right: 14px; border-right: 1px solid var(--sep, rgba(128,128,128,.18)); }
+.gadm-nav button { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border: none; border-radius: 9px; background: none;
+                   color: var(--text); font: 500 13px var(--font); text-align: left; cursor: pointer; }
+.gadm-nav button:hover { background: var(--track); }
+.gadm-nav button.on { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); font-weight: 600; }
+.gadm-nav svg { width: 16px; height: 16px; flex-shrink: 0; }
+.gadm-head { display: flex; align-items: center; gap: 8px; min-height: 32px; margin-bottom: 10px; flex-wrap: wrap; }
+.gadm-head h4 { margin: 0; font-size: 15px; font-weight: 700; }
+.gadm-head .field.sm { width: auto; padding: 5px 10px; font-size: 12px; }
+.segmented.sm button { padding: 4px 12px; font-size: 12px; }
+@media (max-width: 720px) {
+  .gadm { grid-template-columns: 1fr; gap: 10px; }
+  .gadm-nav { flex-direction: row; overflow-x: auto; padding: 0 0 8px; border-right: none; border-bottom: 1px solid var(--sep, rgba(128,128,128,.18)); }
+  .gadm-nav button { white-space: nowrap; }
+}
+</style>`);
+
+// ======================= Image cropper: Photos / Icons upload, group banner guide =======================
+// VRChat: file < 10 MB, at least 64×64, anything above 2048 px gets scaled — we export within those limits
+tx({
+  cr_title: ["ครอปและอัปโหลด", "Crop & upload", "切り抜いてアップロード"], cr_original: ["ต้นฉบับ", "Original", "元の比率"],
+  cr_banner: ["ปกกลุ่ม 16:9", "Group banner 16:9", "グループバナー 16:9"], cr_square: ["จัตุรัส 1:1", "Square 1:1", "正方形 1:1"],
+  cr_zoom: ["ซูม", "Zoom", "ズーム"], cr_guide: ["เส้นแนว", "Guide", "ガイド"], cr_reset: ["รีเซ็ต", "Reset", "リセット"],
+  cr_hint: ["ลากเพื่อเลื่อน · ล้อเมาส์เพื่อซูม", "Drag to move · scroll to zoom", "ドラッグで移動・ホイールでズーム"],
+  cr_preview: ["ตัวอย่าง", "Preview", "プレビュー"], cr_out: [(w, h) => `จะอัปโหลดขนาด ${w}×${h}`, (w, h) => `Uploads at ${w}×${h}`, (w, h) => `${w}×${h} でアップロード`],
+  cr_nameplate: ["ป้ายชื่อ (แบบสั้น) · แสดงเสมอ", "Nameplate (short) · always shown", "ネームプレート(ショート)・常に表示"],
+  cr_expanded: ["ป้ายชื่อ (แบบขยาย/ชื่อยาว) · แสดงเสมอ", "Nameplate (expanded / long name) · always shown", "ネームプレート(展開/長い名前)・常に表示"],
+  cr_sometimes: ["แบนเนอร์กลุ่ม", "Group banner", "グループバナー"], cr_never: ["ไม่แสดง", "Never shown", "表示されない"],
+  cr_full: ["ทั้งภาพ", "Full image", "全体"], cr_iconLarge: ["โปรไฟล์", "Profile", "プロフィール"], cr_iconSmall: ["รายชื่อ", "List", "リスト"],
+  cr_tooBig: ["ไฟล์ต้องเล็กกว่า 10 MB", "The file must be under 10 MB", "10 MB 未満のファイルにしてください"],
+  cr_tooSmall: ["รูปต้องใหญ่กว่า 64×64 พิกเซล", "The image must be larger than 64×64 pixels", "64×64 ピクセルより大きい画像にしてください"],
+  cr_cropSmall: ["ส่วนที่ครอปเล็กกว่า 64×64 — ซูมออกหน่อย", "The crop is under 64×64 — zoom out a bit", "切り抜きが 64×64 未満です — 少しズームアウトしてください"],
+  cr_uploadNew: ["อัปโหลดใหม่", "Upload new", "新しくアップロード"], cr_plate: ["ป้ายชื่อ", "Nameplate", "ネームプレート"],
+  cr_long: ["แบบยาว", "Long", "ロング"], cr_short: ["แบบสั้น", "Short", "ショート"],
+  cr_compact: ["แบนเนอร์กลุ่ม(Compact)", "Group banner (Compact)", "グループバナー(Compact)"],
+});
+Object.assign(UPD_I18N.ko, { cr_compact: "그룹 배너(Compact)", cr_long: "긴", cr_short: "짧은", cr_plate: "이름표", cr_title: "자르고 업로드", cr_original: "원본", cr_banner: "그룹 배너 16:9", cr_square: "정사각형 1:1", cr_zoom: "확대", cr_guide: "가이드",
+  cr_reset: "초기화", cr_hint: "드래그로 이동 · 휠로 확대", cr_preview: "미리보기", cr_out: (w, h) => `${w}×${h}로 업로드`, cr_nameplate: "이름표(짧은) · 항상 표시",
+  cr_expanded: "이름표(확장/긴 이름) · 항상 표시", cr_sometimes: "그룹 배너", cr_never: "표시 안 됨", cr_full: "전체 이미지", cr_iconLarge: "프로필", cr_iconSmall: "목록",
+  cr_tooBig: "10 MB 미만 파일이어야 합니다", cr_tooSmall: "64×64 픽셀보다 커야 합니다", cr_cropSmall: "잘린 영역이 64×64 미만입니다 — 조금 축소하세요", cr_uploadNew: "새로 업로드" });
+Object.assign(UPD_I18N.ru, { cr_compact: "Баннер группы (Compact)", cr_long: "длинная", cr_short: "короткая", cr_plate: "Табличка", cr_title: "Обрезать и загрузить", cr_original: "Оригинал", cr_banner: "Баннер группы 16:9", cr_square: "Квадрат 1:1", cr_zoom: "Масштаб",
+  cr_guide: "Разметка", cr_reset: "Сброс", cr_hint: "Перетаскивайте · колесо — масштаб", cr_preview: "Предпросмотр", cr_out: (w, h) => `Загрузится как ${w}×${h}`,
+  cr_nameplate: "Табличка (короткая) · видно всегда", cr_expanded: "Табличка (развёрнутая / длинное имя) · видно всегда", cr_sometimes: "Баннер группы", cr_never: "Не видно", cr_full: "Целиком",
+  cr_iconLarge: "Профиль", cr_iconSmall: "Список", cr_tooBig: "Файл должен быть меньше 10 МБ", cr_tooSmall: "Изображение должно быть больше 64×64",
+  cr_cropSmall: "Область меньше 64×64 — уменьшите масштаб", cr_uploadNew: "Загрузить новое" });
+Object.assign(UPD_I18N.vi, { cr_compact: "Ảnh bìa nhóm (Compact)", cr_long: "dài", cr_short: "ngắn", cr_plate: "Bảng tên", cr_title: "Cắt và tải lên", cr_original: "Gốc", cr_banner: "Ảnh bìa nhóm 16:9", cr_square: "Vuông 1:1", cr_zoom: "Thu phóng",
+  cr_guide: "Đường gióng", cr_reset: "Đặt lại", cr_hint: "Kéo để di chuyển · cuộn để phóng to", cr_preview: "Xem trước", cr_out: (w, h) => `Tải lên ở ${w}×${h}`,
+  cr_nameplate: "Bảng tên (ngắn) · luôn hiện", cr_expanded: "Bảng tên (mở rộng / tên dài) · luôn hiện", cr_sometimes: "Ảnh bìa nhóm", cr_never: "Không hiện", cr_full: "Toàn ảnh",
+  cr_iconLarge: "Hồ sơ", cr_iconSmall: "Danh sách", cr_tooBig: "Tệp phải nhỏ hơn 10 MB", cr_tooSmall: "Ảnh phải lớn hơn 64×64 pixel",
+  cr_cropSmall: "Vùng cắt nhỏ hơn 64×64 — hãy thu nhỏ", cr_uploadNew: "Tải lên mới" });
+Object.assign(UPD_I18N.zh, { cr_compact: "群组横幅（Compact）", cr_long: "长", cr_short: "短", cr_plate: "名牌", cr_title: "裁剪并上传", cr_original: "原始比例", cr_banner: "群组横幅 16:9", cr_square: "正方形 1:1", cr_zoom: "缩放", cr_guide: "参考线",
+  cr_reset: "重置", cr_hint: "拖动移动 · 滚轮缩放", cr_preview: "预览", cr_out: (w, h) => `将以 ${w}×${h} 上传`, cr_nameplate: "名牌（短）· 始终显示",
+  cr_expanded: "名牌（展开/长名称）· 始终显示", cr_sometimes: "群组横幅", cr_never: "不显示", cr_full: "完整图片", cr_iconLarge: "个人资料", cr_iconSmall: "列表",
+  cr_tooBig: "文件必须小于 10 MB", cr_tooSmall: "图片必须大于 64×64 像素", cr_cropSmall: "裁剪区域小于 64×64 —— 请缩小一些", cr_uploadNew: "上传新图片" });
+
+// Group banner guide in 2000×1125 template coordinates
+const BANNER_W = 2000, BANNER_H = 1125;
+const BANNER = {
+  compact: [8, 165, 1992, 1125, 80, 0],     // x0, y0, x1, y1, top radius, bottom radius
+  group: [0, 336, 2000, 762, 20, 20],       // what the in-game group page shows (measured from a screenshot)
+  long: [8, 322, 1992, 1035, 230, 250],
+  short: [333, 326, 1662, 1000, 200, 0],
+  plate: { long: [4, 540, 1996, 1032, 252, 794], short: [322, 542, 1672, 1006, 557, 771] },  // pill + avatar centre (r 195)
+};
+function rrPath(p, [x0, y0, x1, y1, rt, rb]) {
+  p.moveTo(x0 + rt, y0); p.arcTo(x1, y0, x1, y1, rt); p.arcTo(x1, y1, x0, y1, rb);
+  p.arcTo(x0, y1, x0, y0, rb); p.arcTo(x0, y0, x1, y0, rt); p.closePath();
+}
+// Mock nameplate: dark pill, avatar circle and the player's name
+function drawPlate(g, kind, alpha = 1) {
+  const [x0, y0, x1, y1, ax, ay] = BANNER.plate[kind], r = (y1 - y0) / 2;
+  g.save(); g.globalAlpha = alpha;
+  g.beginPath(); rrPath(g, [x0, y0, x1, y1, r, r]);
+  g.fillStyle = kind === "long" ? "#2e2e2e" : "#000"; g.fill(); g.lineWidth = 10; g.strokeStyle = "#1c1c1c"; g.stroke();
+  g.beginPath(); g.arc(ax, ay, 195, 0, Math.PI * 2); g.fillStyle = "#4a4a4a"; g.fill();
+  g.fillStyle = "#fff"; g.font = "600 120px " + getComputedStyle(document.body).fontFamily; g.textBaseline = "middle";
+  const tx = ax + 250, maxW = x1 - r * 0.6 - tx;
+  g.fillText(AUTH.name || "Player Name", tx, ay + 6, maxW);
+  g.restore();
+}
+const CROP_MODES = { original: null, banner: 16 / 9, square: 1 };
+let CROP = null;
+
+const MAX_UPLOAD = 10 * 1024 * 1024;
+function cropLoad(file) {
+  if (file.size >= MAX_UPLOAD) { toast(t("cr_tooBig")); return null; }
+  return new Promise(ok => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = URL.createObjectURL(file); })
+    .then(img => {
+      if (!img) { toast(t("errGeneric")); return null; }
+      if (img.naturalWidth <= 64 || img.naturalHeight <= 64) { toast(t("cr_tooSmall")); return null; }
+      return img;
+    });
+}
+// tag: "gallery" | "icon". mode: original / banner / square. done(file) runs after a successful upload
+async function openCropper(file, tag, mode, done) {
+  const img = await cropLoad(file);
+  if (!img) return;
+  CROP = { img, tag, mode: tag === "icon" ? "square" : mode || "original", guide: true, plate: "long", done, busy: false };
+  cropReset();
+  openX(t("cr_title"), cropHtml, cropWire, true);
+}
+const cropAspect = () => CROP_MODES[CROP.mode] ?? CROP.img.naturalWidth / CROP.img.naturalHeight;
+// Largest crop of the chosen aspect that fits the image (zoom 1)
+function cropBase() {
+  const W = CROP.img.naturalWidth, H = CROP.img.naturalHeight, a = cropAspect();
+  return W / H > a ? [H * a, H] : [W, W / a];
+}
+// Free pan and zoom: the crop may go past the image edges (that part stays transparent)
+const ZOOM_MIN = 0.05, ZOOM_MAX = 20;
+function cropRect() {
+  const [bw, bh] = cropBase(), w = bw / CROP.zoom, h = bh / CROP.zoom;
+  return [CROP.cx - w / 2, CROP.cy - h / 2, w, h];
+}
+// Draw the crop into a dw×dh area of a 2D context (works when the crop extends past the image)
+function cropPaint(g, dw, dh) {
+  const [x, y, w, h] = cropRect(), kx = dw / w, ky = dh / h;
+  g.imageSmoothingQuality = "high";
+  g.drawImage(CROP.img, -x * kx, -y * ky, CROP.img.naturalWidth * kx, CROP.img.naturalHeight * ky);
+}
+function cropReset() { CROP.zoom = 1; CROP.cx = CROP.img.naturalWidth / 2; CROP.cy = CROP.img.naturalHeight / 2; }
+// Output size: banner 2000×1125 at most, everything else ≤ 2048 on the long side, never upscaled
+function cropOutSize() {
+  const [, , w, h] = cropRect();
+  const cap = CROP.mode === "banner" ? BANNER_W / w : 2048 / Math.max(w, h);
+  const s = Math.min(1, cap);
+  return [Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s))];
+}
+function cropHtml() {
+  const modes = CROP.tag === "icon" ? "" : `<div class="segmented sm">${Object.keys(CROP_MODES).map(m =>
+    `<button class="${CROP.mode === m ? "on" : ""}" onclick="cropMode('${m}')">${t("cr_" + m)}</button>`).join("")}</div>`;
+  const legend = CROP.mode === "banner" && CROP.guide ? `<div class="cr-legend">
+      <span><i style="background:#3f8f4a"></i>${t("cr_nameplate")}</span><span><i style="background:#8a7a3d"></i>${t("cr_expanded")}</span>
+      <span><i style="background:#3a4252"></i>${t("cr_sometimes")}</span><span><i style="background:#8f74c9"></i>${t("cr_compact")}</span>
+      <span><i style="background:#111"></i>${t("cr_never")}</span></div>` : "";
+  const prev = CROP.tag === "icon"
+    ? `<div class="cr-pv"><canvas id="crPvBig" class="round" width="192" height="192" style="width:96px;height:96px"></canvas><small>${t("cr_iconLarge")}</small></div>
+       <div class="cr-pv"><canvas id="crPvSmall" class="round" width="80" height="80" style="width:40px;height:40px"></canvas><small>${t("cr_iconSmall")}</small></div>`
+    : CROP.mode === "banner"
+      // Same scale for all three: widths are shares of the 2000-wide banner, canvases keep each zone's real aspect
+      ? Object.entries(BANNER_PV).map(([k, [x0, y0, x1, y1]]) => `<div class="cr-pv wide"><canvas id="crPv_${k}" width="${(x1 - x0) / 2}" height="${(y1 - y0) / 2}"
+          style="width:${((x1 - x0) / BANNER_W * 100).toFixed(1)}%"></canvas><small>${BANNER_PV_LABEL[k]()}</small></div>`).join("")
+      : `<div class="cr-pv wide"><canvas id="crPvFull" ${cropPvSize(cropAspect())}></canvas><small>${t("cr_full")}</small></div>`;
+  return `<div class="cr-top">${modes}<span class="grow"></span>
+      ${CROP.mode === "banner" && CROP.guide ? `<div class="segmented sm">${["long", "short"].map(k =>
+        `<button class="${CROP.plate === k ? "on" : ""}" onclick="CROP.plate='${k}';cropDraw();this.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===this))">${t("cr_plate")}: ${t(k === "long" ? "cr_long" : "cr_short")}</button>`).join("")}</div>` : ""}
+      ${CROP.mode === "banner" ? `<label class="cr-chk"><input type="checkbox" ${CROP.guide ? "checked" : ""} onchange="CROP.guide=this.checked;buildX()">${t("cr_guide")}</label>` : ""}
+      ${btn(t("cr_reset"), "cropReset();cropDraw()", "sm", "rotate-ccw")}</div>
+    <div class="cr-body">
+      <div class="cr-stage-wrap"><canvas id="crStage"></canvas><div class="cr-hint">${t("cr_hint")}</div>${legend}</div>
+      <div class="cr-side"><div class="lbl">${t("cr_preview")}</div>${prev}</div>
+    </div>
+    <div class="cr-bottom">${icon("zoom-out")}<input type="range" id="crZoom" min="${Math.log2(ZOOM_MIN).toFixed(2)}" max="${Math.log2(ZOOM_MAX).toFixed(2)}" step="0.01" value="${Math.log2(CROP.zoom)}">${icon("zoom-in")}
+      <span class="cr-out" id="crOut"></span>
+      ${btn(t(CROP.busy ? "uploading" : "upload"), "cropUpload()", "primary", "upload")}</div>`;
+}
+// Preview canvas for the whole crop: fits 440×330 at the crop's own aspect (no stretching)
+function cropPvSize(a) {
+  const w = Math.round(Math.min(440, 330 * a)), h = Math.round(w / a);
+  return `width="${w}" height="${h}" style="width:${Math.round(w / 2)}px;max-width:100%"`;
+}
+function cropMode(m) { CROP.mode = m; cropReset(); buildX(); }
+function cropWire() {
+  const c = $("crStage");
+  if (!c) return;
+  // Stage size: fit 600×400 keeping the crop's aspect
+  const a = cropAspect(), maxW = Math.min(600, document.querySelector(".cr-stage-wrap").clientWidth || 600), maxH = 400;
+  const w = Math.min(maxW, maxH * a), h = w / a, dpr = window.devicePixelRatio || 1;
+  c.style.width = w + "px"; c.style.height = h + "px"; c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  let drag = null;
+  c.onpointerdown = e => { drag = { x: e.clientX, y: e.clientY }; c.setPointerCapture(e.pointerId); c.classList.add("grab"); };
+  c.onpointermove = e => {
+    if (!drag) return;
+    const [, , cw] = cropRect(), k = cw / c.clientWidth;
+    CROP.cx -= (e.clientX - drag.x) * k; CROP.cy -= (e.clientY - drag.y) * k;
+    drag = { x: e.clientX, y: e.clientY };
+    cropDraw();
+  };
+  c.onpointerup = c.onpointercancel = () => { drag = null; c.classList.remove("grab"); };
+  c.onwheel = e => {  // Zoom toward the cursor
+    e.preventDefault();
+    const r = c.getBoundingClientRect(), mx = (e.clientX - r.left) / r.width, my = (e.clientY - r.top) / r.height;
+    const [x0, y0, cw, ch] = cropRect(), px = x0 + mx * cw, py = y0 + my * ch;
+    CROP.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, CROP.zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
+    const [bw, bh] = cropBase();
+    CROP.cx = px - (mx - .5) * bw / CROP.zoom; CROP.cy = py - (my - .5) * bh / CROP.zoom;
+    cropDraw();
+  };
+  $("crZoom").oninput = e => { CROP.zoom = 2 ** +e.target.value; cropDraw(); };  // log scale: same feel at any zoom
+  cropDraw();
+}
+function cropDraw() {
+  const c = $("crStage");
+  if (!c || !CROP) return;
+  const [x, y, w, h] = cropRect(), g = c.getContext("2d");
+  g.imageSmoothingQuality = "high";
+  g.clearRect(0, 0, c.width, c.height);
+  cropPaint(g, c.width, c.height);
+  if (CROP.mode === "banner" && CROP.guide) cropGuide(g, c.width / BANNER_W);
+  if (CROP.tag === "icon") {  // Dim outside the circle
+    g.save(); g.fillStyle = "rgba(0,0,0,.45)"; g.beginPath(); g.rect(0, 0, c.width, c.height);
+    g.arc(c.width / 2, c.height / 2, c.width / 2, 0, Math.PI * 2, true); g.fill("evenodd"); g.restore();
+  }
+  if ($("crZoom")) $("crZoom").value = Math.log2(CROP.zoom);
+  const [ow, oh] = cropOutSize();
+  $("crOut").textContent = t("cr_out", ow, oh) + (Math.min(w, h) < 64 ? " · " + t("cr_cropSmall") : "");
+  $("crOut").classList.toggle("warn", Math.min(w, h) < 64);
+  // Previews
+  const pv = (id, sx, sy, sw, sh, clip) => {
+    const p = $(id);
+    if (!p) return;
+    const q = p.getContext("2d");
+    q.clearRect(0, 0, p.width, p.height);
+    q.save();
+    if (clip) { q.beginPath(); clip(q, p.width / sw); q.clip(); }
+    q.setTransform(p.width / sw, 0, 0, p.height / sh, -sx * p.width / sw, -sy * p.height / sh);
+    cropPaint(q, 1, 1);
+    q.setTransform(1, 0, 0, 1, 0, 0);
+    q.restore();
+  };
+  if (CROP.tag === "icon") { pv("crPvBig", 0, 0, 1, 1); pv("crPvSmall", 0, 0, 1, 1); return; }
+  pv("crPvFull", 0, 0, 1, 1);
+  if (CROP.mode !== "banner") return;
+  for (const [k, [rx0, ry0]] of Object.entries(BANNER_PV)) {
+    const p = $("crPv_" + k);
+    if (!p) continue;
+    const q = p.getContext("2d");
+    q.setTransform(1, 0, 0, 1, 0, 0); q.clearRect(0, 0, p.width, p.height);
+    q.setTransform(0.5, 0, 0, 0.5, -rx0 * 0.5, -ry0 * 0.5);   // template units → canvas
+    q.save(); q.beginPath(); rrPath(q, BANNER[k]); q.clip();
+    q.imageSmoothingQuality = "high";
+    cropPaint(q, BANNER_W, BANNER_H);
+    q.restore();
+    if (k === "long" || k === "short") drawPlate(q, k);
+  }
+}
+const BANNER_PV = { long: [0, 300, 2000, 1050], short: [310, 300, 1690, 1030], group: [0, 336, 2000, 762], compact: [0, 150, 2000, 1125] };
+const BANNER_PV_LABEL = { long: () => t("cr_expanded"), short: () => t("cr_nameplate"), group: () => t("cr_sometimes"), compact: () => t("cr_compact") };
+// Draw the template zones over the stage (k = canvas px per template unit)
+function cropGuide(g, k) {
+  g.save(); g.scale(k, k);
+  const fillStroke = (shape, fill, stroke) => { g.beginPath(); rrPath(g, shape); g.fillStyle = fill; g.fill(); if (stroke) { g.strokeStyle = stroke; g.stroke(); } };
+  g.lineWidth = 5;
+  g.fillStyle = "rgba(10,10,12,.62)"; g.fillRect(0, 0, BANNER_W, BANNER.compact[1]);                            // never shown
+  g.beginPath(); rrPath(g, BANNER.compact); g.strokeStyle = "rgba(180,150,240,.95)"; g.setLineDash([22, 14]); g.stroke(); g.setLineDash([]);  // compact card
+  fillStroke(BANNER.group, "rgba(58,66,82,.28)", "rgba(150,160,180,.8)");                                       // group page banner
+  fillStroke(BANNER.long, "rgba(196,164,64,.22)", "rgba(230,195,90,.95)");                                      // expanded
+  fillStroke(BANNER.short, "rgba(70,170,90,.22)", "rgba(110,220,130,.95)");                                     // nameplate
+  drawPlate(g, CROP.plate, 0.62);                                                                               // covered: never shown
+  g.setLineDash([14, 12]); g.lineWidth = 3; g.strokeStyle = "rgba(255,255,255,.8)";
+  g.beginPath(); g.moveTo(0, 540); g.lineTo(BANNER_W, 540); g.stroke();
+  g.restore();
+}
+async function cropUpload() {
+  if (!CROP || CROP.busy) return;
+  const [x, y, w, h] = cropRect();
+  if (Math.min(w, h) < 64) return toast(t("cr_cropSmall"));
+  let [ow, oh] = cropOutSize(), data;
+  // Shrink until the PNG fits VRChat's 10 MB limit (base64 is ~4/3 of the bytes)
+  for (let i = 0; i < 6; i++) {
+    const out = document.createElement("canvas");
+    out.width = ow; out.height = oh;
+    const g = out.getContext("2d");
+    g.imageSmoothingQuality = "high";
+    cropPaint(g, ow, oh);
+    data = out.toDataURL("image/png");
+    if (data.length * 0.75 < MAX_UPLOAD - 64 * 1024) break;
+    ow = Math.round(ow * 0.85); oh = Math.round(oh * 0.85);
+  }
+  CROP.busy = true; buildX();
+  INV.uploading = true;
+  const r = await api("upload_image", CROP.tag, data, {});
+  INV.uploading = false;
+  CROP.busy = false;
+  if (!r?.ok) { buildX(); return apiError(r); }
+  (INV.data[CROP.tag] ||= []).unshift(r.ok);
+  const done = CROP.done;
+  CROP = null;
+  closeX();
+  toast(t("uploaded"));
+  if (done) done(r.ok); else if (view === "inventory") renderView();
+}
+
+// Photos and Icons go through the cropper; stickers / emoji keep their own flow
+const _uploadFileC = uploadFile;
+uploadFile = function (file) {
+  if (!file) return;
+  if (INV.tab === "gallery" || INV.tab === "icon") return openCropper(file, INV.tab, INV.tab === "gallery" ? "original" : "square");
+  return _uploadFileC(file);
+};
+
+// Group edit: "Upload new" inside the icon / banner picker
+function gUploadImage(kind) {
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = "image/*";
+  inp.onchange = () => inp.files[0] && openCropper(inp.files[0], kind === "icon" ? "icon" : "gallery", kind === "icon" ? "square" : "banner",
+    f => gSetImage(kind, f.id, f.url));
+  inp.click();
+}
+const _gPickImageC = gPickImage;
+gPickImage = async function (kind) {
+  await _gPickImageC(kind);
+  const body = document.querySelector("#xOverlay .igrid");
+  body?.insertAdjacentHTML("beforebegin", `<div class="toolbar">${btn(t("cr_uploadNew"), `gUploadImage('${kind}')`, "primary sm", "upload")}</div>`);
+};
+
+document.head.insertAdjacentHTML("beforeend", `<style>
+.cr-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cr-bottom { display: flex; align-items: center; gap: 10px; }
+.cr-bottom > .btn { flex-shrink: 0; }
+.cr-body { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; margin: 12px 0; align-items: start; }
+.cr-stage-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+#crStage { display: block; border-radius: 10px; background: repeating-conic-gradient(var(--track) 0 25%, transparent 0 50%) 0 0 / 16px 16px;
+           cursor: grab; touch-action: none; max-width: 100%; }
+#crStage.grab { cursor: grabbing; }
+.cr-hint { font-size: 11.5px; color: var(--text2); }
+.cr-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; font-size: 11px; color: var(--text2); }
+.cr-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.cr-side { display: flex; flex-direction: column; gap: 10px; }
+.cr-pv { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.cr-pv canvas { background: #111; border-radius: 8px; }
+.cr-pv.wide canvas { height: auto; }
+.cr-pv canvas.round { border-radius: 50%; }
+.cr-pv small { font-size: 11px; color: var(--text2); }
+.cr-chk { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; }
+.cr-bottom input[type=range] { width: 180px; min-width: 90px; flex-shrink: 1; accent-color: var(--accent); }
+.cr-bottom svg { width: 16px; height: 16px; color: var(--text2); }
+.cr-out { flex: 1; min-width: 0; font-size: 12px; line-height: 1.35; color: var(--text2); }
+.cr-out.warn { color: var(--red); }
+@media (max-width: 760px) { .cr-body { grid-template-columns: 1fr; } }
 </style>`);

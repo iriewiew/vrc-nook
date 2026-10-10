@@ -31,7 +31,7 @@ from vrclog import KINDS, Room, parse_line
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w", encoding="utf-8")
 
-VERSION = "0.4.3"
+VERSION = "0.4.4"
 log = logging.getLogger("vrclog")
 UPLOAD_FIELDS = ("animationStyle", "maskTag", "frames", "framesOverTime", "loopStyle")
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
@@ -358,7 +358,7 @@ class Api:
     def _group(g):
         return {k: g.get(k) for k in ("id", "groupId", "name", "shortCode", "discriminator", "description", "memberCount",
                                       "iconUrl", "bannerUrl", "joinState", "isVerified", "privacy", "rules", "links",
-                                      "languages", "onlineMemberCount", "membershipStatus", "tags", "createdAt")}
+                                      "languages", "onlineMemberCount", "membershipStatus", "tags", "createdAt", "ownerId")}
 
     def groups_mine(self):
         r = self._call(self._client.my_groups)
