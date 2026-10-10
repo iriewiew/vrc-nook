@@ -30,7 +30,8 @@
 <tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="이모지 제작기: VRChat 효과 미리보기"><br><sub>이모지 제작기: VRChat 효과 미리보기</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="이모지 제작기: 스프라이트 시트"><br><sub>이모지 제작기: 스프라이트 시트</sub></td></tr>
 <tr><td width="50%"><img src="docs/screenshots/settings.png" alt="설정"><br><sub>설정</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="테마와 강조 색상"><br><sub>테마와 강조 색상</sub></td></tr>
 <tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="태국어 UI"><br><sub>태국어 UI</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="일본어 UI"><br><sub>일본어 UI</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/login.png" alt="언어 선택이 있는 로그인"><br><sub>언어 선택이 있는 로그인</sub></td><td></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/groups-owned.png" alt="소유·관리 그룹"><br><sub>소유·관리 그룹</sub></td><td width="50%"><img src="docs/screenshots/group-manage.png" alt="그룹 관리 탭"><br><sub>그룹 관리 탭</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/crop-banner.png" alt="자르고 업로드: 그룹 배너 가이드"><br><sub>자르고 업로드: 그룹 배너 가이드</sub></td><td width="50%"><img src="docs/screenshots/login.png" alt="언어 선택이 있는 로그인"><br><sub>언어 선택이 있는 로그인</sub></td></tr>
 </table>
 
 <sub>스크린샷은 가상의 데모 데이터입니다.</sub>

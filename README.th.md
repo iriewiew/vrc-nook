@@ -30,7 +30,8 @@
 <tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="ทำอีโมจิ: ตัวอย่างเอฟเฟกต์ VRChat"><br><sub>ทำอีโมจิ: ตัวอย่างเอฟเฟกต์ VRChat</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="ทำอีโมจิ: sprite sheet"><br><sub>ทำอีโมจิ: sprite sheet</sub></td></tr>
 <tr><td width="50%"><img src="docs/screenshots/settings.png" alt="ตั้งค่า"><br><sub>ตั้งค่า</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="ธีมและสีหลัก"><br><sub>ธีมและสีหลัก</sub></td></tr>
 <tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="หน้าแอปภาษาไทย"><br><sub>หน้าแอปภาษาไทย</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="หน้าแอปภาษาญี่ปุ่น"><br><sub>หน้าแอปภาษาญี่ปุ่น</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/login.png" alt="หน้าเข้าสู่ระบบพร้อมเลือกภาษา"><br><sub>หน้าเข้าสู่ระบบพร้อมเลือกภาษา</sub></td><td></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/groups-owned.png" alt="กลุ่มที่เป็นเจ้าของและจัดการได้"><br><sub>กลุ่มที่เป็นเจ้าของและจัดการได้</sub></td><td width="50%"><img src="docs/screenshots/group-manage.png" alt="แท็บจัดการกลุ่ม"><br><sub>แท็บจัดการกลุ่ม</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/crop-banner.png" alt="ครอปก่อนอัปโหลด: เส้นแนวแบนเนอร์กลุ่ม"><br><sub>ครอปก่อนอัปโหลด: เส้นแนวแบนเนอร์กลุ่ม</sub></td><td width="50%"><img src="docs/screenshots/login.png" alt="หน้าเข้าสู่ระบบพร้อมเลือกภาษา"><br><sub>หน้าเข้าสู่ระบบพร้อมเลือกภาษา</sub></td></tr>
 </table>
 
 <sub>ภาพหน้าจอใช้ข้อมูลตัวอย่างที่สมมติขึ้น</sub>

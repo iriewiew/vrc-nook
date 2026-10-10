@@ -30,7 +30,8 @@
 <tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="表情制作器:VRChat 特效预览"><br><sub>表情制作器:VRChat 特效预览</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="表情制作器:精灵图"><br><sub>表情制作器:精灵图</sub></td></tr>
 <tr><td width="50%"><img src="docs/screenshots/settings.png" alt="设置"><br><sub>设置</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="主题与强调色"><br><sub>主题与强调色</sub></td></tr>
 <tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="泰语界面"><br><sub>泰语界面</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="日语界面"><br><sub>日语界面</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/login.png" alt="带语言选择的登录"><br><sub>带语言选择的登录</sub></td><td></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/groups-owned.png" alt="拥有和可管理的群组"><br><sub>拥有和可管理的群组</sub></td><td width="50%"><img src="docs/screenshots/group-manage.png" alt="群组管理标签页"><br><sub>群组管理标签页</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/crop-banner.png" alt="裁剪上传：群组横幅参考线"><br><sub>裁剪上传：群组横幅参考线</sub></td><td width="50%"><img src="docs/screenshots/login.png" alt="带语言选择的登录"><br><sub>带语言选择的登录</sub></td></tr>
 </table>
 
 <sub>截图使用的是虚构的演示数据。</sub>

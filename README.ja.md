@@ -30,7 +30,8 @@
 <tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="絵文字メーカー: VRChat エフェクトのプレビュー"><br><sub>絵文字メーカー: VRChat エフェクトのプレビュー</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="絵文字メーカー: スプライトシート"><br><sub>絵文字メーカー: スプライトシート</sub></td></tr>
 <tr><td width="50%"><img src="docs/screenshots/settings.png" alt="設定"><br><sub>設定</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="テーマとアクセントカラー"><br><sub>テーマとアクセントカラー</sub></td></tr>
 <tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="タイ語 UI"><br><sub>タイ語 UI</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="日本語 UI"><br><sub>日本語 UI</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/login.png" alt="言語選択付きのサインイン"><br><sub>言語選択付きのサインイン</sub></td><td></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/groups-owned.png" alt="オーナー・管理グループ"><br><sub>オーナー・管理グループ</sub></td><td width="50%"><img src="docs/screenshots/group-manage.png" alt="グループの管理タブ"><br><sub>グループの管理タブ</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/crop-banner.png" alt="切り抜きアップロード: グループバナーのガイド"><br><sub>切り抜きアップロード: グループバナーのガイド</sub></td><td width="50%"><img src="docs/screenshots/login.png" alt="言語選択付きのサインイン"><br><sub>言語選択付きのサインイン</sub></td></tr>
 </table>
 
 <sub>スクリーンショットは架空のデモデータです。</sub>

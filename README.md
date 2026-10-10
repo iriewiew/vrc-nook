@@ -30,7 +30,8 @@ Put it in a folder you can write to, such as Documents. Don't use Program Files,
 <tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="Emoji maker: VRChat effect preview"><br><sub>Emoji maker: VRChat effect preview</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="Emoji maker: sprite sheet"><br><sub>Emoji maker: sprite sheet</sub></td></tr>
 <tr><td width="50%"><img src="docs/screenshots/settings.png" alt="Settings"><br><sub>Settings</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="Themes and accent colors"><br><sub>Themes and accent colors</sub></td></tr>
 <tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="Thai UI"><br><sub>Thai UI</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="Japanese UI"><br><sub>Japanese UI</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/login.png" alt="Sign-in with language picker"><br><sub>Sign-in with language picker</sub></td><td></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/groups-owned.png" alt="Groups you own and can manage"><br><sub>Groups you own and can manage</sub></td><td width="50%"><img src="docs/screenshots/group-manage.png" alt="Group Manage tab"><br><sub>Group Manage tab</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/crop-banner.png" alt="Crop & upload: group banner guide"><br><sub>Crop & upload: group banner guide</sub></td><td width="50%"><img src="docs/screenshots/login.png" alt="Sign-in with language picker"><br><sub>Sign-in with language picker</sub></td></tr>
 </table>
 
 <sub>Screenshots use made-up demo data.</sub>

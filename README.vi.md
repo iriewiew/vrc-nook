@@ -30,7 +30,8 @@ Hãy đặt file trong thư mục có quyền ghi như Documents. Đừng dùng 
 <tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="Tạo emoji: xem trước hiệu ứng VRChat"><br><sub>Tạo emoji: xem trước hiệu ứng VRChat</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="Tạo emoji: sprite sheet"><br><sub>Tạo emoji: sprite sheet</sub></td></tr>
 <tr><td width="50%"><img src="docs/screenshots/settings.png" alt="Cài đặt"><br><sub>Cài đặt</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="Giao diện và màu nhấn"><br><sub>Giao diện và màu nhấn</sub></td></tr>
 <tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="Giao diện tiếng Thái"><br><sub>Giao diện tiếng Thái</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="Giao diện tiếng Nhật"><br><sub>Giao diện tiếng Nhật</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/login.png" alt="Đăng nhập có chọn ngôn ngữ"><br><sub>Đăng nhập có chọn ngôn ngữ</sub></td><td></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/groups-owned.png" alt="Nhóm bạn sở hữu và quản lý"><br><sub>Nhóm bạn sở hữu và quản lý</sub></td><td width="50%"><img src="docs/screenshots/group-manage.png" alt="Tab Quản lý nhóm"><br><sub>Tab Quản lý nhóm</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/crop-banner.png" alt="Cắt và tải lên: đường gióng ảnh bìa nhóm"><br><sub>Cắt và tải lên: đường gióng ảnh bìa nhóm</sub></td><td width="50%"><img src="docs/screenshots/login.png" alt="Đăng nhập có chọn ngôn ngữ"><br><sub>Đăng nhập có chọn ngôn ngữ</sub></td></tr>
 </table>
 
 <sub>Ảnh chụp dùng dữ liệu mẫu giả lập.</sub>
