@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VRC Nook — VRChat companion for Windows</title>
+<meta name="description" content="A lightweight, cozy all-in-one VRChat companion for Windows: friends, game log, in-game chatbox, a VR-friendly keyboard and an animated emoji maker.">
+<meta property="og:title" content="VRC Nook">
+<meta property="og:description" content="A lightweight, cozy all-in-one VRChat companion for Windows.">
+<meta property="og:image" content="https://iriewiew.github.io/vrc-nook/screenshots/friends.png">
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f4f5fa; --text: #1d1d1f; --text2: #5b5b66; --text3: #8e8e99; --card: rgba(255,255,255,.72); --stroke: rgba(0,0,0,.08);
+  --accent: #0a84ff; --accent2: #bf5af2; --shadow: 0 10px 40px rgba(40,40,90,.12);
+  --w1: #a1c4fd; --w2: #fbc2eb; --w3: #ffd1a9; --w4: #c2e9fb;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0e0e16; --text: #f2f2f7; --text2: #b4b4c3; --text3: #7c7c8c; --card: rgba(36,36,46,.66); --stroke: rgba(255,255,255,.09);
+          --shadow: 0 10px 40px rgba(0,0,0,.45); --w1: #1a2a6c; --w2: #6a3093; --w3: #b21f66; --w4: #0f4c75; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.55;
+       font-family: Inter, "Noto Sans Thai", "Hiragino Sans", "Yu Gothic UI", "Malgun Gothic", "Microsoft YaHei", system-ui, sans-serif; }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; opacity: .55;
+  background: radial-gradient(50% 50% at 12% 8%, var(--w1), transparent 70%), radial-gradient(45% 55% at 92% 12%, var(--w2), transparent 70%),
+              radial-gradient(50% 50% at 85% 90%, var(--w3), transparent 70%), radial-gradient(45% 60% at 8% 95%, var(--w4), transparent 70%); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+.glass { background: var(--card); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%);
+         border: 1px solid var(--stroke); box-shadow: var(--shadow); }
+
+/* Top bar */
+.top { position: sticky; top: 12px; z-index: 10; margin: 12px auto 0; display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 14px; border-radius: 16px; }
+.top .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); }
+.top .brand img { width: 28px; height: 28px; border-radius: 8px; }
+.top nav { display: flex; gap: 4px; margin-left: auto; }
+.top nav a { color: var(--text2); padding: 6px 10px; border-radius: 9px; font-size: 14px; font-weight: 500; }
+.top nav a:hover { background: var(--stroke); color: var(--text); text-decoration: none; }
+.top select { font: inherit; font-size: 13px; color: var(--text); background: var(--stroke); border: none; border-radius: 9px; padding: 6px 8px; cursor: pointer; }
+
+/* Hero */
+.hero { text-align: center; padding: 72px 0 40px; }
+.hero .icon { width: 112px; height: 112px; border-radius: 28px; box-shadow: var(--shadow); }
+.hero h1 { font-size: clamp(40px, 7vw, 68px); line-height: 1.05; margin: 22px 0 12px; letter-spacing: -.03em; font-weight: 800;
+           background: linear-gradient(120deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero p.lead { font-size: clamp(16px, 2.2vw, 20px); color: var(--text2); max-width: 720px; margin: 0 auto 30px; }
+.dl { display: inline-flex; align-items: center; gap: 12px; padding: 16px 28px; border-radius: 16px; color: #fff; font-size: 18px; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), #5e5ce6); box-shadow: 0 10px 30px rgba(10,132,255,.35); transition: transform .15s, box-shadow .15s; }
+.dl:hover { text-decoration: none; transform: translateY(-2px); box-shadow: 0 14px 36px rgba(10,132,255,.45); }
+.dl svg { width: 22px; height: 22px; }
+.meta { margin-top: 14px; font-size: 14px; color: var(--text3); }
+.meta a { color: var(--text2); }
+.shot-hero { margin: 44px auto 0; max-width: 980px; border-radius: 18px; overflow: hidden; }
+.shot-hero img { display: block; width: 100%; height: auto; }
+
+/* Sections */
+section { padding: 56px 0 8px; }
+h2 { font-size: clamp(26px, 3.6vw, 36px); letter-spacing: -.02em; margin: 0 0 8px; text-align: center; }
+.sub { text-align: center; color: var(--text2); margin: 0 auto 32px; max-width: 640px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+.feat { padding: 20px; border-radius: 18px; }
+.feat .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; margin-bottom: 12px; background: var(--stroke); }
+.feat h3 { margin: 0 0 6px; font-size: 17px; }
+.feat p { margin: 0; color: var(--text2); font-size: 14.5px; }
+.feat .new { font-size: 11px; font-weight: 700; color: #fff; background: var(--accent2); border-radius: 99px; padding: 1px 8px; margin-left: 6px; vertical-align: 2px; }
+
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.gallery figure { margin: 0; border-radius: 16px; overflow: hidden; cursor: zoom-in; }
+.gallery img { display: block; width: 100%; aspect-ratio: 16 / 10.5; object-fit: cover; object-position: top; transition: transform .25s; }
+.gallery figure:hover img { transform: scale(1.02); }
+.gallery figcaption { padding: 10px 14px; font-size: 13.5px; color: var(--text2); }
+
+.faq { max-width: 820px; margin: 0 auto; display: grid; gap: 12px; }
+.faq details { border-radius: 14px; padding: 4px 18px; }
+.faq summary { cursor: pointer; font-weight: 600; padding: 12px 0; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+.faq summary::after { content: "+"; color: var(--text3); font-weight: 400; font-size: 20px; line-height: 1; }
+.faq details[open] summary::after { content: "−"; }
+.faq details p { margin: 0 0 14px; color: var(--text2); font-size: 15px; }
+
+.cta { text-align: center; padding: 64px 0; }
+footer { text-align: center; color: var(--text3); font-size: 13px; padding: 24px 0 40px; }
+footer a { color: var(--text2); }
+
+/* Lightbox */
+.lb { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.82); display: none; place-items: center; padding: 24px; cursor: zoom-out; }
+.lb.show { display: grid; }
+.lb img { max-width: 100%; max-height: 100%; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+
+@media (max-width: 720px) {
+  .wrap { padding: 0 16px; }
+  .top nav { display: none; }
+  .top select { margin-left: auto; }
+  .hero { padding-top: 48px; }
+  .gallery { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top glass">
+    <a class="brand" href="#"><img src="icon.png" alt="">VRC Nook</a>
+    <nav><a href="#features" data-t="navFeatures">Features</a><a href="#screens" data-t="navScreens">Screenshots</a><a href="#faq" data-t="navFaq">FAQ</a>
+      <a href="https://github.com/iriewiew/vrc-nook">GitHub</a></nav>
+    <select id="lang" aria-label="Language"></select>
+  </header>
+
+  <main>
+    <div class="hero">
+      <img class="icon" src="icon.png" alt="VRC Nook">
+      <h1>VRC Nook</h1>
+      <p class="lead" data-t="tagline">A lightweight, cozy all-in-one VRChat companion for Windows: friends, game log, in-game chatbox, a VR-friendly keyboard and an animated emoji maker.</p>
+      <a class="dl" id="dl" href="https://github.com/iriewiew/vrc-nook/releases/latest/download/VRCNook.exe">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        <span data-t="download">Download for Windows</span></a>
+      <div class="meta"><span id="ver"></span><span data-t="req">Windows 10 / 11 · no installer</span> ·
+        <a href="https://github.com/iriewiew/vrc-nook/releases" data-t="allReleases">All releases</a></div>
+      <div class="shot-hero glass"><img src="screenshots/friends.png" alt="VRC Nook — Friends"></div>
+    </div>
+
+    <section id="features">
+      <h2 data-t="featTitle">Everything in one small app</h2>
+      <p class="sub" data-t="featSub">One file, about 21 MB. It runs on the WebView2 that's already part of Windows, so it stays light.</p>
+      <div class="grid" id="feats"></div>
+    </section>
+
+    <section id="screens">
+      <h2 data-t="shotsTitle">Screenshots</h2>
+      <p class="sub" data-t="shotsSub">Screenshots use made-up demo data.</p>
+      <div class="gallery" id="gallery"></div>
+    </section>
+
+    <section id="faq">
+      <h2 data-t="faqTitle">Questions</h2>
+      <div class="faq" id="faqs"></div>
+    </section>
+
+    <div class="cta">
+      <a class="dl" href="https://github.com/iriewiew/vrc-nook/releases/latest/download/VRCNook.exe">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        <span data-t="download">Download for Windows</span></a>
+    </div>
+  </main>
+
+  <footer><span data-t="footer">Free and open source (MIT). Not affiliated with VRChat Inc.</span> ·
+    <a href="https://github.com/iriewiew/vrc-nook">GitHub</a></footer>
+</div>
+<div class="lb" id="lb" onclick="this.classList.remove('show')"><img alt=""></div>
+
+<script>
+// Texts in the same 7 languages as the app. Missing ones fall back to English
+const L = {
+  en: { name: "English",
+    navFeatures: "Features", navScreens: "Screenshots", navFaq: "FAQ",
+    tagline: "A lightweight, cozy all-in-one VRChat companion for Windows: friends, game log, in-game chatbox, a VR-friendly keyboard and an animated emoji maker.",
+    download: "Download for Windows", req: "Windows 10 / 11 · no installer", allReleases: "All releases", latest: (v, d) => `Version ${v} · ${d} · `,
+    featTitle: "Everything in one small app", featSub: "One file, about 21 MB. It runs on the WebView2 that's already part of Windows, so it stays light.",
+    shotsTitle: "Screenshots", shotsSub: "Screenshots use made-up demo data.", faqTitle: "Questions",
+    footer: "Free and open source (MIT). Not affiliated with VRChat Inc.", isNew: "New",
+    feats: [
+      ["👥", "Friends in real time", "Who's online, where they are and when they were last on. Profile cards with banners, badges, notes and mutual friends."],
+      ["📜", "Game log that never forgets", "Worlds, players joining and leaving, videos and more, kept in your own history even after VRChat deletes its logs."],
+      ["💬", "Chatbox info", "Show a random status, the song you're playing with a seek bar, the clock and your heart rate above your head. Drag to arrange it.", true],
+      ["❤️", "Heart rate, free", "Read it straight from a Bluetooth watch or chest strap, or from Pulsoid. Also sent to heart-rate avatars.", true],
+      ["⌨️", "Keyboard for VR", "Big keys in 8 languages plus emoji. Pop it out to float over every window and drag it with your controller."],
+      ["🎨", "Animated emoji maker", "Turn a GIF or WebP into VRChat's sprite sheet, remove the background and preview every effect before uploading."],
+      ["🌐", "Worlds, groups & avatars", "Browse and favorite, manage the groups you own, switch avatars, search public avatars and download your photos."],
+      ["🔒", "Private by design", "Your password goes straight to VRChat and is never stored. Your data stays on your PC, and updates are checksum-verified."],
+    ],
+    shots: { "friends-dark": "Friends (dark theme)", profile: "Profile card", feed: "Feed", log: "Game log", chat: "Chatbox", keyboard: "VR keyboard",
+             kbfloat: "Floating keyboard", "emoji-sheet": "Emoji maker", "groups-owned": "Groups you own", theme: "Themes and colors" },
+    faq: [
+      ["Windows says “Windows protected your PC”", "That's SmartScreen. It shows for new apps that aren't code-signed yet. Click “More info”, then “Run anyway”. The source code is public on GitHub."],
+      ["Where should I put the file?", "Anywhere you can write to, such as Documents or Desktop. Avoid Program Files, because the app updates itself in place."],
+      ["How do I update?", "VRC Nook checks for new versions when it starts and updates in one click. The download must match GitHub's checksum before it's installed."],
+      ["Is it safe for my VRChat account?", "It uses VRChat's own API like other companion apps, with a rate-limited queue to stay gentle. Your login session is encrypted with Windows DPAPI."],
+      ["Chatbox info doesn't show in game", "Turn on OSC in VRChat: Action Menu → Options → OSC → Enabled."],
+    ] },
+  th: { name: "ไทย",
+    navFeatures: "ฟีเจอร์", navScreens: "ภาพหน้าจอ", navFaq: "คำถาม",
+    tagline: "แอปคู่หู VRChat บน Windows ที่เบาและครบในตัว: เพื่อน, Game Log, แชทขึ้น Chatbox ในเกม, คีย์บอร์ดสำหรับ VR และตัวทำอีโมจิเคลื่อนไหว",
+    download: "ดาวน์โหลดสำหรับ Windows", req: "Windows 10 / 11 · ไม่ต้องติดตั้ง", allReleases: "ทุกเวอร์ชัน", latest: (v, d) => `เวอร์ชัน ${v} · ${d} · `,
+    featTitle: "ครบในแอปเล็กๆ ตัวเดียว", featSub: "ไฟล์เดียวราว 21 MB ใช้ WebView2 ที่มีใน Windows อยู่แล้ว เลยเบาเครื่อง",
+    shotsTitle: "ภาพหน้าจอ", shotsSub: "ภาพหน้าจอใช้ข้อมูลตัวอย่างที่สมมติขึ้น", faqTitle: "คำถามที่พบบ่อย",
+    footer: "ฟรีและโอเพนซอร์ส (MIT) · ไม่เกี่ยวข้องกับ VRChat Inc.", isNew: "ใหม่",
+    feats: [
+      ["👥", "เพื่อนแบบเรียลไทม์", "ใครออนไลน์ อยู่ที่ไหน ออนไลน์ล่าสุดเมื่อไหร่ การ์ดโปรไฟล์มีแบนเนอร์ badge โน้ต และเพื่อนร่วม"],
+      ["📜", "Game Log ที่ไม่มีวันหาย", "โลกที่ไป คนเข้าออก วิดีโอ และอื่นๆ เก็บเป็นประวัติของคุณเอง แม้ VRChat จะลบ log ไปแล้ว"],
+      ["💬", "ข้อมูลใน Chatbox", "โชว์สถานะสุ่ม เพลงที่ฟังพร้อมแถบเวลา นาฬิกา และค่าหัวใจเหนือหัว ลากจัดตำแหน่งได้", true],
+      ["❤️", "ค่าหัวใจ ฟรี", "อ่านจากนาฬิกาหรือสายคาดอก Bluetooth โดยตรง หรือจาก Pulsoid และส่งให้อวตารที่มีกิมมิกหัวใจ", true],
+      ["⌨️", "คีย์บอร์ดสำหรับ VR", "ปุ่มใหญ่ 8 ภาษาพร้อมอีโมจิ แยกเป็นหน้าต่างลอยเหนือทุกโปรแกรม และลากด้วย controller ได้"],
+      ["🎨", "ทำอีโมจิเคลื่อนไหว", "แปลง GIF หรือ WebP เป็น sprite sheet ของ VRChat ลบพื้นหลัง และดูตัวอย่างทุกเอฟเฟกต์ก่อนอัปโหลด"],
+      ["🌐", "โลก กลุ่ม และอวตาร", "ดูและกดชอบ จัดการกลุ่มของคุณ เปลี่ยนอวตาร ค้นหาอวตารสาธารณะ และดาวน์โหลดรูปถ่าย"],
+      ["🔒", "เป็นส่วนตัว", "รหัสผ่านส่งตรงไป VRChat ไม่ถูกเก็บ ข้อมูลอยู่ในเครื่องคุณ และอัปเดตมีการตรวจ checksum"],
+    ],
+    shots: { "friends-dark": "เพื่อน (ธีมมืด)", profile: "การ์ดโปรไฟล์", feed: "Feed", log: "Game Log", chat: "แชทในเกม", keyboard: "คีย์บอร์ด VR",
+             kbfloat: "คีย์บอร์ดลอย", "emoji-sheet": "ทำอีโมจิ", "groups-owned": "กลุ่มของคุณ", theme: "ธีมและสี" },
+    faq: [
+      ["Windows ขึ้นว่า “Windows protected your PC”", "นั่นคือ SmartScreen จะขึ้นกับแอปใหม่ที่ยังไม่มีลายเซ็นดิจิทัล กด “More info” แล้วกด “Run anyway” ได้เลย ซอร์สโค้ดเปิดดูได้บน GitHub"],
+      ["ควรวางไฟล์ไว้ที่ไหน?", "ที่ไหนก็ได้ที่เขียนไฟล์ได้ เช่น Documents หรือ Desktop อย่าวางใน Program Files เพราะแอปอัปเดตตัวเองในที่เดิม"],
+      ["อัปเดตยังไง?", "VRC Nook เช็คเวอร์ชันใหม่ตอนเปิดแอป และอัปเดตได้ในคลิกเดียว ไฟล์ที่โหลดต้องตรงกับ checksum ของ GitHub ก่อนติดตั้ง"],
+      ["ปลอดภัยกับบัญชี VRChat ไหม?", "ใช้ API ของ VRChat เหมือนแอปคู่หูอื่นๆ และจำกัดความถี่การเรียกให้เบาที่สุด session ล็อกอินเข้ารหัสด้วย Windows DPAPI"],
+      ["ข้อมูลใน Chatbox ไม่ขึ้นในเกม", "เปิด OSC ใน VRChat ก่อน: Action Menu → Options → OSC → Enabled"],
+    ] },
+  ja: { name: "日本語",
+    navFeatures: "機能", navScreens: "スクリーンショット", navFaq: "よくある質問",
+    tagline: "Windows 向けの軽くて便利な VRChat オールインワン コンパニオン：フレンド、ゲームログ、チャットボックス、VR 向けキーボード、アニメ絵文字メーカー。",
+    download: "Windows 版をダウンロード", req: "Windows 10 / 11 · インストール不要", allReleases: "すべてのリリース", latest: (v, d) => `バージョン ${v} · ${d} · `,
+    featTitle: "小さなアプリにすべて", featSub: "約 21 MB のファイル 1 つ。Windows に入っている WebView2 で動くので軽量です。",
+    shotsTitle: "スクリーンショット", shotsSub: "スクリーンショットは架空のデモデータです。", faqTitle: "よくある質問",
+    footer: "無料・オープンソース (MIT)。VRChat Inc. とは無関係です。", isNew: "NEW",
+    feats: [
+      ["👥", "リアルタイムのフレンド", "誰がオンラインで、どこにいて、最後にいつ来たか。バナー、バッジ、メモ、共通フレンド付きのプロフィールカード。"],
+      ["📜", "消えないゲームログ", "ワールド、プレイヤーの出入り、動画など。VRChat がログを消しても自分の履歴として残ります。"],
+      ["💬", "チャットボックス情報", "ランダムステータス、シークバー付きの再生中の曲、時計、心拍数を頭上に表示。ドラッグで配置できます。", true],
+      ["❤️", "心拍数を無料で", "Bluetooth の時計や胸ストラップから直接、または Pulsoid から取得。心拍アバターにも送信します。", true],
+      ["⌨️", "VR 用キーボード", "8 言語と絵文字の大きなキー。全ウィンドウの上に浮かべて、コントローラーで動かせます。"],
+      ["🎨", "アニメ絵文字メーカー", "GIF や WebP を VRChat のスプライトシートに変換。背景除去と全エフェクトのプレビュー付き。"],
+      ["🌐", "ワールド・グループ・アバター", "閲覧とお気に入り、自分のグループ管理、アバター切り替え、公開アバター検索、写真のダウンロード。"],
+      ["🔒", "プライバシー重視", "パスワードは VRChat に直接送られ保存されません。データは PC 内に。更新はチェックサムで検証。"],
+    ],
+    shots: { "friends-dark": "フレンド（ダーク）", profile: "プロフィールカード", feed: "フィード", log: "ゲームログ", chat: "チャットボックス", keyboard: "VR キーボード",
+             kbfloat: "フローティングキーボード", "emoji-sheet": "絵文字メーカー", "groups-owned": "自分のグループ", theme: "テーマと色" },
+    faq: [
+      ["「Windows によって PC が保護されました」と出る", "SmartScreen の表示です。コード署名のない新しいアプリで出ます。「詳細情報」→「実行」を押してください。ソースコードは GitHub で公開しています。"],
+      ["ファイルはどこに置けばいい？", "ドキュメントやデスクトップなど書き込める場所に。アプリがその場で自動更新するので Program Files は避けてください。"],
+      ["更新方法は？", "起動時に新しいバージョンを確認し、ワンクリックで更新します。ダウンロードは GitHub のチェックサムと一致した場合のみインストールされます。"],
+      ["VRChat アカウントは安全？", "他のコンパニオンアプリと同じく VRChat の API を使い、リクエスト数を抑えています。ログインセッションは Windows DPAPI で暗号化されます。"],
+      ["チャットボックス情報がゲームに出ない", "VRChat で OSC をオンにしてください：アクションメニュー → Options → OSC → Enabled。"],
+    ] },
+  ko: { name: "한국어",
+    navFeatures: "기능", navScreens: "스크린샷", navFaq: "FAQ",
+    tagline: "Windows용 가볍고 아늑한 올인원 VRChat 컴패니언: 친구, 게임 로그, 챗박스, VR용 키보드, 움직이는 이모지 메이커.",
+    download: "Windows용 다운로드", req: "Windows 10 / 11 · 설치 필요 없음", allReleases: "모든 릴리스", latest: (v, d) => `버전 ${v} · ${d} · `,
+    featTitle: "작은 앱 하나에 전부", featSub: "약 21MB 파일 하나. Windows에 이미 있는 WebView2로 실행되어 가볍습니다.",
+    shotsTitle: "스크린샷", shotsSub: "스크린샷은 가상의 데모 데이터입니다.", faqTitle: "자주 묻는 질문",
+    footer: "무료 오픈 소스 (MIT). VRChat Inc.와 관련이 없습니다.", isNew: "NEW",
+    feats: [
+      ["👥", "실시간 친구", "누가 온라인인지, 어디 있는지, 마지막 접속은 언제인지. 배너, 배지, 메모, 함께 아는 친구가 있는 프로필 카드."],
+      ["📜", "사라지지 않는 게임 로그", "월드, 플레이어 입장과 퇴장, 동영상 등. VRChat이 로그를 지워도 내 기록으로 남습니다."],
+      ["💬", "챗박스 정보", "랜덤 상태, 시크바가 있는 재생 중인 곡, 시계, 심박수를 머리 위에 표시. 드래그로 배치하세요.", true],
+      ["❤️", "무료 심박수", "Bluetooth 시계나 가슴 스트랩에서 직접, 또는 Pulsoid에서 읽습니다. 심박 아바타에도 보냅니다.", true],
+      ["⌨️", "VR용 키보드", "8개 언어와 이모지의 큰 키. 모든 창 위에 띄우고 컨트롤러로 옮길 수 있습니다."],
+      ["🎨", "움직이는 이모지 메이커", "GIF나 WebP를 VRChat 스프라이트 시트로 변환. 배경 제거와 모든 효과 미리보기."],
+      ["🌐", "월드, 그룹, 아바타", "탐색과 즐겨찾기, 내 그룹 관리, 아바타 변경, 공개 아바타 검색, 사진 다운로드."],
+      ["🔒", "개인정보 보호", "비밀번호는 VRChat으로 바로 가고 저장되지 않습니다. 데이터는 PC에만, 업데이트는 체크섬으로 확인합니다."],
+    ],
+    shots: { "friends-dark": "친구 (다크 테마)", profile: "프로필 카드", feed: "피드", log: "게임 로그", chat: "챗박스", keyboard: "VR 키보드",
+             kbfloat: "플로팅 키보드", "emoji-sheet": "이모지 메이커", "groups-owned": "내 그룹", theme: "테마와 색상" },
+    faq: [
+      ["“Windows의 PC 보호” 창이 떠요", "SmartScreen입니다. 코드 서명이 없는 새 앱에 표시됩니다. “추가 정보” → “실행”을 누르세요. 소스 코드는 GitHub에 공개되어 있습니다."],
+      ["파일은 어디에 두나요?", "문서나 바탕 화면처럼 쓰기 가능한 곳에 두세요. 앱이 제자리에서 업데이트하므로 Program Files는 피하세요."],
+      ["업데이트는 어떻게 하나요?", "시작할 때 새 버전을 확인하고 클릭 한 번으로 업데이트합니다. GitHub 체크섬과 일치해야만 설치됩니다."],
+      ["VRChat 계정에 안전한가요?", "다른 컴패니언 앱처럼 VRChat API를 사용하며 요청 빈도를 제한합니다. 로그인 세션은 Windows DPAPI로 암호화됩니다."],
+      ["챗박스 정보가 게임에 안 보여요", "VRChat에서 OSC를 켜세요: 액션 메뉴 → Options → OSC → Enabled."],
+    ] },
+  ru: { name: "Русский",
+    navFeatures: "Возможности", navScreens: "Скриншоты", navFaq: "Вопросы",
+    tagline: "Лёгкий и уютный помощник для VRChat на Windows: друзья, лог игры, чатбокс, клавиатура для VR и создание анимированных эмодзи.",
+    download: "Скачать для Windows", req: "Windows 10 / 11 · без установки", allReleases: "Все версии", latest: (v, d) => `Версия ${v} · ${d} · `,
+    featTitle: "Всё в одном маленьком приложении", featSub: "Один файл около 21 МБ. Работает на WebView2, который уже есть в Windows, поэтому лёгкий.",
+    shotsTitle: "Скриншоты", shotsSub: "На скриншотах вымышленные демо-данные.", faqTitle: "Вопросы",
+    footer: "Бесплатно и с открытым кодом (MIT). Не связано с VRChat Inc.", isNew: "Новое",
+    feats: [
+      ["👥", "Друзья в реальном времени", "Кто онлайн, где и когда был в сети. Карточки профилей с баннерами, значками, заметками и общими друзьями."],
+      ["📜", "Лог, который не пропадёт", "Миры, входы и выходы игроков, видео и другое — ваша история остаётся, даже когда VRChat удаляет свои логи."],
+      ["💬", "Инфо в чатбоксе", "Случайный статус, текущая песня с полосой прокрутки, часы и пульс над головой. Расставьте перетаскиванием.", true],
+      ["❤️", "Пульс бесплатно", "Напрямую с Bluetooth-часов или нагрудного датчика, либо из Pulsoid. Передаётся и аватарам с пульсом.", true],
+      ["⌨️", "Клавиатура для VR", "Большие клавиши на 8 языках и эмодзи. Поверх всех окон, двигается контроллером."],
+      ["🎨", "Анимированные эмодзи", "GIF или WebP в спрайт-лист VRChat, удаление фона и предпросмотр всех эффектов."],
+      ["🌐", "Миры, группы и аватары", "Просмотр и избранное, управление своими группами, смена аватаров, поиск публичных аватаров, загрузка фото."],
+      ["🔒", "Приватность", "Пароль уходит прямо в VRChat и не сохраняется. Данные на вашем ПК, обновления проверяются по контрольной сумме."],
+    ],
+    shots: { "friends-dark": "Друзья (тёмная тема)", profile: "Карточка профиля", feed: "Лента", log: "Лог игры", chat: "Чатбокс", keyboard: "VR-клавиатура",
+             kbfloat: "Плавающая клавиатура", "emoji-sheet": "Создание эмодзи", "groups-owned": "Ваши группы", theme: "Темы и цвета" },
+    faq: [
+      ["Windows пишет «Система Windows защитила ваш компьютер»", "Это SmartScreen — он показывается для новых приложений без цифровой подписи. Нажмите «Подробнее» → «Выполнить в любом случае». Исходный код открыт на GitHub."],
+      ["Куда положить файл?", "Туда, где можно писать: Документы или Рабочий стол. Не в Program Files — приложение обновляет себя на месте."],
+      ["Как обновлять?", "При запуске VRC Nook проверяет новые версии и обновляется в один клик. Файл устанавливается, только если совпадает с контрольной суммой GitHub."],
+      ["Это безопасно для аккаунта VRChat?", "Используется API VRChat, как в других помощниках, с ограничением частоты запросов. Сессия входа зашифрована Windows DPAPI."],
+      ["Инфо в чатбоксе не видно в игре", "Включите OSC в VRChat: меню действий → Options → OSC → Enabled."],
+    ] },
+  vi: { name: "Tiếng Việt",
+    navFeatures: "Tính năng", navScreens: "Ảnh chụp", navFaq: "Hỏi đáp",
+    tagline: "Ứng dụng đồng hành VRChat nhẹ và tiện cho Windows: bạn bè, nhật ký game, chatbox trong game, bàn phím cho VR và công cụ làm emoji động.",
+    download: "Tải cho Windows", req: "Windows 10 / 11 · không cần cài đặt", allReleases: "Tất cả phiên bản", latest: (v, d) => `Phiên bản ${v} · ${d} · `,
+    featTitle: "Tất cả trong một ứng dụng nhỏ", featSub: "Một tệp khoảng 21 MB. Chạy trên WebView2 có sẵn trong Windows nên rất nhẹ.",
+    shotsTitle: "Ảnh chụp màn hình", shotsSub: "Ảnh chụp dùng dữ liệu mẫu giả lập.", faqTitle: "Hỏi đáp",
+    footer: "Miễn phí và mã nguồn mở (MIT). Không liên quan đến VRChat Inc.", isNew: "Mới",
+    feats: [
+      ["👥", "Bạn bè theo thời gian thực", "Ai đang online, ở đâu và online lần cuối khi nào. Thẻ hồ sơ có banner, huy hiệu, ghi chú và bạn chung."],
+      ["📜", "Nhật ký game không mất", "World, người chơi vào ra, video và hơn thế — vẫn còn trong lịch sử của bạn kể cả khi VRChat xóa log."],
+      ["💬", "Thông tin Chatbox", "Hiện trạng thái ngẫu nhiên, bài đang phát kèm thanh tiến trình, đồng hồ và nhịp tim trên đầu. Kéo thả để sắp xếp.", true],
+      ["❤️", "Nhịp tim miễn phí", "Đọc trực tiếp từ đồng hồ hoặc đai ngực Bluetooth, hoặc từ Pulsoid. Gửi cả cho avatar nhịp tim.", true],
+      ["⌨️", "Bàn phím cho VR", "Phím lớn 8 ngôn ngữ và emoji. Nổi trên mọi cửa sổ và kéo được bằng tay cầm."],
+      ["🎨", "Làm emoji động", "Chuyển GIF hoặc WebP thành sprite sheet của VRChat, xóa nền và xem trước mọi hiệu ứng."],
+      ["🌐", "World, nhóm và avatar", "Duyệt và yêu thích, quản lý nhóm của bạn, đổi avatar, tìm avatar công khai và tải ảnh."],
+      ["🔒", "Riêng tư", "Mật khẩu gửi thẳng đến VRChat và không được lưu. Dữ liệu nằm trên máy bạn, bản cập nhật được kiểm tra checksum."],
+    ],
+    shots: { "friends-dark": "Bạn bè (giao diện tối)", profile: "Thẻ hồ sơ", feed: "Bảng tin", log: "Nhật ký game", chat: "Chatbox", keyboard: "Bàn phím VR",
+             kbfloat: "Bàn phím nổi", "emoji-sheet": "Làm emoji", "groups-owned": "Nhóm của bạn", theme: "Giao diện và màu" },
+    faq: [
+      ["Windows báo “Windows protected your PC”", "Đó là SmartScreen, hiện với ứng dụng mới chưa có chữ ký số. Bấm “More info” rồi “Run anyway”. Mã nguồn công khai trên GitHub."],
+      ["Nên để tệp ở đâu?", "Chỗ nào ghi được, như Documents hoặc Desktop. Tránh Program Files vì ứng dụng tự cập nhật tại chỗ."],
+      ["Cập nhật thế nào?", "Khi mở, VRC Nook kiểm tra phiên bản mới và cập nhật bằng một cú bấm. Chỉ cài khi tệp khớp checksum của GitHub."],
+      ["Có an toàn cho tài khoản VRChat không?", "Dùng API của VRChat như các ứng dụng đồng hành khác, có giới hạn tần suất. Phiên đăng nhập được mã hóa bằng Windows DPAPI."],
+      ["Thông tin Chatbox không hiện trong game", "Bật OSC trong VRChat: Action Menu → Options → OSC → Enabled."],
+    ] },
+  zh: { name: "中文",
+    navFeatures: "功能", navScreens: "截图", navFaq: "常见问题",
+    tagline: "轻量又贴心的 Windows 版 VRChat 一站式助手：好友、游戏日志、游戏内聊天框、适合 VR 的键盘和动态表情制作。",
+    download: "下载 Windows 版", req: "Windows 10 / 11 · 无需安装", allReleases: "所有版本", latest: (v, d) => `版本 ${v} · ${d} · `,
+    featTitle: "一个小应用，样样都有", featSub: "单个文件约 21 MB。使用 Windows 自带的 WebView2 运行，十分轻巧。",
+    shotsTitle: "截图", shotsSub: "截图使用虚构的演示数据。", faqTitle: "常见问题",
+    footer: "免费开源 (MIT)。与 VRChat Inc. 无关。", isNew: "新",
+    feats: [
+      ["👥", "实时好友", "谁在线、在哪里、上次在线时间。资料卡包含横幅、徽章、备注和共同好友。"],
+      ["📜", "不会丢失的游戏日志", "去过的世界、玩家进出、视频等，即使 VRChat 删除日志也会保留在你的记录里。"],
+      ["💬", "聊天框信息", "在头顶显示随机状态、带进度条的正在播放、时钟和心率。拖动即可排列。", true],
+      ["❤️", "免费心率", "直接读取蓝牙手表或胸带，或来自 Pulsoid。也会发送给心率模型。", true],
+      ["⌨️", "VR 键盘", "8 种语言和表情的大按键。浮在所有窗口之上，可用手柄拖动。"],
+      ["🎨", "动态表情制作", "把 GIF 或 WebP 转成 VRChat 精灵图，去除背景并预览所有效果。"],
+      ["🌐", "世界、群组与模型", "浏览和收藏、管理自己的群组、切换模型、搜索公开模型、下载照片。"],
+      ["🔒", "注重隐私", "密码直接发送给 VRChat，不会保存。数据留在你的电脑上，更新会校验 checksum。"],
+    ],
+    shots: { "friends-dark": "好友（深色主题）", profile: "资料卡", feed: "动态", log: "游戏日志", chat: "聊天框", keyboard: "VR 键盘",
+             kbfloat: "悬浮键盘", "emoji-sheet": "表情制作", "groups-owned": "你的群组", theme: "主题与颜色" },
+    faq: [
+      ["Windows 提示“Windows 已保护你的电脑”", "这是 SmartScreen，未签名的新应用都会出现。点“更多信息”→“仍要运行”即可。源代码在 GitHub 上公开。"],
+      ["文件放在哪里？", "放在可写入的位置，如“文档”或桌面。不要放在 Program Files，因为应用会原地自动更新。"],
+      ["如何更新？", "启动时会检查新版本，一键更新。下载的文件必须与 GitHub 的 checksum 一致才会安装。"],
+      ["对 VRChat 账号安全吗？", "和其他助手一样使用 VRChat API，并限制请求频率。登录会话使用 Windows DPAPI 加密。"],
+      ["聊天框信息在游戏里不显示", "在 VRChat 中开启 OSC：动作菜单 → Options → OSC → Enabled。"],
+    ] },
+};
+const SHOTS = ["friends-dark", "profile", "feed", "log", "chat", "keyboard", "kbfloat", "emoji-sheet", "groups-owned", "theme"];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+let lang = "en", release = null;
+
+function pickLang() {
+  try { const saved = localStorage.getItem("lang"); if (L[saved]) return saved; } catch {}
+  for (const l of navigator.languages || [navigator.language]) { const k = (l || "").slice(0, 2).toLowerCase(); if (L[k]) return k; }
+  return "en";
+}
+function t(k) { return L[lang][k] ?? L.en[k]; }
+function render() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach(el => el.textContent = t(el.dataset.t));
+  document.getElementById("feats").innerHTML = t("feats").map(([ic, h, p, isNew]) =>
+    `<div class="feat glass"><div class="ic">${ic}</div><h3>${esc(h)}${isNew ? `<span class="new">${esc(t("isNew"))}</span>` : ""}</h3><p>${esc(p)}</p></div>`).join("");
+  const caps = t("shots");
+  document.getElementById("gallery").innerHTML = SHOTS.map(s =>
+    `<figure class="glass" data-src="screenshots/${s}.png"><img src="screenshots/${s}.png" alt="${esc(caps[s] || s)}" loading="lazy"><figcaption>${esc(caps[s] || s)}</figcaption></figure>`).join("");
+  document.getElementById("faqs").innerHTML = t("faq").map(([q, a]) => `<details class="glass"><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("");
+  showVersion();
+}
+function showVersion() {
+  const el = document.getElementById("ver");
+  if (!release) return el.textContent = "";
+  const d = new Date(release.published_at).toLocaleDateString(lang, { year: "numeric", month: "short", day: "numeric" });
+  el.textContent = t("latest")(release.tag_name.replace(/^v/, ""), d);
+}
+const sel = document.getElementById("lang");
+sel.innerHTML = Object.entries(L).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("");
+lang = pickLang(); sel.value = lang;
+sel.onchange = () => { lang = sel.value; try { localStorage.setItem("lang", lang); } catch {} render(); };
+document.getElementById("gallery").addEventListener("click", e => {
+  const f = e.target.closest("figure"); if (!f) return;
+  const lb = document.getElementById("lb"); lb.querySelector("img").src = f.dataset.src; lb.classList.add("show");
+});
+addEventListener("keydown", e => { if (e.key === "Escape") document.getElementById("lb").classList.remove("show"); });
+render();
+// Latest version and date from GitHub (the button itself always points at the newest release)
+fetch("https://api.github.com/repos/iriewiew/vrc-nook/releases/latest").then(r => r.ok ? r.json() : null)
+  .then(r => { if (r?.tag_name) { release = r; showVersion(); } }).catch(() => {});
+</script>
+</body>
+</html>
