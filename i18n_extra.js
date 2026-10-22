@@ -712,7 +712,7 @@ Object.assign(I18N.zh, { i_download: "下载" });
 
 // Chatbox info page (vrclog_more.js)
 Object.assign(I18N.ko, {
-  nav_osc: "챗박스 정보", oi_on: "챗박스로 보내기", oi_onHint: "머리 위 텍스트를 자동으로 갱신 · 직접 메시지를 보내면 15초 멈춤", oi_preview: "미리보기",
+  nav_osc: "OSC", oi_on: "챗박스로 보내기", oi_onHint: "머리 위 텍스트를 자동으로 갱신 · 직접 메시지를 보내면 15초 멈춤", oi_preview: "미리보기",
   oi_previewEmpty: "아직 표시할 내용이 없습니다 — 아래에서 하나 이상 켜세요", oi_paused: n => `${n}초 일시정지 (방금 메시지를 보냄)`,
   oi_status: "랜덤 상태", oi_statuses: "메시지", oi_statusesHint: "한 줄에 하나, 무작위로 하나씩 표시", oi_every: "변경 간격 (초)",
   oi_media: "재생 중인 미디어", oi_format: "형식", oi_mediaHint: "{title} 제목 · {artist} 아티스트 · {pos} 재생 위치 · {dur} 길이",
@@ -725,7 +725,7 @@ Object.assign(I18N.ko, {
   oi_intervalHint: "1–60초 · 약 1.5초보다 짧으면 VRChat이 일부를 건너뛸 수 있습니다",
 });
 Object.assign(I18N.ru, {
-  nav_osc: "Инфо в чатбоксе", oi_on: "Отправлять в чатбокс", oi_onHint: "Текст над головой обновляется сам · пауза 15 с после вашего сообщения", oi_preview: "Предпросмотр",
+  nav_osc: "OSC", oi_on: "Отправлять в чатбокс", oi_onHint: "Текст над головой обновляется сам · пауза 15 с после вашего сообщения", oi_preview: "Предпросмотр",
   oi_previewEmpty: "Пока нечего показывать — включите что-нибудь ниже", oi_paused: n => `Пауза ${n} с (вы только что отправили сообщение)`,
   oi_status: "Случайный статус", oi_statuses: "Фразы", oi_statusesHint: "По одной на строку, показываются по одной случайно", oi_every: "Менять каждые (с)",
   oi_media: "Сейчас играет", oi_format: "Формат", oi_mediaHint: "{title} название · {artist} исполнитель · {pos} позиция · {dur} длительность",
@@ -738,7 +738,7 @@ Object.assign(I18N.ru, {
   oi_intervalHint: "1–60 с · чаще ~1,5 с VRChat может пропускать обновления",
 });
 Object.assign(I18N.vi, {
-  nav_osc: "Thông tin Chatbox", oi_on: "Gửi lên Chatbox", oi_onHint: "Tự cập nhật chữ trên đầu · dừng 15 giây sau khi bạn tự gửi tin nhắn", oi_preview: "Xem trước",
+  nav_osc: "OSC", oi_on: "Gửi lên Chatbox", oi_onHint: "Tự cập nhật chữ trên đầu · dừng 15 giây sau khi bạn tự gửi tin nhắn", oi_preview: "Xem trước",
   oi_previewEmpty: "Chưa có gì để hiện — hãy bật ít nhất một mục bên dưới", oi_paused: n => `Tạm dừng ${n} giây (bạn vừa gửi tin nhắn)`,
   oi_status: "Trạng thái ngẫu nhiên", oi_statuses: "Câu", oi_statusesHint: "Mỗi dòng một câu, hiện ngẫu nhiên từng câu", oi_every: "Đổi mỗi (giây)",
   oi_media: "Đang phát", oi_format: "Định dạng", oi_mediaHint: "{title} tên bài · {artist} nghệ sĩ · {pos} vị trí · {dur} độ dài",
@@ -751,7 +751,7 @@ Object.assign(I18N.vi, {
   oi_intervalHint: "1–60 giây · dưới ~1,5 giây VRChat có thể bỏ qua vài lần cập nhật",
 });
 Object.assign(I18N.zh, {
-  nav_osc: "聊天框信息", oi_on: "发送到聊天框", oi_onHint: "自动更新头顶文字 · 你自己发送消息后暂停 15 秒", oi_preview: "预览",
+  nav_osc: "OSC", oi_on: "发送到聊天框", oi_onHint: "自动更新头顶文字 · 你自己发送消息后暂停 15 秒", oi_preview: "预览",
   oi_previewEmpty: "暂无可显示内容 —— 请在下方至少开启一项", oi_paused: n => `已暂停 ${n} 秒（你刚发送了消息）`,
   oi_status: "随机状态", oi_statuses: "文字", oi_statusesHint: "每行一条，随机轮流显示", oi_every: "切换间隔（秒）",
   oi_media: "正在播放", oi_format: "格式", oi_mediaHint: "{title} 标题 · {artist} 艺术家 · {pos} 当前位置 · {dur} 时长",
@@ -865,3 +865,12 @@ Object.assign(I18N.zh, { oi_relay: "让其他应用经由 VRC Nook 连接", oi_r
   oi_devList: "找到的设备", oi_devNameHint: "每个设备的开关 = 是否在 Chatbox 显示 · Chatbox 会显示设备名称，隐藏后只显示简短标记", oi_devShow: "在 Chatbox 显示", oi_devBattIcon: "电池图标", oi_devKindIcon: "设备图标", oi_resetIcon: "恢复默认图标",
   oi_devVibe: "显示振动强度 %（Intiface）", oi_devVibeHint: "读取经由 VRC Nook 连接的应用（如 OscGoesBrrr）发出的指令 · 输入框是数字前的符号",
   oi_hideName: "隐藏名称", oi_showName: "显示名称", oi_devNone: "还没有设备", oi_noBattery: "无电量信息" });
+// PC stats
+Object.assign(I18N.ko, {"oi_pc": "PC 정보", "oi_pcNow": "현재 값", "oi_pcCpu": "CPU 사용률", "oi_pcGpu": "GPU 사용률", "oi_pcTemp": "GPU 온도", "oi_pcTempHint": "NVIDIA 그래픽카드만", "oi_pcRam": "사용 중인 RAM", "oi_pcVram": "사용 중인 VRAM", "oi_pcFps": "FPS", "oi_pcFpsHint": "SteamVR에서 읽음 · SteamVR 없이 플레이하면(예: Virtual Desktop의 VDXR) 표시되지 않음", "oi_pcLblHint": "칸은 숫자 앞에 붙는 글자", "oi_pcTotal": "전체 용량도 표시 (31.6/64GB)", "oi_pcSep": "구분자", "oi_pcPerLine": "한 줄에 표시할 개수", "oi_pcPerLineHint": "0 = 모두 한 줄"});
+Object.assign(I18N.ru, {"oi_pc": "Данные ПК", "oi_pcNow": "Сейчас", "oi_pcCpu": "Загрузка CPU", "oi_pcGpu": "Загрузка GPU", "oi_pcTemp": "Температура GPU", "oi_pcTempHint": "Только видеокарты NVIDIA", "oi_pcRam": "Занято RAM", "oi_pcVram": "Занято VRAM", "oi_pcFps": "FPS", "oi_pcFpsHint": "Из SteamVR · Не показывается при игре без SteamVR (например, Virtual Desktop с VDXR)", "oi_pcLblHint": "Поле — текст перед числом", "oi_pcTotal": "Показывать и общий объём (31.6/64GB)", "oi_pcSep": "Разделитель", "oi_pcPerLine": "Пунктов в строке", "oi_pcPerLineHint": "0 = всё в одну строку"});
+Object.assign(I18N.vi, {"oi_pc": "Thông số PC", "oi_pcNow": "Hiện tại", "oi_pcCpu": "Tải CPU", "oi_pcGpu": "Tải GPU", "oi_pcTemp": "Nhiệt độ GPU", "oi_pcTempHint": "Chỉ card đồ họa NVIDIA", "oi_pcRam": "RAM đang dùng", "oi_pcVram": "VRAM đang dùng", "oi_pcFps": "FPS", "oi_pcFpsHint": "Đọc từ SteamVR · Không hiện khi chơi không có SteamVR (vd. Virtual Desktop với VDXR)", "oi_pcLblHint": "Ô là chữ đứng trước con số", "oi_pcTotal": "Hiện cả tổng dung lượng (31.6/64GB)", "oi_pcSep": "Dấu phân cách", "oi_pcPerLine": "Số mục mỗi dòng", "oi_pcPerLineHint": "0 = tất cả trên một dòng"});
+Object.assign(I18N.zh, {"oi_pc": "电脑信息", "oi_pcNow": "当前数值", "oi_pcCpu": "CPU 占用", "oi_pcGpu": "GPU 占用", "oi_pcTemp": "GPU 温度", "oi_pcTempHint": "仅限 NVIDIA 显卡", "oi_pcRam": "已用内存", "oi_pcVram": "已用显存", "oi_pcFps": "FPS", "oi_pcFpsHint": "从 SteamVR 读取 · 不开 SteamVR 游玩时（如 Virtual Desktop 的 VDXR）不显示", "oi_pcLblHint": "输入框是数字前的文字", "oi_pcTotal": "同时显示总容量（31.6/64GB）", "oi_pcSep": "分隔符", "oi_pcPerLine": "每行项目数", "oi_pcPerLineHint": "0 = 全部一行"});
+Object.assign(I18N.ko, {"oi_pcLblHint": "첫 번째 칸은 아이콘, 두 번째 칸은 숫자 앞 글자", "oi_pcCpuName": "CPU 이름 표시", "oi_pcGpuName": "그래픽카드 이름 표시", "oi_pcRamType": "RAM 종류 표시", "oi_pcIcon": "아이콘 표시", "oi_pcLblSup": "라벨을 숫자 뒤에 작은 글씨로 (39%ᶜᴾᵁ)", "oi_pcUnitSup": "단위를 작은 글씨로 (31.6ᴳᴮ 53°ᶜ)"});
+Object.assign(I18N.ru, {"oi_pcLblHint": "Первое поле — значок, второе — текст перед числом", "oi_pcCpuName": "Показывать модель CPU", "oi_pcGpuName": "Показывать модель видеокарты", "oi_pcRamType": "Показывать тип RAM", "oi_pcIcon": "Показывать значки", "oi_pcLblSup": "Подпись мелким шрифтом после числа (39%ᶜᴾᵁ)", "oi_pcUnitSup": "Единицы мелким шрифтом (31.6ᴳᴮ 53°ᶜ)"});
+Object.assign(I18N.vi, {"oi_pcLblHint": "Ô đầu là biểu tượng, ô thứ hai là chữ trước con số", "oi_pcCpuName": "Hiện tên CPU", "oi_pcGpuName": "Hiện tên card đồ họa", "oi_pcRamType": "Hiện loại RAM", "oi_pcIcon": "Hiện biểu tượng", "oi_pcLblSup": "Nhãn chữ nhỏ sau con số (39%ᶜᴾᵁ)", "oi_pcUnitSup": "Đơn vị chữ nhỏ (31.6ᴳᴮ 53°ᶜ)"});
+Object.assign(I18N.zh, {"oi_pcLblHint": "第一个框是图标，第二个是数字前的文字", "oi_pcCpuName": "显示 CPU 型号", "oi_pcGpuName": "显示显卡型号", "oi_pcRamType": "显示内存类型", "oi_pcIcon": "显示图标", "oi_pcLblSup": "标签以小字放在数字后（39%ᶜᴾᵁ）", "oi_pcUnitSup": "单位用小字（31.6ᴳᴮ 53°ᶜ）"});

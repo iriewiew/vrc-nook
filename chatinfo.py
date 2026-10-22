@@ -2,10 +2,13 @@
 Bluetooth watch/strap, or from Pulsoid), shown together in the in-game Chatbox over OSC.
 Heart rate is also sent as avatar parameters."""
 import asyncio
+import ctypes
 import datetime
 import json
 import logging
 import random
+import re
+import subprocess
 import threading
 import time
 import uuid
@@ -34,15 +37,20 @@ DEFAULTS = {
     # Order of the parts in the Chatbox: items, "br" = new line, "sep:<text>" = separator between two parts on a line,
     # "text:<text>" = the user's own text (always shown), "sup:<text>" = the same in small superscript letters
     "layout": ["status", "br", "media", "br", "clock", "sep:   ", "heart"],
-    "icons": {"status": "", "media": "🎵", "clock": "🕒", "heart": "❤️", "devices": ""},   # Emoji in front of each part ("" = none)
+    "icons": {"status": "", "media": "🎵", "clock": "🕒", "heart": "❤️", "devices": "", "pc": ""},   # Emoji in front of each part ("" = none)
     # VR devices from SteamVR: one entry per device, or one per kind (headset / controllers / trackers)
     "devices": False, "devTrkGroup": False, "devStat": "lowest", "devHmd": True, "devCtrl": True, "devTrk": True,
     "devCharging": True, "devLow": 20, "devHidden": [], "devOff": [],
     "devVibe": True, "devVibeIcon": "〰️", "devBattIcon": False, "devBattSym": "🔋", "devKindIcon": False,
     "devKindSyms": {"hmd": "🥽", "ctrl": "🎮", "trk": "📍", "toy": "📳"},
+    "pc": False, "pcCpu": True, "pcGpu": True, "pcTemp": True, "pcRam": True, "pcVram": True, "pcFps": True, "pcTotal": False,
+    "pcSep": " | ", "pcPerLine": 2, "pcLabels": {"cpu": "CPU", "gpu": "GPU", "ram": "RAM", "vram": "VRAM", "fps": "FPS"},
+    "pcCpuName": False, "pcGpuName": False, "pcRamType": False, "pcIcon": False, "pcLblSup": False, "pcUnitSup": False,
+    "pcIcons": {"cpu": "🧠", "gpu": "🎮", "ram": "💾", "vram": "🖼️", "fps": "⏱️"},
     "devToy": False, "intiface": "ws://127.0.0.1:12345", "intifaceRelay": 12346,
 }
-ITEMS = ("status", "media", "clock", "heart", "devices")
+ITEMS = ("status", "media", "clock", "heart", "devices", "pc")
+PC_ITEMS = ("cpu", "gpu", "ram", "vram", "fps")  # In the order they're shown
 DEV_KINDS = {"hmd": ("devHmd", "🥽"), "ctrl": ("devCtrl", "🎮"), "trk": ("devTrk", "📍"), "toy": ("devToy", "📳")}  # Default label of each kind
 BARS = {"line": ("━", "●", "─"), "blocks": ("▰", "", "▱"), "squares": ("■", "", "□"), "dots": ("●", "", "○")}  # filled, knob, empty
 OLD_FMTS = {"mediaFmt": "🎵 {artist} - {title}", "heartFmt": "❤️ {bpm}"}  # Before icons were separate: drop the built-in emoji
@@ -80,6 +88,7 @@ class ChatInfo:
         self._ble = None           # Started the first time Bluetooth is needed
         self.vr = _Vr()            # SteamVR devices (reads only while the devices part is on)
         self.toys = _Intiface()    # Devices connected in Intiface Central (only when switched on: it takes one app at a time)
+        self.pc = _Pc()            # CPU / GPU / RAM / VRAM (FPS comes from SteamVR, in self.vr)
         self._lock = threading.Lock()
         threading.Thread(target=self._run, name="chatinfo", daemon=True).start()
 
@@ -122,6 +131,12 @@ class ChatInfo:
         c["devOff"] = [str(k)[:64] for k in c["devOff"]][:64]
         c["devVibeIcon"] = c["devVibeIcon"][:8]
         c["devBattSym"] = c["devBattSym"][:8]
+        c["pcSep"] = c["pcSep"][:12]
+        c["pcPerLine"] = min(max(int(c["pcPerLine"]), 0), len(PC_ITEMS))  # 0 = all on one line
+        c["pcLabels"] = {k: str(c["pcLabels"].get(k, DEFAULTS["pcLabels"][k]))[:12] for k in PC_ITEMS}
+        old_icons = {"cpu": "💻", "gpu": "🖥️", "vram": "🗂️", "fps": "🎞️"}  # First defaults, replaced by clearer ones
+        c["pcIcons"] = {k: DEFAULTS["pcIcons"][k] if not c["pcIcons"].get(k) or c["pcIcons"][k] == old_icons.get(k)
+                        else str(c["pcIcons"][k])[:8] for k in PC_ITEMS}  # Empty = back to the default
         c["devKindSyms"] = {k: str(c["devKindSyms"].get(k) or e)[:8] for k, (_, e) in DEV_KINDS.items()}  # Empty = back to the default
         if c["mediaBarStyle"] not in BARS:
             c["mediaBarStyle"] = "line"
@@ -148,6 +163,7 @@ class ChatInfo:
         self._watch_until = time.monotonic() + 5
         return {"text": self.build(), "sent": self.text, "media": self.media, "bpm": self.bpm, "hr": self.hr_state,
                 "login": self.login, "canLogin": bool(PULSOID_CLIENT_ID), "vr": {"state": self.vr.state, "devices": self.vr.devices},
+                "pc": {**self.pc.stats, "fps": self.vr.fps, "vr": self.vr.state},
                 "toys": {"state": self.toys.state, "devices": self.toys.devices, "relay": self.toys.relay, "app": self.toys.app},
                 "ble": {"scanning": self._ble.scanning, "found": self._ble.list()} if self._ble else {"scanning": False, "found": []},
                 "paused": max(0, round(self._paused_until - time.monotonic()))}
@@ -188,6 +204,8 @@ class ChatInfo:
                 out["heart"] += sup(c["hrSuffix"]) if c["hrSuffixSup"] else " " + c["hrSuffix"]
         if c["devices"]:
             out["devices"] = self._devices_text()
+        if c["pc"]:
+            out["pc"] = self._pc_text()
         return {k: f"{c['icons'][k]} {v}".strip() if c["icons"].get(k) else v for k, v in out.items() if v}
 
     def _devices_text(self):
@@ -222,6 +240,34 @@ class ChatInfo:
                 val = min(vals) if c["devStat"] == "lowest" else round(sum(vals) / len(vals))
                 out.append(bits(c["devKindSyms"]["trk"] + (f"×{len(trackers)}" if len(trackers) > 1 else ""), val, any(t["charging"] for t in trackers), None))
         return " ".join(out)
+
+    def _pc_text(self):
+        """'CPU 60% | GPU 47% 56°C' / 'RAM 23.6GB | VRAM 7.5GB' / 'FPS 40' (one line each) — whatever is switched on and could be read.
+        Options: icon in front, the model / RAM type ('CPU Ryzen 7 5700X 60%', 'RAM DDR4 23.6GB'),
+        the label as small letters after the number ('60%ᶜᵖᵘ') and small units ('23.6ᴳᴮ', '56°ᶜ')"""
+        c, s, bits = self.cfg, self.pc.stats, []
+        unit = lambda u: sup(u) if c["pcUnitSup"] else u
+        gb = lambda used, total: f"{used:.1f}" + (f"/{total:.0f}" if c["pcTotal"] and total else "") + unit("GB")
+        values = {
+            "cpu": s.get("cpu") is not None and f"{s['cpu']}%",
+            "gpu": s.get("gpu") is not None and f"{s['gpu']}%" + (f" {s['temp']}°{unit('C')}" if c["pcTemp"] and s.get("temp") is not None else ""),
+            "ram": s.get("ram") is not None and gb(s["ram"], s.get("ramTotal")),
+            "vram": s.get("vram") is not None and gb(s["vram"], s.get("vramTotal")),
+            "fps": self.vr.fps is not None and str(self.vr.fps),
+        }
+        names = {"cpu": c["pcCpuName"] and s.get("cpuName"), "gpu": c["pcGpuName"] and s.get("gpuName"), "ram": c["pcRamType"] and s.get("ramType")}
+        for k in PC_ITEMS:
+            if not (c["pc" + k.capitalize()] and values[k]):
+                continue
+            label, value = c["pcLabels"][k], values[k]
+            if c["pcLblSup"] and label:  # '60%ᶜᵖᵘ' — the label moves after the number (before a GPU temperature)
+                head, _, rest = value.partition(" ")
+                gap = " " if c["pcUnitSup"] and k in ("ram", "vram") else ""  # '31.6ᴳᴮ ᴿᴬᴹ', not '31.6ᴳᴮᴿᴬᴹ'
+                value, label = f"{head}{gap}{sup(label)}" + (f" {rest}" if rest else ""), ""
+            front = " ".join(x for x in ((c["pcIcons"][k] if c["pcIcon"] else ""), label) if x)
+            bits.append(" ".join(x for x in (front, names.get(k) or "", value) if x))
+        n = c["pcPerLine"] or len(bits) or 1
+        return "\n".join(c["pcSep"].join(bits[i:i + n]) for i in range(0, len(bits), n))
 
     def _timeline(self, m):
         """'1:23 ━━━●────── 3:45' — whichever of time played / seek bar / length are switched on"""
@@ -271,7 +317,10 @@ class ChatInfo:
                 except Exception as e:  # No media API (old Windows) or a player that misbehaves
                     log.debug("media read failed: %s", e)
                     self.media = None
-            self.vr.wanted = c["devices"] and (c["on"] or now < self._watch_until)
+            watching = c["on"] or now < self._watch_until
+            self.vr.fps_wanted = c["pc"] and c["pcFps"] and watching
+            self.vr.wanted = (c["devices"] and watching) or self.vr.fps_wanted
+            self.pc.wanted = c["pc"] and watching
             self.toys.url, self.toys.relay_port = c["intiface"], c["intifaceRelay"]
             self.toys.wanted = c["devices"] and c["devToy"] and (c["on"] or now < self._watch_until)
             if c["heart"] and self.bpm and now - self._hr_at > 15:  # No reading for a while = sensor off
@@ -502,9 +551,11 @@ class _Vr:
     POLL, RETRY = 5, 10
 
     def __init__(self):
-        self.wanted = False
+        self.wanted = self.fps_wanted = False
         self.state = "off"     # off / noSteamVR / ok / error
         self.devices = []      # [{"serial", "kind": hmd|ctrl|trk, "label", "model", "battery": 0-100|None, "charging"}]
+        self.fps = None        # Frames per second the game hands SteamVR (None = no game / not wanted)
+        self._frames = None    # (pid, frames submitted, time) at the last FPS reading
         threading.Thread(target=self._run, name="steamvr", daemon=True).start()
 
     def _run(self):
@@ -514,7 +565,7 @@ class _Vr:
                 if system:
                     self._close()
                     system = None
-                self.state, self.devices = "off", []
+                self.state, self.devices, self.fps = "off", [], None
                 time.sleep(1)
                 continue
             try:
@@ -527,10 +578,12 @@ class _Vr:
                     raise OSError("SteamVR closed")
                 self.devices = self._read(system, openvr)
                 self.state = "ok"
-                time.sleep(self.POLL)
+                for _ in range(self.POLL):  # FPS is read every second
+                    self.fps = self._read_fps(openvr) if self.fps_wanted else None
+                    time.sleep(1)
             except Exception as e:  # SteamVR not running (InitError_Init_NoServerForBackgroundApp) or it just quit
                 not_running = "NoServer" in type(e).__name__ or "closed" in str(e)
-                self.state, self.devices = ("noSteamVR" if not_running else "error"), []
+                self.state, self.devices, self.fps, self._frames = ("noSteamVR" if not_running else "error"), [], None, None
                 if not not_running:
                     log.info("steamvr: %r", e)
                 if system:
@@ -545,6 +598,15 @@ class _Vr:
             openvr.shutdown()
         except Exception:
             pass
+
+    def _read_fps(self, openvr):
+        """Frames the game submitted to SteamVR since the last reading, per second"""
+        stats = openvr.VRCompositor().getCumulativeStats(ctypes.sizeof(openvr.Compositor_CumulativeStats))
+        now, prev = (stats.m_nPid, stats.m_nNumFrameSubmits, time.monotonic()), self._frames
+        self._frames = now
+        if not stats.m_nPid or not prev or prev[0] != now[0] or now[2] <= prev[2]:
+            return None  # No game connected, or it just changed
+        return max(round((now[1] - prev[1]) / (now[2] - prev[2])), 0)
 
     @staticmethod
     def _quit_requested(system, openvr):
@@ -584,6 +646,187 @@ class _Vr:
                         "battery": round(level * 100) if isinstance(level, float) else None,
                         "charging": bool(prop("Bool", i, openvr.Prop_DeviceIsCharging_Bool, False)) if has_battery else False})
         return out
+
+
+class _Pc:
+    """CPU / RAM from Windows, GPU load / temperature / VRAM from NVIDIA's NVML (comes with the driver).
+    Other GPUs fall back to Windows' own GPU counters (the ones Task Manager shows), which have no temperature."""
+    POLL = 2
+
+    def __init__(self):
+        self.wanted = False
+        self.stats = {}        # cpu %, ram / ramTotal GB, gpu %, temp °C, vram / vramTotal GB — only what could be read
+        self.names = None      # cpuName, gpuName, ramType — looked up once, the first time they're wanted
+        self._cpu_prev = None
+        self._nvml = self._gpu = self._pdh = None
+        threading.Thread(target=self._run, name="pcstats", daemon=True).start()
+
+    def _run(self):
+        while True:
+            if not self.wanted:
+                self.stats, self._cpu_prev = {}, None
+                time.sleep(1)
+                continue
+            if self.names is None:
+                self.names = self._read_names()
+            s = dict(self.names)
+            for read in (self._read_cpu, self._read_ram, self._read_gpu):
+                try:
+                    s.update(read())
+                except Exception as e:  # One source failing shouldn't hide the others
+                    log.debug("pc stats: %s failed: %r", read.__name__, e)
+            self.stats = s
+            time.sleep(self.POLL)
+
+    # ---------- Names: 'Ryzen 7 5700X', 'RTX 3080', 'DDR4' ----------
+    RAM_TYPES = {20: "DDR", 21: "DDR2", 24: "DDR3", 26: "DDR4", 27: "LPDDR", 28: "LPDDR2", 29: "LPDDR3", 30: "LPDDR4", 34: "DDR5", 35: "LPDDR5"}
+
+    @staticmethod
+    def short_name(name):
+        """Drop the brand and filler: 'AMD Ryzen 7 5700X 8-Core Processor' -> 'Ryzen 7 5700X', 'NVIDIA GeForce RTX 3080' -> 'RTX 3080'"""
+        name = re.sub(r"\((R|TM)\)", "", name)
+        name = re.sub(r"\b\d+(th|st|nd|rd) Gen\b|\s*w/ .*|\bIntel\b|\bAMD\b|\bNVIDIA\b|\bGeForce\b|\bCore\b(?= i\d)|"
+                      r"\b\d+-Core\b|\bProcessor\b|\bwith Radeon Graphics\b|\bCPU @ .*|\bGraphics\b(?=$)", "", name, flags=re.I)
+        return " ".join(name.split())[:40]
+
+    def _read_names(self):
+        out = {}
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\CentralProcessor\0") as k:
+                out["cpuName"] = self.short_name(winreg.QueryValueEx(k, "ProcessorNameString")[0])
+        except OSError:
+            pass
+        try:  # RAM type and the main graphics card (the one with the most memory; skips virtual displays)
+            ps = ("$m = Get-CimInstance Win32_PhysicalMemory | Select-Object -First 1 SMBIOSMemoryType;"
+                  "$g = Get-CimInstance Win32_VideoController | Sort-Object AdapterRAM -Descending | Select-Object -First 1 Name;"
+                  "@{ram = $m.SMBIOSMemoryType; gpu = $g.Name} | ConvertTo-Json -Compress")
+            r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps], capture_output=True, text=True,
+                               timeout=20, creationflags=subprocess.CREATE_NO_WINDOW)
+            info = json.loads(r.stdout or "{}")
+            if info.get("ram") in self.RAM_TYPES:
+                out["ramType"] = self.RAM_TYPES[info["ram"]]
+            if info.get("gpu"):
+                out["gpuName"] = self.short_name(info["gpu"])
+        except (OSError, ValueError, subprocess.SubprocessError) as e:
+            log.debug("pc names: %r", e)
+        return out
+
+    # ---------- CPU and RAM (kernel32) ----------
+    def _read_cpu(self):
+        idle, kernel, user = (ctypes.c_ulonglong() for _ in range(3))
+        if not ctypes.windll.kernel32.GetSystemTimes(ctypes.byref(idle), ctypes.byref(kernel), ctypes.byref(user)):
+            return {}
+        now, prev = (idle.value, kernel.value + user.value), self._cpu_prev  # Kernel time includes idle time
+        self._cpu_prev = now
+        if not prev or now[1] == prev[1]:
+            return {}
+        return {"cpu": round(100 * (1 - (now[0] - prev[0]) / (now[1] - prev[1])))}
+
+    @staticmethod
+    def _read_ram():
+        class MemoryStatus(ctypes.Structure):
+            _fields_ = [("length", ctypes.c_ulong), ("load", ctypes.c_ulong), ("total", ctypes.c_ulonglong), ("avail", ctypes.c_ulonglong),
+                        ("pageTotal", ctypes.c_ulonglong), ("pageAvail", ctypes.c_ulonglong), ("virtTotal", ctypes.c_ulonglong),
+                        ("virtAvail", ctypes.c_ulonglong), ("extAvail", ctypes.c_ulonglong)]
+        m = MemoryStatus(length=ctypes.sizeof(MemoryStatus))
+        if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m)):
+            return {}
+        return {"ram": (m.total - m.avail) / 2 ** 30, "ramTotal": m.total / 2 ** 30}
+
+    # ---------- GPU ----------
+    def _read_gpu(self):
+        if self._nvml is None:
+            self._nvml = self._open_nvml() or False
+        if self._nvml:
+            return self._read_nvml()
+        return self._read_pdh()
+
+    def _open_nvml(self):
+        import os
+        for path in ("nvml.dll", os.path.expandvars(r"%ProgramFiles%\NVIDIA Corporation\NVSMI\nvml.dll")):
+            try:
+                lib = ctypes.CDLL(path)
+            except OSError:
+                continue
+            if lib.nvmlInit_v2() != 0:
+                return None
+            count, best = ctypes.c_uint(), None
+            lib.nvmlDeviceGetCount_v2(ctypes.byref(count))
+            for i in range(count.value):  # Several NVIDIA cards: use the one with the most memory
+                h, mem = ctypes.c_void_p(), self._NvMem()
+                if lib.nvmlDeviceGetHandleByIndex_v2(i, ctypes.byref(h)) == 0 and lib.nvmlDeviceGetMemoryInfo(h, ctypes.byref(mem)) == 0:
+                    if not best or mem.total > best[1]:
+                        best = (h, mem.total)
+            if not best:
+                return None
+            self._gpu = best[0]
+            name = ctypes.create_string_buffer(96)
+            lib.nvmlDeviceGetName(self._gpu, name, 96)
+            self._gpu_name = self.short_name(name.value.decode(errors="replace"))
+            return lib
+        return None
+
+    class _NvMem(ctypes.Structure):
+        _fields_ = [("total", ctypes.c_ulonglong), ("free", ctypes.c_ulonglong), ("used", ctypes.c_ulonglong)]
+
+    class _NvUtil(ctypes.Structure):
+        _fields_ = [("gpu", ctypes.c_uint), ("memory", ctypes.c_uint)]
+
+    def _read_nvml(self):
+        lib, h, out = self._nvml, self._gpu, {"gpuName": self._gpu_name}
+        util, temp, mem = self._NvUtil(), ctypes.c_uint(), self._NvMem()
+        if lib.nvmlDeviceGetUtilizationRates(h, ctypes.byref(util)) == 0:
+            out["gpu"] = util.gpu
+        if lib.nvmlDeviceGetTemperature(h, 0, ctypes.byref(temp)) == 0:  # 0 = the GPU die
+            out["temp"] = temp.value
+        if lib.nvmlDeviceGetMemoryInfo(h, ctypes.byref(mem)) == 0:
+            out["vram"], out["vramTotal"] = mem.used / 2 ** 30, mem.total / 2 ** 30
+        return out
+
+    def _read_pdh(self):
+        """Windows' GPU counters: load = busiest GPU's 3D engines, VRAM = its dedicated memory in use"""
+        pdh = ctypes.windll.pdh
+        if self._pdh is None:
+            query, load, vram = ctypes.c_void_p(), ctypes.c_void_p(), ctypes.c_void_p()
+            if pdh.PdhOpenQueryW(None, None, ctypes.byref(query)) != 0:
+                self._pdh = False
+                return {}
+            pdh.PdhAddEnglishCounterW(query, r"\GPU Engine(*engtype_3D)\Utilization Percentage", None, ctypes.byref(load))
+            pdh.PdhAddEnglishCounterW(query, r"\GPU Adapter Memory(*)\Dedicated Usage", None, ctypes.byref(vram))
+            pdh.PdhCollectQueryData(query)  # Rates need two samples — the first reading comes next round
+            self._pdh = (query, load, vram)
+            return {}
+        if not self._pdh:
+            return {}
+        query, load, vram = self._pdh
+        if pdh.PdhCollectQueryData(query) != 0:
+            return {}
+        per_gpu = {}
+        for name, value in self._pdh_values(load):  # 'pid_123_luid_0x..._0x..._phys_0_eng_0_engtype_3D'
+            gpu = name[name.find("luid_"):name.find("_phys")]
+            per_gpu[gpu] = per_gpu.get(gpu, 0) + value
+        out = {}
+        if per_gpu:
+            out["gpu"] = min(round(max(per_gpu.values())), 100)
+        used = [v for _, v in self._pdh_values(vram)]
+        if used:
+            out["vram"] = max(used) / 2 ** 30
+        return out
+
+    @staticmethod
+    def _pdh_values(counter):
+        class Item(ctypes.Structure):
+            _fields_ = [("name", ctypes.c_wchar_p), ("status", ctypes.c_ulong), ("value", ctypes.c_double)]
+        pdh, size, count = ctypes.windll.pdh, ctypes.c_ulong(0), ctypes.c_ulong(0)
+        PDH_MORE_DATA, PDH_FMT_DOUBLE = 0x800007D2, 0x200
+        if pdh.PdhGetFormattedCounterArrayW(counter, PDH_FMT_DOUBLE, ctypes.byref(size), ctypes.byref(count), None) & 0xFFFFFFFF != PDH_MORE_DATA:
+            return []
+        buf = (ctypes.c_byte * size.value)()
+        if pdh.PdhGetFormattedCounterArrayW(counter, PDH_FMT_DOUBLE, ctypes.byref(size), ctypes.byref(count), buf) != 0:
+            return []
+        items = ctypes.cast(buf, ctypes.POINTER(Item))
+        return [(items[i].name, items[i].value) for i in range(count.value) if items[i].status == 0]
 
 
 class _Intiface:

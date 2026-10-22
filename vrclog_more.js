@@ -2928,7 +2928,7 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 // ======================= Chatbox info (OSC): random status, now playing, clock, Pulsoid heart rate =======================
 // Python (chatinfo.py) builds and sends the text; this page edits the settings and shows a live preview
 tx({
-  nav_osc: ["ข้อมูลใน Chatbox", "Chatbox info", "チャットボックス情報"],
+  nav_osc: ["OSC", "OSC", "OSC"],
   oi_on: ["ส่งไปที่ Chatbox", "Send to Chatbox", "チャットボックスに送信"],
   oi_onHint: ["อัปเดตข้อความเหนือหัวอัตโนมัติ · หยุด 15 วิ หลังส่งข้อความเองจากหน้าแชท", "Updates the text above your head · pauses 15 s after you send a message yourself", "頭上のテキストを自動更新 · 自分でメッセージを送ると 15 秒停止"],
   oi_preview: ["ตัวอย่าง", "Preview", "プレビュー"],
@@ -2983,6 +2983,19 @@ tx({
   oi_supHint: ["ได้กับ a–z และ 0–9 · ภาษาไทยไม่เปลี่ยน", "Works for a–z and 0–9 · other scripts stay as they are", "a–z と 0–9 のみ · 他の文字はそのまま"],
   oi_clockTzSup: ["เขตเวลาเป็นตัวยกเล็ก", "Time zone in superscript", "タイムゾーンを上付きに"],
   oi_devices: ["Integrate devices", "Integrate devices", "デバイス連携"],
+  oi_pc: ["ข้อมูล PC", "PC stats", "PC 情報"], oi_pcNow: ["ค่าตอนนี้", "Right now", "現在の値"],
+  oi_pcCpu: ["CPU ที่ใช้", "CPU load", "CPU 使用率"], oi_pcGpu: ["GPU ที่ใช้", "GPU load", "GPU 使用率"],
+  oi_pcTemp: ["อุณหภูมิ GPU", "GPU temperature", "GPU 温度"], oi_pcTempHint: ["เฉพาะการ์ดจอ NVIDIA", "NVIDIA graphics cards only", "NVIDIA のみ"],
+  oi_pcRam: ["RAM ที่ใช้", "RAM in use", "使用中の RAM"], oi_pcVram: ["VRAM ที่ใช้", "VRAM in use", "使用中の VRAM"], oi_pcFps: ["FPS", "FPS", "FPS"],
+  oi_pcFpsHint: ["อ่านจาก SteamVR · ถ้าเล่นโดยไม่เปิด SteamVR (เช่น Virtual Desktop แบบ VDXR) จะไม่ขึ้น", "From SteamVR · Not shown when you play without SteamVR (e.g. Virtual Desktop with VDXR)", "SteamVR から · SteamVR なし（Virtual Desktop の VDXR など）では表示されません"],
+  oi_pcLblHint: ["ช่องแรกคือไอคอน ช่องที่สองคือข้อความหน้าตัวเลข", "First box: icon · second box: the text before the number", "1 つ目の欄はアイコン、2 つ目は数字の前の文字"],
+  oi_pcCpuName: ["แสดงชื่อ CPU", "Show the CPU model", "CPU 名を表示"], oi_pcGpuName: ["แสดงชื่อการ์ดจอ", "Show the GPU model", "GPU 名を表示"],
+  oi_pcRamType: ["แสดงประเภทแรม", "Show the RAM type", "RAM の種類を表示"], oi_pcIcon: ["แสดงไอคอน", "Show icons", "アイコンを表示"],
+  oi_pcLblSup: ["ข้อความเป็นตัวเล็กลอยหลังตัวเลข (39%ᶜᴾᵁ)", "Label as small text after the number (39%ᶜᴾᵁ)", "ラベルを数字の後ろに小さく（39%ᶜᴾᵁ）"],
+  oi_pcUnitSup: ["หน่วยเป็นตัวเล็กลอย (31.6ᴳᴮ 53°ᶜ)", "Small units (31.6ᴳᴮ 53°ᶜ)", "単位を小さく（31.6ᴳᴮ 53°ᶜ）"],
+  oi_pcTotal: ["แสดงความจุทั้งหมดด้วย (31.6/64GB)", "Show the total too (31.6/64GB)", "合計も表示（31.6/64GB）"],
+  oi_pcSep: ["ตัวคั่น", "Separator", "区切り"], oi_pcPerLine: ["จำนวนต่อบรรทัด", "Items per line", "1 行の項目数"],
+  oi_pcPerLineHint: ["0 = ทั้งหมดในบรรทัดเดียว", "0 = all on one line", "0 = すべて 1 行"],
   oi_toyHint: ["อ่านอุปกรณ์ที่เชื่อมต่อใน Intiface Central และแบตเตอรี่ · กด Start server ใน Intiface และเชื่อมอุปกรณ์ที่นั่นก่อน",
     "Lists the devices connected in Intiface Central and their battery · Press Start server in Intiface and connect devices there first",
     "Intiface Central に接続したデバイスとバッテリーを表示 · 先に Intiface で Start server を押してデバイスを接続"],
@@ -3038,8 +3051,12 @@ NAV.osc = ["radio", "pink"];
 VIEWS.splice(VIEWS.indexOf("chat") + 1, 0, "osc");
 $("jump").insertAdjacentHTML("beforebegin", `<div class="view" id="v_osc"></div>`);
 const OI_DEF = { on: false, status: true, statuses: [], statusEvery: 60, media: true, mediaFmt: "{artist} - {title}", clock: true, clock24: true,
-  layout: ["status", "br", "media", "br", "clock", "sep:   ", "heart"], icons: { status: "", media: "🎵", clock: "🕒", heart: "❤️", devices: "" },
+  layout: ["status", "br", "media", "br", "clock", "sep:   ", "heart"], icons: { status: "", media: "🎵", clock: "🕒", heart: "❤️", devices: "", pc: "" },
   devices: false, devTrkGroup: false, devStat: "lowest", devHmd: true, devCtrl: true, devTrk: true, devCharging: true, devLow: 20, devHidden: [], devOff: [], devVibe: true, devVibeIcon: "〰️", devBattIcon: false, devBattSym: "🔋", devKindIcon: false, devKindSyms: { hmd: "🥽", ctrl: "🎮", trk: "📍", toy: "📳" },
+  pc: false, pcCpu: true, pcGpu: true, pcTemp: true, pcRam: true, pcVram: true, pcFps: true, pcTotal: false, pcSep: " | ", pcPerLine: 2,
+  pcLabels: { cpu: "CPU", gpu: "GPU", ram: "RAM", vram: "VRAM", fps: "FPS" },
+  pcCpuName: false, pcGpuName: false, pcRamType: false, pcIcon: false, pcLblSup: false, pcUnitSup: false,
+  pcIcons: { cpu: "🧠", gpu: "🎮", ram: "💾", vram: "🖼️", fps: "⏱️" },
   devToy: false, intiface: "ws://127.0.0.1:12345", intifaceRelay: 12346,
   mediaTime: false, mediaDur: false, mediaBar: false, mediaBarStyle: "line", mediaBarLen: 10, clockTz: false, clockTzSup: false, clockDate: false,
   heart: false, heartFmt: "{bpm}", hrSuffixOn: false, hrSuffix: "bpm", hrSuffixSup: false, hrParams: true, hrSource: "ble", bleAddr: "", bleName: "", pulsoid: "", interval: 3 };
@@ -3047,6 +3064,8 @@ const oiCfg = () => {
   const c = { ...OI_DEF, ...(S.chatInfo || {}) };
   if (c.mediaFmt === "🎵 {artist} - {title}") c.mediaFmt = OI_DEF.mediaFmt;  // Icons used to be part of the format
   if (c.heartFmt === "❤️ {bpm}") c.heartFmt = OI_DEF.heartFmt;
+  const oldPcIcons = { cpu: "💻", gpu: "🖥️", vram: "🗂️", fps: "🎞️" };  // First defaults, replaced by clearer ones
+  if (c.pcIcons) c.pcIcons = Object.fromEntries(Object.entries(c.pcIcons).map(([k, v]) => [k, v === oldPcIcons[k] ? OI_DEF.pcIcons[k] : v]));
   return c;
 };
 function renderOsc() {
@@ -3103,11 +3122,22 @@ function renderOsc() {
         ${oiSymReset(...Object.keys(OI_KIND).map(k => "oiSym_" + k))}</div>`)
       + fRow(t("oi_devVibe"), `<div class="oi-token">${fCheck("oiDevVibe", c.devVibe)}${oiSym("oiDevVibeIcon", c.devVibeIcon, OI_DEF.devVibeIcon)}${oiSymReset("oiDevVibeIcon")}</div>`, t("oi_devVibeHint"))
       + fRow(t("oi_devLow"), fInput("oiDevLow", c.devLow, 'type="number" min="0" max="100"'))
-      + fRow(t("oi_devList"), `<div id="oiVrList" class="oi-vr-list"></div>`, t("oi_devNameHint")))}`;
+      + fRow(t("oi_devList"), `<div id="oiVrList" class="oi-vr-list"></div>`, t("oi_devNameHint")))}
+    ${sec("pc", "cpu", c.pc, fRow(t("oi_pcNow"), `<span class="hint-inline" id="oiPc"></span>`)
+      + PC_ITEMS.map(k => fRow(t("oi_pc" + oiCap(k)), `<div class="oi-token">${fCheck("oiPc" + oiCap(k), c["pc" + oiCap(k)])}${oiSym("oiPcIco_" + k, c.pcIcons?.[k] || OI_DEF.pcIcons[k], OI_DEF.pcIcons[k])}${fInput("oiPcLbl_" + k, (c.pcLabels || {})[k] ?? OI_DEF.pcLabels[k], 'maxlength="12" style="width:110px"')}</div>`,
+          k === "fps" ? t("oi_pcFpsHint") : t("oi_pcLblHint"))
+        + (PC_NAMES[k] ? fRow(t("oi_" + PC_NAMES[k]), fCheck("oi" + oiCap(PC_NAMES[k]), c[PC_NAMES[k]]), `<span id="oiPcName_${k}"></span>`) : "")
+        + (k === "gpu" ? fRow(t("oi_pcTemp"), fCheck("oiPcTemp", c.pcTemp), t("oi_pcTempHint")) : "")).join("")
+      + fRow(t("oi_pcIcon"), `<div class="oi-token">${fCheck("oiPcIcon", c.pcIcon)}${oiSymReset(...PC_ITEMS.map(k => "oiPcIco_" + k))}</div>`)
+      + fRow(t("oi_pcLblSup"), fCheck("oiPcLblSup", c.pcLblSup))
+      + fRow(t("oi_pcUnitSup"), fCheck("oiPcUnitSup", c.pcUnitSup))
+      + fRow(t("oi_pcTotal"), fCheck("oiPcTotal", c.pcTotal))
+      + fRow(t("oi_pcSep"), fInput("oiPcSep", c.pcSep, 'maxlength="12" style="width:110px"'))
+      + fRow(t("oi_pcPerLine"), fInput("oiPcPerLine", c.pcPerLine, 'type="number" min="0" max="5"'), t("oi_pcPerLineHint")))}`;
   let timer = 0;
   el.oninput = el.onchange = () => { clearTimeout(timer); timer = setTimeout(oiSave, 400); oiTabsUi(); oiLayDim(); };
   oiLayout = [...c.layout]; oiIcons = { ...OI_DEF.icons, ...c.icons };
-  for (const k of ["status", "media", "clock", "heart", "devices"])  // A part that's new in this version goes on its own line at the end
+  for (const k of ["status", "media", "clock", "heart", "devices", "pc"])  // A part that's new in this version goes on its own line at the end
     if (!oiLayout.includes(k)) oiLayout.push(...(oiLayout.length ? ["br", k] : [k]));
   oiLayUi();
   oiSrcUi();
@@ -3205,7 +3235,7 @@ function oiEmoji(k, anchor) {
   }), 0);
 }
 // One section at a time; each tab shows a dot when that part is switched on
-const OI_TABS = { overall: "sliders-horizontal", status: "sparkles", media: "music", clock: "clock", heart: "heart", devices: "battery-medium" };
+const OI_TABS = { overall: "sliders-horizontal", status: "sparkles", media: "music", clock: "clock", pc: "cpu", heart: "heart", devices: "battery-medium" };
 let oiTab = "overall";
 function oiTabsUi() {
   $("oiTabs").innerHTML = Object.entries(OI_TABS).map(([k, ic]) => `<button class="${oiTab === k ? "on" : ""}" onclick="oiTab='${k}';oiTabsUi()">${icon(ic)}${t("oi_" + k)}
@@ -3227,6 +3257,12 @@ function oiSave() {
     devVibe: fv("oiDevVibe"), devVibeIcon: (fv("oiDevVibeIcon") ?? OI_DEF.devVibeIcon).slice(0, 8),
     devBattIcon: fv("oiDevBattIcon"), devBattSym: (fv("oiDevBattSym") ?? OI_DEF.devBattSym).slice(0, 8), devKindIcon: fv("oiDevKindIcon"),
     devKindSyms: Object.fromEntries(Object.keys(OI_KIND).map(k => [k, (fv("oiSym_" + k) || OI_KIND[k]).slice(0, 8)])),
+    pc: fv("oi_pc"), ...Object.fromEntries(PC_ITEMS.map(k => ["pc" + oiCap(k), fv("oiPc" + oiCap(k))])), pcTemp: fv("oiPcTemp"), pcTotal: fv("oiPcTotal"),
+    pcSep: $("oiPcSep")?.value ?? OI_DEF.pcSep,  // Untrimmed: the spaces around "|" matter pcPerLine: num("oiPcPerLine", OI_DEF.pcPerLine),
+    pcLabels: Object.fromEntries(PC_ITEMS.map(k => [k, (fv("oiPcLbl_" + k) ?? OI_DEF.pcLabels[k]).slice(0, 12)])),
+    pcIcons: Object.fromEntries(PC_ITEMS.map(k => [k, (fv("oiPcIco_" + k) || OI_DEF.pcIcons[k]).slice(0, 8)])),
+    ...Object.fromEntries(Object.values(PC_NAMES).map(n => [n, fv("oi" + oiCap(n))])),
+    pcIcon: fv("oiPcIcon"), pcLblSup: fv("oiPcLblSup"), pcUnitSup: fv("oiPcUnitSup"),
     hrSource: fv("oiSource") || "ble", bleAddr: fv("oiBleAddr") || "", bleName: fv("oiBleName") || "",
     pulsoid: fv("oiToken") || "", hrParams: fv("oiParams"), interval: num("oiInterval", OI_DEF.interval),
     layout: [...oiLayout], icons: { ...oiIcons } };
@@ -3250,8 +3286,20 @@ async function oiPoll() {
     oiLoginUi(s);
     oiVrUi(s.vr || { state: "off", devices: [] }, s.toys || { state: "off", devices: [] });
     oiBleUi(s);
+    oiPcUi(s.pc || {});
   }
   oiTimer = setTimeout(oiPoll, 1000);
+}
+// ---------- PC stats: what the app reads right now ----------
+const PC_ITEMS = ["cpu", "gpu", "ram", "vram", "fps"];
+const PC_NAMES = { cpu: "pcCpuName", gpu: "pcGpuName", ram: "pcRamType" };  // Item -> its "show the model / type" setting
+const oiCap = k => k[0].toUpperCase() + k.slice(1);
+function oiPcUi(p) {
+  if (!$("oiPc")) return;
+  for (const [k, v] of [["cpu", p.cpuName], ["gpu", p.gpuName], ["ram", p.ramType]]) $("oiPcName_" + k).textContent = v || "";
+  const gb = (u, tot) => u == null ? "—" : `${u.toFixed(1)}${tot ? "/" + tot.toFixed(0) : ""}GB`;
+  $("oiPc").textContent = [p.gpuName, `CPU ${p.cpu ?? "—"}%`, `GPU ${p.gpu ?? "—"}%${p.temp != null ? ` ${p.temp}°C` : ""}`,
+    `RAM ${gb(p.ram, p.ramTotal)}`, `VRAM ${gb(p.vram, p.vramTotal)}`, `FPS ${p.fps ?? "—"}`].filter(Boolean).join(" · ");
 }
 // ---------- Integrate devices (SteamVR + Intiface Central): live list with battery; each one can be renamed ----------
 const OI_KIND = { hmd: "🥽", ctrl: "🎮", trk: "📍", toy: "📳" };  // Defaults; the user can change them
