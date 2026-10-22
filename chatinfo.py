@@ -34,9 +34,16 @@ DEFAULTS = {
     # Order of the parts in the Chatbox: items, "br" = new line, "sep:<text>" = separator between two parts on a line,
     # "text:<text>" = the user's own text (always shown), "sup:<text>" = the same in small superscript letters
     "layout": ["status", "br", "media", "br", "clock", "sep:   ", "heart"],
-    "icons": {"status": "", "media": "🎵", "clock": "🕒", "heart": "❤️"},   # Emoji in front of each part ("" = none)
+    "icons": {"status": "", "media": "🎵", "clock": "🕒", "heart": "❤️", "devices": ""},   # Emoji in front of each part ("" = none)
+    # VR devices from SteamVR: one entry per device, or one per kind (headset / controllers / trackers)
+    "devices": False, "devTrkGroup": False, "devStat": "lowest", "devHmd": True, "devCtrl": True, "devTrk": True,
+    "devCharging": True, "devLow": 20, "devHidden": [], "devOff": [],
+    "devVibe": True, "devVibeIcon": "〰️", "devBattIcon": False, "devBattSym": "🔋", "devKindIcon": False,
+    "devKindSyms": {"hmd": "🥽", "ctrl": "🎮", "trk": "📍", "toy": "📳"},
+    "devToy": False, "intiface": "ws://127.0.0.1:12345", "intifaceRelay": 12346,
 }
-ITEMS = ("status", "media", "clock", "heart")
+ITEMS = ("status", "media", "clock", "heart", "devices")
+DEV_KINDS = {"hmd": ("devHmd", "🥽"), "ctrl": ("devCtrl", "🎮"), "trk": ("devTrk", "📍"), "toy": ("devToy", "📳")}  # Default label of each kind
 BARS = {"line": ("━", "●", "─"), "blocks": ("▰", "", "▱"), "squares": ("■", "", "□"), "dots": ("●", "", "○")}  # filled, knob, empty
 OLD_FMTS = {"mediaFmt": "🎵 {artist} - {title}", "heartFmt": "❤️ {bpm}"}  # Before icons were separate: drop the built-in emoji
 PAUSE_AFTER_CHAT = 15     # Don't cover a message typed on the Chat page right away
@@ -71,6 +78,8 @@ class ChatInfo:
         self._ws, self._ws_token = None, ""
         self.login = {"state": "idle"}  # Pulsoid sign-in: idle / waiting / done (+ token) / denied / expired / error
         self._ble = None           # Started the first time Bluetooth is needed
+        self.vr = _Vr()            # SteamVR devices (reads only while the devices part is on)
+        self.toys = _Intiface()    # Devices connected in Intiface Central (only when switched on: it takes one app at a time)
         self._lock = threading.Lock()
         threading.Thread(target=self._run, name="chatinfo", daemon=True).start()
 
@@ -89,6 +98,7 @@ class ChatInfo:
                 c[k] = DEFAULTS[k]
         c["layout"] = _clean_layout(c["layout"])
         c["icons"] = {k: str(c["icons"].get(k, DEFAULTS["icons"][k]))[:8] for k in ITEMS}
+        c["icons"]["devices"] = ""  # No emoji for the whole part: each device has its own icons (battery / device)
         c["statusEvery"] = min(max(int(c["statusEvery"]), 5), 3600)
         c["pulsoid"] = c["pulsoid"].strip()[:200]
         if c["hrSource"] not in ("ble", "pulsoid"):
@@ -98,6 +108,21 @@ class ChatInfo:
         except ValueError:
             c["bleAddr"] = ""
         c["bleName"] = c["bleName"][:80]
+        if cfg.get("devMode") == "group" and "devTrkGroup" not in cfg:  # The old "grouped by kind" mode
+            c["devTrkGroup"] = True
+        if c["devStat"] not in ("lowest", "average"):
+            c["devStat"] = "lowest"
+        c["devLow"] = min(max(int(c["devLow"]), 0), 100)
+        if not c["intiface"].startswith(("ws://", "wss://")):
+            c["intiface"] = DEFAULTS["intiface"]
+        c["intiface"] = c["intiface"][:100]
+        if c["intifaceRelay"] and not 1024 <= c["intifaceRelay"] <= 65535:  # 0 = no relay
+            c["intifaceRelay"] = DEFAULTS["intifaceRelay"]
+        c["devHidden"] = [str(k)[:64] for k in c["devHidden"]][:64]
+        c["devOff"] = [str(k)[:64] for k in c["devOff"]][:64]
+        c["devVibeIcon"] = c["devVibeIcon"][:8]
+        c["devBattSym"] = c["devBattSym"][:8]
+        c["devKindSyms"] = {k: str(c["devKindSyms"].get(k) or e)[:8] for k, (_, e) in DEV_KINDS.items()}  # Empty = back to the default
         if c["mediaBarStyle"] not in BARS:
             c["mediaBarStyle"] = "line"
         c["mediaBarLen"] = min(max(int(c["mediaBarLen"]), 5), 20)
@@ -122,7 +147,8 @@ class ChatInfo:
     def state(self):
         self._watch_until = time.monotonic() + 5
         return {"text": self.build(), "sent": self.text, "media": self.media, "bpm": self.bpm, "hr": self.hr_state,
-                "login": self.login, "canLogin": bool(PULSOID_CLIENT_ID),
+                "login": self.login, "canLogin": bool(PULSOID_CLIENT_ID), "vr": {"state": self.vr.state, "devices": self.vr.devices},
+                "toys": {"state": self.toys.state, "devices": self.toys.devices, "relay": self.toys.relay, "app": self.toys.app},
                 "ble": {"scanning": self._ble.scanning, "found": self._ble.list()} if self._ble else {"scanning": False, "found": []},
                 "paused": max(0, round(self._paused_until - time.monotonic()))}
 
@@ -160,7 +186,42 @@ class ChatInfo:
                 out["heart"] = str(self.bpm)
             if c["hrSuffixOn"] and c["hrSuffix"]:  # Superscript sits right after the number, like 120ᶠᵖˢ
                 out["heart"] += sup(c["hrSuffix"]) if c["hrSuffixSup"] else " " + c["hrSuffix"]
+        if c["devices"]:
+            out["devices"] = self._devices_text()
         return {k: f"{c['icons'][k]} {v}".strip() if c["icons"].get(k) else v for k, v in out.items() if v}
+
+    def _devices_text(self):
+        """'Quest 3 80% Touch L 65% Hip 70%⚡ Lush 64% 〰️45%' — trackers can be merged into one: '📍×3 62%'"""
+        c = self.cfg
+        off, vibe_on = set(c["devOff"]), c["devVibe"]
+        devs = [d for d in self.vr.devices + self.toys.devices if d["serial"] not in off and c[DEV_KINDS[d["kind"]][0]]
+                and (d["battery"] is not None or (vibe_on and d.get("vibe") is not None))]
+
+        def bits(name, battery, charging, vibe):
+            out = [name]
+            if battery is not None:
+                out.append((c["devBattSym"] if c["devBattIcon"] else "") + f"{battery}%" + ("⚡" if c["devCharging"] and charging else "") +
+                           ("🪫" if battery <= c["devLow"] and not charging else ""))
+            if vibe_on and vibe is not None:  # Vibration strength of an Intiface device
+                out.append(f"{c['devVibeIcon']}{vibe}%")
+            return " ".join(out)
+        hidden = set(c["devHidden"])  # Hidden: just the short label (🥽 / L / T1 / 📳1) instead of the device's name
+
+        def name(d):
+            n = d["label"] if d["serial"] in hidden or not d["model"] else d["model"]
+            default, kind = DEV_KINDS[d["kind"]][1], c["devKindSyms"][d["kind"]]
+            if n.startswith(default):  # Short labels like '🥽' / '📳1' use the user's icon too
+                n = kind + n[len(default):]
+            return f"{kind} {n}" if c["devKindIcon"] and not n.startswith(kind) else n  # '🥽 Quest 3', but not '🥽 🥽'
+        out, trackers = [], [d for d in devs if d["kind"] == "trk"]
+        for d in devs:
+            if d["kind"] != "trk" or not c["devTrkGroup"]:
+                out.append(bits(name(d), d["battery"], d["charging"], d.get("vibe")))
+            elif d is trackers[0]:  # All trackers as one, where the first one was: '📍×3 62%'
+                vals = [t["battery"] for t in trackers]
+                val = min(vals) if c["devStat"] == "lowest" else round(sum(vals) / len(vals))
+                out.append(bits(c["devKindSyms"]["trk"] + (f"×{len(trackers)}" if len(trackers) > 1 else ""), val, any(t["charging"] for t in trackers), None))
+        return " ".join(out)
 
     def _timeline(self, m):
         """'1:23 ━━━●────── 3:45' — whichever of time played / seek bar / length are switched on"""
@@ -210,6 +271,9 @@ class ChatInfo:
                 except Exception as e:  # No media API (old Windows) or a player that misbehaves
                     log.debug("media read failed: %s", e)
                     self.media = None
+            self.vr.wanted = c["devices"] and (c["on"] or now < self._watch_until)
+            self.toys.url, self.toys.relay_port = c["intiface"], c["intifaceRelay"]
+            self.toys.wanted = c["devices"] and c["devToy"] and (c["on"] or now < self._watch_until)
             if c["heart"] and self.bpm and now - self._hr_at > 15:  # No reading for a while = sensor off
                 self.bpm = None
                 self._send_hr(None)
@@ -425,7 +489,381 @@ def _clean_layout(layout):
             out.append(it[:it.index(":") + 61])
         if len(out) >= 40:
             break
-    return out + [k for k in ITEMS if k not in seen]
+    for k in ITEMS:  # A part that's new in this version goes on its own line at the end
+        if k not in seen:
+            out += ["br", k] if out else [k]
+    return out
+
+
+class _Vr:
+    """VR devices and their battery from SteamVR, read every few seconds while wanted.
+    Uses the "background" app type: never starts SteamVR, just waits until it's running.
+    Virtual Desktop / Quest Link without SteamVR (OpenXR) can't be read this way."""
+    POLL, RETRY = 5, 10
+
+    def __init__(self):
+        self.wanted = False
+        self.state = "off"     # off / noSteamVR / ok / error
+        self.devices = []      # [{"serial", "kind": hmd|ctrl|trk, "label", "model", "battery": 0-100|None, "charging"}]
+        threading.Thread(target=self._run, name="steamvr", daemon=True).start()
+
+    def _run(self):
+        system = None
+        while True:
+            if not self.wanted:
+                if system:
+                    self._close()
+                    system = None
+                self.state, self.devices = "off", []
+                time.sleep(1)
+                continue
+            try:
+                import openvr
+                if not system:
+                    system = openvr.init(openvr.VRApplication_Background)
+                if self._quit_requested(system, openvr):
+                    self._close()
+                    system = None
+                    raise OSError("SteamVR closed")
+                self.devices = self._read(system, openvr)
+                self.state = "ok"
+                time.sleep(self.POLL)
+            except Exception as e:  # SteamVR not running (InitError_Init_NoServerForBackgroundApp) or it just quit
+                not_running = "NoServer" in type(e).__name__ or "closed" in str(e)
+                self.state, self.devices = ("noSteamVR" if not_running else "error"), []
+                if not not_running:
+                    log.info("steamvr: %r", e)
+                if system:
+                    self._close()
+                    system = None
+                time.sleep(self.RETRY)
+
+    @staticmethod
+    def _close():
+        try:
+            import openvr
+            openvr.shutdown()
+        except Exception:
+            pass
+
+    @staticmethod
+    def _quit_requested(system, openvr):
+        ev = openvr.VREvent_t()
+        while system.pollNextEvent(ev):
+            if ev.eventType == openvr.VREvent_Quit:
+                system.acknowledgeQuit_Exiting()  # Let SteamVR close without waiting for us
+                return True
+        return False
+
+    @staticmethod
+    def _read(system, openvr):
+        kinds = {openvr.TrackedDeviceClass_HMD: "hmd", openvr.TrackedDeviceClass_Controller: "ctrl", openvr.TrackedDeviceClass_GenericTracker: "trk"}
+
+        def prop(kind, i, p, default=None):
+            try:
+                return getattr(system, f"get{kind}TrackedDeviceProperty")(i, p)
+            except Exception:  # The driver doesn't report this property
+                return default
+        out, trackers = [], 0
+        for i in range(openvr.k_unMaxTrackedDeviceCount):
+            kind = kinds.get(system.getTrackedDeviceClass(i))
+            if not kind or not system.isTrackedDeviceConnected(i):
+                continue
+            has_battery = prop("Bool", i, openvr.Prop_DeviceProvidesBatteryStatus_Bool, False)
+            level = prop("Float", i, openvr.Prop_DeviceBatteryPercentage_Float) if has_battery else None
+            if kind == "hmd":
+                label = "🥽"
+            elif kind == "ctrl":
+                role = prop("Int32", i, openvr.Prop_ControllerRoleHint_Int32, 0)
+                label = {openvr.TrackedControllerRole_LeftHand: "L", openvr.TrackedControllerRole_RightHand: "R"}.get(role, "🎮")
+            else:
+                trackers += 1
+                label = f"T{trackers}"
+            out.append({"serial": prop("String", i, openvr.Prop_SerialNumber_String, f"#{i}"), "kind": kind, "label": label,
+                        "model": prop("String", i, openvr.Prop_ModelNumber_String, ""),
+                        "battery": round(level * 100) if isinstance(level, float) else None,
+                        "charging": bool(prop("Bool", i, openvr.Prop_DeviceIsCharging_Bool, False)) if has_battery else False})
+        return out
+
+
+class _Intiface:
+    """Devices connected in Intiface Central (Buttplug protocol) and their battery.
+    Intiface serves one app at a time, so VRC Nook can also be the go-between: another app (e.g. OscGoesBrrr) connects to
+    ws://127.0.0.1:<relay port> instead of Intiface, everything it sends goes on to Intiface unchanged, and VRC Nook slips in
+    its own battery reads (with Ids far above anything the app uses) and keeps those replies to itself.
+    Only lists what Intiface already has connected — scanning is left to Intiface / the other app."""
+    BATTERY_EVERY, RETRY = 30, 10
+    OWN_ID = 4_000_000_000     # Our message Ids start here (Buttplug Ids are u32; apps count up from 1)
+
+    def __init__(self):
+        self.wanted, self.url, self.relay_port = False, DEFAULTS["intiface"], DEFAULTS["intifaceRelay"]
+        self.state = "off"     # off / noIntiface / ok / error
+        self.relay = "off"     # off / waiting / app (an app is connected through us) / portBusy
+        self.app = ""          # Name the connected app gave Intiface
+        self.devices = []      # Same shape as _Vr's, kind "toy"
+        self._found = {}       # DeviceIndex -> {"name", "feature": battery sensor/feature index|None, "range", "level"}
+        self._ver, self._id, self._pending = 3, 0, None
+        threading.Thread(target=lambda: asyncio.run(self._main()), name="intiface", daemon=True).start()
+
+    # ---------- Loop: listen for an app on the relay port; keep one session with Intiface (ours, or the app's) ----------
+    async def _main(self):
+        import websockets
+        server, port = None, 0
+        while True:
+            want_port = self.relay_port if self.wanted else 0
+            if server and port != want_port:
+                server.close()
+                await server.wait_closed()
+                server, port = None, 0
+                self.relay = "off"
+            if want_port and not server:
+                try:
+                    server = await websockets.serve(self._on_app, "127.0.0.1", want_port, ping_interval=None, max_size=None, close_timeout=2)
+                    port, self.relay = want_port, "waiting"
+                except OSError:  # Something else already uses that port
+                    self.relay = "portBusy"
+            if not self.wanted:
+                self.state, self.devices, self.relay = "off", [], "off"
+                await asyncio.sleep(1)
+                continue
+            app, self._pending = self._pending, None
+            url = self.url
+            failed = False
+            try:
+                await self._session(url, app)
+            except Exception as e:  # Intiface isn't running / its server isn't started, it's busy, or it closed
+                refused = isinstance(e, (OSError, websockets.ConnectionClosed)) and not isinstance(e, _IntifaceError)
+                self.state, self.devices, self._found = ("noIntiface" if refused else "error"), [], {}
+                if not refused:
+                    log.info("intiface: %r", e)
+                failed = True
+            if app:  # The app's connection ends with its session; it reconnects by itself
+                await app[0].close()
+                if not app[1].done():
+                    app[1].set_result(None)
+            if self.relay == "app":
+                self.relay = "waiting" if port else "off"
+            self.app = ""
+            for _ in range(self.RETRY if failed else 0):  # Retry later — sooner if an app connects or the address changes
+                if self._pending or not self.wanted or self.url != url:
+                    break
+                await asyncio.sleep(1)
+
+    async def _on_app(self, ws):
+        """An app connected to the relay port. One at a time, like Intiface itself"""
+        if self.relay == "app" or self._pending:
+            await ws.close(1013, "Another app is already connected through VRC Nook")
+            return
+        done = asyncio.get_running_loop().create_future()
+        self._pending = (ws, done)
+        await done  # The session with Intiface runs in _main; the connection closes when this returns
+
+    async def _session(self, url, app):
+        """One connection to Intiface — for us alone, or carrying an app's messages. Returns when it should be redone"""
+        import websockets
+        async with websockets.connect(url, open_timeout=5, ping_interval=None, max_size=None) as up:
+            ping = await self._handshake(up, app)
+            self.state = "ok"
+            self._found = {}
+            await self._send(up, "RequestDeviceList")
+            up_rx = asyncio.ensure_future(up.recv())
+            app_rx = asyncio.ensure_future(app[0].recv()) if app else None
+            next_battery, next_ping = 0.0, 0.0
+            try:
+                while self.wanted and self.url == url and (app or not self._pending):
+                    done, _ = await asyncio.wait({t for t in (up_rx, app_rx) if t}, timeout=1, return_when=asyncio.FIRST_COMPLETED)
+                    if up_rx in done:
+                        msgs = self._parse(up_rx.result())
+                        for m in msgs:
+                            self._handle(m)
+                        theirs = [m for m in msgs if not self._ours(m)]
+                        if app and theirs:
+                            await app[0].send(json.dumps(theirs))
+                        up_rx = asyncio.ensure_future(up.recv())
+                    if app_rx and app_rx in done:
+                        try:
+                            raw = app_rx.result()
+                        except websockets.ConnectionClosed:
+                            return  # The app left — start over on our own
+                        for m in self._parse(raw):
+                            self._handle(m)  # Not needed for its replies, but harmless
+                        await up.send(raw)
+                        app_rx = asyncio.ensure_future(app[0].recv())
+                    now = time.monotonic()
+                    if ping and not app and now >= next_ping:  # A connected app pings for itself
+                        await self._send(up, "Ping")
+                        next_ping = now + ping / 2
+                    if now >= next_battery:
+                        await self._read_batteries(up)
+                        next_battery = now + self.BATTERY_EVERY
+                    else:
+                        await self._read_batteries(up, only_new=True)  # A device just showed up — don't wait for the next round
+                    self._publish()
+            finally:
+                for t in (up_rx, app_rx):
+                    if t:
+                        t.cancel()
+                if app:
+                    await app[0].close()
+
+    async def _handshake(self, up, app):
+        """Ours (protocol 3), or the app's own RequestServerInfo passed through so it gets the version it asked for.
+        Returns how often to ping (seconds, 0 = never)"""
+        if app:
+            raw = await asyncio.wait_for(app[0].recv(), 10)
+            for m in self._parse(raw):
+                info = m.get("RequestServerInfo")
+                if info:
+                    self._ver = info.get("ProtocolVersionMajor", info.get("MessageVersion", 3))
+                    self.app = str(info.get("ClientName", ""))[:40]
+            await up.send(raw)
+            self.relay = "app"
+        else:
+            self._ver = 3
+            await self._send(up, "RequestServerInfo", ClientName="VRC Nook", MessageVersion=3)
+        for _ in range(3):
+            raw = await asyncio.wait_for(up.recv(), 5)
+            if app:
+                await app[0].send(raw)
+            for m in self._parse(raw):
+                if "ServerInfo" in m:
+                    return m["ServerInfo"].get("MaxPingTime", 0) / 1000
+                if "Error" in m:
+                    raise _IntifaceError(m["Error"].get("ErrorMessage", "refused"))
+        raise _IntifaceError("no reply from Intiface")
+
+    async def _send(self, up, kind, **fields):
+        self._id = self._id + 1 if self._id >= self.OWN_ID else self.OWN_ID
+        await up.send(json.dumps([{kind: {"Id": self._id, **fields}}]))
+
+    async def _read_batteries(self, up, only_new=False):
+        for i, d in list(self._found.items()):
+            if d["feature"] is None or (only_new and d["asked"]):
+                continue
+            d["asked"] = True
+            if self._ver >= 4:
+                await self._send(up, "InputCmd", DeviceIndex=i, FeatureIndex=d["feature"], Type="Battery", Command="Read")
+            else:
+                await self._send(up, "SensorReadCmd", DeviceIndex=i, SensorIndex=d["feature"], SensorType="Battery")
+
+    def _ours(self, m):
+        body = next(iter(m.values()), None)
+        return isinstance(body, dict) and isinstance(body.get("Id"), int) and body["Id"] >= self.OWN_ID
+
+    @staticmethod
+    def _parse(raw):
+        try:
+            msgs = json.loads(raw)
+        except (ValueError, TypeError):
+            return []
+        return [m for m in msgs if isinstance(m, dict) and m] if isinstance(msgs, list) else []
+
+    # ---------- Device list and battery replies (protocol 3 and 4) ----------
+    def _handle(self, m):
+        if "DeviceList" in m:
+            devs = m["DeviceList"].get("Devices", [])
+            if isinstance(devs, dict):  # Protocol 4: always the whole list (no DeviceAdded / DeviceRemoved)
+                old, self._found = self._found, {}
+                for d in devs.values():
+                    self._add(d, old)
+            else:
+                for d in devs:
+                    self._add(d)
+        elif "DeviceAdded" in m:
+            self._add(m["DeviceAdded"])
+        elif "DeviceRemoved" in m:
+            self._found.pop(m["DeviceRemoved"].get("DeviceIndex"), None)
+        elif "SensorReading" in m and m["SensorReading"].get("SensorType") == "Battery":
+            r = m["SensorReading"]
+            self._level(r.get("DeviceIndex"), (r.get("Data") or [None])[0])
+        elif "InputReading" in m:
+            r = m["InputReading"]
+            battery = (r.get("Reading") or {}).get("Battery")
+            if isinstance(battery, dict):
+                self._level(r.get("DeviceIndex"), battery.get("Value"))
+        # What the app tells a device to do (only seen while it's connected through us)
+        elif "OutputCmd" in m:  # Protocol 4: {"Command": {"Vibrate": {"Value": 10}}}, Value within the feature's range
+            r = m["OutputCmd"]
+            d = self._found.get(r.get("DeviceIndex"))
+            for cmd in (r.get("Command") or {}).values():
+                if d and isinstance(cmd, dict) and r.get("FeatureIndex") in d["outs"]:
+                    self._vibe(d, r["FeatureIndex"], cmd.get("Value"), d["outs"][r["FeatureIndex"]])
+        elif "ScalarCmd" in m or "VibrateCmd" in m:  # Protocol 3 / 2: 0.0–1.0 per motor
+            r = m.get("ScalarCmd") or m.get("VibrateCmd")
+            d = self._found.get(r.get("DeviceIndex"))
+            for x in (r.get("Scalars") or r.get("Speeds") or []) if d else []:
+                if isinstance(x, dict):
+                    self._vibe(d, x.get("Index"), x.get("Scalar", x.get("Speed")), 1)
+        elif "StopDeviceCmd" in m or "StopAllDevices" in m or "StopCmd" in m:
+            r = next(iter(m.values())) or {}
+            for i, d in self._found.items():
+                if r.get("DeviceIndex") in (None, i):
+                    d["motors"] = {}
+
+    @staticmethod
+    def _vibe(d, motor, value, top):
+        if isinstance(value, (int, float)) and top:
+            d["motors"][motor] = min(max(round(value * 100 / top), 0), 100)
+
+    def _level(self, i, value):
+        d = self._found.get(i)
+        if d and isinstance(value, (int, float)):
+            d["level"] = min(max(round(value * 100 / (d["range"] or 100)), 0), 100)
+
+    def _add(self, dev, old=None):
+        i = dev.get("DeviceIndex")
+        if not isinstance(i, int):
+            return
+        feature, top = None, 100
+        for n, s in enumerate(dev.get("DeviceMessages", {}).get("SensorReadCmd", []) or []):  # Protocol 3
+            if s.get("SensorType") == "Battery":
+                feature = n
+                try:
+                    top = s["SensorRange"][0][1] or 100
+                except (KeyError, IndexError, TypeError):
+                    pass
+                break
+        for k, f in (dev.get("DeviceFeatures") or {}).items():  # Protocol 4
+            battery = (f.get("Input") or {}).get("Battery") if isinstance(f, dict) else None
+            if isinstance(battery, dict):
+                feature = f.get("FeatureIndex", int(k) if str(k).isdigit() else None)
+                try:
+                    top = battery["Value"][0][1] or 100
+                except (KeyError, IndexError, TypeError):
+                    pass
+                break
+        outs = {}  # Motors: feature index -> top of its range (protocol 4); protocol 3 sends 0.0–1.0
+        for n, _ in enumerate(dev.get("DeviceMessages", {}).get("ScalarCmd", []) or []):
+            outs[n] = 1
+        for k, f in (dev.get("DeviceFeatures") or {}).items():
+            for kind, o in ((f.get("Output") or {}) if isinstance(f, dict) else {}).items():
+                if kind in ("Vibrate", "Oscillate", "Rotate", "Constrict") and isinstance(o, dict):
+                    rng = o.get("Value") or [0, 1]
+                    rng = rng[0] if rng and isinstance(rng[0], list) else rng
+                    idx = f.get("FeatureIndex", int(k) if str(k).isdigit() else None)
+                    if idx is not None:
+                        outs[idx] = rng[-1] or 1
+        name = str(dev.get("DeviceDisplayName") or dev.get("DeviceName") or f"Device {i}")[:60]
+        prev = (old if old is not None else self._found).get(i)
+        same = prev and prev["name"] == name
+        self._found[i] = {"name": name, "feature": feature, "range": top, "level": prev["level"] if same else None,
+                          "asked": bool(prev and prev["asked"]), "outs": outs, "motors": prev["motors"] if same else {}}
+
+    def _publish(self):
+        """Short label "📳" (numbered when there are several) for when the user hides the device's name"""
+        out, seen = [], {}
+        many = len(self._found) > 1
+        for n, (i, d) in enumerate(sorted(self._found.items()), 1):
+            seen[d["name"]] = seen.get(d["name"], 0) + 1  # Two of the same model still need different keys for their names
+            key = "intiface:" + d["name"] + (f"#{seen[d['name']]}" if seen[d["name"]] > 1 else "")
+            out.append({"serial": key, "kind": "toy", "label": f"📳{n}" if many else "📳", "model": d["name"],
+                        "battery": d["level"], "charging": False,
+                        "vibe": max(d["motors"].values(), default=0) if d["outs"] else None})
+        self.devices = out
+
+
+class _IntifaceError(Exception):
+    """Intiface answered, but refused us (e.g. another app is connected to it)"""
 
 
 class _Ble:

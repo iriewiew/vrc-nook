@@ -2982,6 +2982,46 @@ tx({
   oi_sup: ["ตัวยกเล็ก (เช่น 120ᶠᵖˢ)", "Small superscript (like 120ᶠᵖˢ)", "小さい上付き（例: 120ᶠᵖˢ）"],
   oi_supHint: ["ได้กับ a–z และ 0–9 · ภาษาไทยไม่เปลี่ยน", "Works for a–z and 0–9 · other scripts stay as they are", "a–z と 0–9 のみ · 他の文字はそのまま"],
   oi_clockTzSup: ["เขตเวลาเป็นตัวยกเล็ก", "Time zone in superscript", "タイムゾーンを上付きに"],
+  oi_devices: ["Integrate devices", "Integrate devices", "デバイス連携"],
+  oi_toyHint: ["อ่านอุปกรณ์ที่เชื่อมต่อใน Intiface Central และแบตเตอรี่ · กด Start server ใน Intiface และเชื่อมอุปกรณ์ที่นั่นก่อน",
+    "Lists the devices connected in Intiface Central and their battery · Press Start server in Intiface and connect devices there first",
+    "Intiface Central に接続したデバイスとバッテリーを表示 · 先に Intiface で Start server を押してデバイスを接続"],
+  oi_relay: ["ให้แอปอื่นต่อผ่าน VRC Nook", "Let other apps connect through VRC Nook", "他のアプリを VRC Nook 経由で接続"],
+  oi_relayHint: [p => `Intiface ต่อได้ทีละแอป ถ้าใช้ OscGoesBrrr หรือแอปอื่นคุมอุปกรณ์ ให้ตั้งที่อยู่ Intiface ในแอปนั้นเป็น ws://127.0.0.1:${p} แล้วจะใช้ได้พร้อมกัน (ต้องเปิด VRC Nook ไว้) · 0 = ปิด`,
+    p => `Intiface takes one app at a time. If OscGoesBrrr or another app controls your devices, set its Intiface address to ws://127.0.0.1:${p} and both work together (VRC Nook must be running) · 0 = off`,
+    p => `Intiface は一度に 1 アプリだけ。OscGoesBrrr などで操作しているなら、そのアプリの Intiface アドレスを ws://127.0.0.1:${p} にすると両方使えます（VRC Nook の起動が必要）· 0 = オフ`],
+  oi_relay_off: ["ปิดอยู่", "Off", "オフ"], oi_relay_waiting: [p => `รอแอปต่อที่พอร์ต ${p}`, p => `Waiting for an app on port ${p}`, p => `ポート ${p} でアプリを待っています`],
+  oi_relay_app: [n => `${n || "แอป"} ต่อผ่าน VRC Nook อยู่`, n => `${n || "An app"} is connected through VRC Nook`, n => `${n || "アプリ"} が VRC Nook 経由で接続中`],
+  oi_relay_portBusy: [p => `พอร์ต ${p} ถูกโปรแกรมอื่นใช้อยู่ — เปลี่ยนเลขพอร์ต`, p => `Port ${p} is used by another program — pick another`, p => `ポート ${p} は他のプログラムが使用中 — 別の番号に`],
+  oi_toyAddr: ["ที่อยู่เซิร์ฟเวอร์ Intiface", "Intiface server address", "Intiface サーバーのアドレス"],
+  oi_toyAddrHint: ["ค่าเริ่มต้น ws://127.0.0.1:12345", "Default ws://127.0.0.1:12345", "既定 ws://127.0.0.1:12345"],
+  oi_toy_off: ["ปิดอยู่", "Off", "オフ"], oi_toy_noIntiface: ["รอเซิร์ฟเวอร์ Intiface…", "Waiting for the Intiface server…", "Intiface サーバーを待っています…"],
+  oi_toy_ok: [n => `เชื่อมต่อ Intiface แล้ว · ${n} อุปกรณ์`, n => `Connected to Intiface · ${n} devices`, n => `Intiface に接続 · ${n} 台`],
+  oi_toy_error: ["ต่อ Intiface ไม่ได้ (อาจมีแอปอื่นต่อตรงอยู่ ให้แอปนั้นต่อผ่าน VRC Nook แทน) — กำลังลองใหม่", "Can't connect to Intiface (another app may be connected to it directly — point it at VRC Nook instead) — retrying", "Intiface に接続できません（他のアプリが直接接続中かも — VRC Nook 経由に変更を）— 再試行中"],
+  oi_devHint: ["อ่านจาก SteamVR: แบตเตอรี่ของแว่น controller และ tracker · ถ้าเล่นผ่าน Virtual Desktop/Quest Link แบบไม่เปิด SteamVR จะอ่านไม่ได้",
+    "Read from SteamVR: battery of your headset, controllers and trackers · Virtual Desktop / Quest Link without SteamVR can't be read",
+    "SteamVR から読み取り：ヘッドセット・コントローラー・トラッカーのバッテリー · SteamVR なしの Virtual Desktop / Quest Link は読めません"],
+  oi_vr_off: ["ปิดอยู่", "Off", "オフ"], oi_vr_noSteamVR: ["รอ SteamVR เปิด…", "Waiting for SteamVR…", "SteamVR の起動を待っています…"],
+  oi_vr_ok: [n => `เชื่อมต่อ SteamVR แล้ว · ${n} อุปกรณ์`, n => `Connected to SteamVR · ${n} devices`, n => `SteamVR に接続 · ${n} 台`],
+  oi_vr_error: ["อ่านจาก SteamVR ไม่ได้ — กำลังลองใหม่", "Can't read SteamVR — retrying", "SteamVR を読み取れません — 再試行中"],
+  oi_devTrkGroup: ["รวม tracker เป็นกลุ่ม", "Group trackers", "トラッカーをまとめる"],
+  oi_devTrkGroupHint: ["แสดง tracker ทั้งหมดเป็นอันเดียว เช่น 📍×3 62%", "Show all trackers as one, like 📍×3 62%", "全トラッカーを 1 つに表示（例：📍×3 62%）"],
+  oi_devStat: ["ค่าของกลุ่ม tracker", "Tracker group value", "トラッカーグループの値"], oi_devLowest: ["ต่ำสุด", "Lowest", "最低"], oi_devAverage: ["เฉลี่ย", "Average", "平均"],
+  oi_devHmd: ["แว่น (headset)", "Headset", "ヘッドセット"], oi_devCtrl: ["Controller", "Controllers", "コントローラー"], oi_devTrk: ["Tracker", "Trackers", "トラッカー"],
+  oi_devCharging: ["แสดง ⚡ ตอนชาร์จ", "Show ⚡ while charging", "充電中は ⚡ を表示"],
+  oi_devLow: ["แบตต่ำกว่า (%) ให้แสดง 🪫", "Show 🪫 at or below (%)", "この % 以下で 🪫 を表示"],
+  oi_devList: ["อุปกรณ์ที่เจอ", "Devices found", "見つかったデバイス"],
+  oi_devNameHint: ["สวิตช์หน้าแต่ละชิ้น = ให้ขึ้นใน chatbox ไหม · chatbox จะขึ้นชื่ออุปกรณ์ กดซ่อนชื่อเพื่อให้ขึ้นแค่สัญลักษณ์",
+    "The switch on each device = show it in the Chatbox · The Chatbox shows its name — hide the name to show just a short label",
+    "各デバイスのスイッチ = Chatbox に表示するか · Chatbox にデバイス名を表示 — 名前を隠すと短いラベルだけに"],
+  oi_devShow: ["แสดงใน chatbox", "Show in the Chatbox", "Chatbox に表示"],
+  oi_devBattIcon: ["ไอคอนแบต", "Battery icon", "バッテリーアイコン"],
+  oi_devKindIcon: ["ไอคอนอุปกรณ์", "Device icon", "デバイスアイコン"],
+  oi_resetIcon: ["คืนไอคอนเริ่มต้น", "Reset to the default icon", "既定のアイコンに戻す"],
+  oi_devVibe: ["แสดง % แรงสั่น (Intiface)", "Show vibration strength % (Intiface)", "振動の強さ % を表示（Intiface）"],
+  oi_devVibeHint: ["อ่านจากคำสั่งที่แอปที่ต่อผ่าน VRC Nook ส่งไป (เช่น OscGoesBrrr) · ช่องข้างหลังคือสัญลักษณ์หน้าตัวเลข", "Taken from what the app connected through VRC Nook (e.g. OscGoesBrrr) sends · The box is the symbol before the number", "VRC Nook 経由で接続したアプリ（OscGoesBrrr など）の命令から読み取り · 欄は数字の前の記号"],
+  oi_hideName: ["ซ่อนชื่อ", "Hide name", "名前を隠す"], oi_showName: ["แสดงชื่อ", "Show name", "名前を表示"],
+  oi_devNone: ["ยังไม่เจออุปกรณ์", "No devices yet", "まだデバイスがありません"], oi_noBattery: ["ไม่รายงานแบต", "No battery info", "バッテリー情報なし"],
   oi_hrSuffixSup: ["ข้อความต่อท้ายเป็นตัวยกเล็ก", "Suffix in superscript", "後ろのテキストを上付きに"],
   oi_addText: ["ข้อความ", "Text", "テキスト"], oi_textPh: ["พิมพ์ข้อความ…", "Type text…", "テキストを入力…"],
   oi_mediaTime: ["แสดงเวลาที่เล่นไป", "Show time played", "再生位置を表示"], oi_mediaDur: ["แสดงความยาวเพลง", "Show length", "曲の長さを表示"],
@@ -2998,7 +3038,9 @@ NAV.osc = ["radio", "pink"];
 VIEWS.splice(VIEWS.indexOf("chat") + 1, 0, "osc");
 $("jump").insertAdjacentHTML("beforebegin", `<div class="view" id="v_osc"></div>`);
 const OI_DEF = { on: false, status: true, statuses: [], statusEvery: 60, media: true, mediaFmt: "{artist} - {title}", clock: true, clock24: true,
-  layout: ["status", "br", "media", "br", "clock", "sep:   ", "heart"], icons: { status: "", media: "🎵", clock: "🕒", heart: "❤️" },
+  layout: ["status", "br", "media", "br", "clock", "sep:   ", "heart"], icons: { status: "", media: "🎵", clock: "🕒", heart: "❤️", devices: "" },
+  devices: false, devTrkGroup: false, devStat: "lowest", devHmd: true, devCtrl: true, devTrk: true, devCharging: true, devLow: 20, devHidden: [], devOff: [], devVibe: true, devVibeIcon: "〰️", devBattIcon: false, devBattSym: "🔋", devKindIcon: false, devKindSyms: { hmd: "🥽", ctrl: "🎮", trk: "📍", toy: "📳" },
+  devToy: false, intiface: "ws://127.0.0.1:12345", intifaceRelay: 12346,
   mediaTime: false, mediaDur: false, mediaBar: false, mediaBarStyle: "line", mediaBarLen: 10, clockTz: false, clockTzSup: false, clockDate: false,
   heart: false, heartFmt: "{bpm}", hrSuffixOn: false, hrSuffix: "bpm", hrSuffixSup: false, hrParams: true, hrSource: "ble", bleAddr: "", bleName: "", pulsoid: "", interval: 3 };
 const oiCfg = () => {
@@ -3014,7 +3056,7 @@ function renderOsc() {
   const sec = (key, ic, on, body) => `<div class="oi-sec" data-tab="${key}"><div class="sec-head">${icon(ic)} ${t("oi_" + key)}<span class="grow"></span>${fCheck("oi_" + key, on)}</div>
     <div class="card oi-card">${body}</div></div>`;
   el.dataset.lang = S.lang;
-  oiLoginKey = oiBleKey = "";  // These rows are empty again — draw them on the next poll
+  oiLoginKey = oiBleKey = oiVrKey = "";  // These rows are empty again — draw them on the next poll
   el.innerHTML = `<div class="card oi-card oi-top"><div class="oi-prev" id="oiPrev"></div><div class="oi-note" id="oiNote"></div></div>
     <div class="toolbar oi-tabs"><div class="segmented scroll-x" id="oiTabs"></div></div>
     <div class="oi-sec" data-tab="overall"><div class="card oi-card">${fRow(t("oi_on"), fCheck("oiOn", c.on), t("oi_onHint"))}
@@ -3046,10 +3088,27 @@ function renderOsc() {
       + fRow(t("oi_format"), fInput("oiHeartFmt", c.heartFmt), t("oi_heartHint"))
       + fRow(t("oi_hrSuffixOn"), `<div class="oi-token">${fCheck("oiHrSuffixOn", c.hrSuffixOn)}${fInput("oiHrSuffix", c.hrSuffix, 'maxlength="16"')}</div>`, t("oi_hrSuffixHint"))
       + fRow(t("oi_hrSuffixSup"), fCheck("oiHrSuffixSup", c.hrSuffixSup), t("oi_supHint"))
-      + fRow(t("oi_params"), fCheck("oiParams", c.hrParams), t("oi_paramsHint")))}`;
+      + fRow(t("oi_params"), fCheck("oiParams", c.hrParams), t("oi_paramsHint")))}
+    ${sec("devices", "battery-medium", c.devices, fRow("SteamVR", `<span class="hint-inline" id="oiVr"></span>`, t("oi_devHint"))
+      + fRow(t("oi_devHmd"), fCheck("oiDevHmd", c.devHmd)) + fRow(t("oi_devCtrl"), fCheck("oiDevCtrl", c.devCtrl)) + fRow(t("oi_devTrk"), fCheck("oiDevTrk", c.devTrk))
+      + fRow("Intiface Central", `<div class="oi-token">${fCheck("oiDevToy", c.devToy)}<span class="hint-inline" id="oiToy"></span></div>`, t("oi_toyHint"))
+      + fRow(t("oi_toyAddr"), fInput("oiIntiface", c.intiface, 'spellcheck="false" maxlength="100"'), t("oi_toyAddrHint"))
+      + fRow(t("oi_relay"), `<div class="oi-token">${fInput("oiRelay", c.intifaceRelay, 'type="number" min="0" max="65535"')}<span class="hint-inline" id="oiRelaySt"></span></div>`,
+        `<span id="oiRelayHint">${t("oi_relayHint", c.intifaceRelay || 12346)}</span>`)
+      + fRow(t("oi_devTrkGroup"), fCheck("oiDevTrkGroup", "devTrkGroup" in (S.chatInfo || {}) ? c.devTrkGroup : c.devMode === "group"), t("oi_devTrkGroupHint"))
+      + fRow(t("oi_devStat"), fSelect("oiDevStat", { lowest: t("oi_devLowest"), average: t("oi_devAverage") }, c.devStat))
+      + fRow(t("oi_devCharging"), fCheck("oiDevCharging", c.devCharging))
+      + fRow(t("oi_devBattIcon"), `<div class="oi-token">${fCheck("oiDevBattIcon", c.devBattIcon)}${oiSym("oiDevBattSym", c.devBattSym, OI_DEF.devBattSym)}${oiSymReset("oiDevBattSym")}</div>`)
+      + fRow(t("oi_devKindIcon"), `<div class="oi-token">${fCheck("oiDevKindIcon", c.devKindIcon)}${Object.keys(OI_KIND).map(k => oiSym("oiSym_" + k, c.devKindSyms?.[k] || OI_KIND[k], OI_KIND[k])).join("")}
+        ${oiSymReset(...Object.keys(OI_KIND).map(k => "oiSym_" + k))}</div>`)
+      + fRow(t("oi_devVibe"), `<div class="oi-token">${fCheck("oiDevVibe", c.devVibe)}${oiSym("oiDevVibeIcon", c.devVibeIcon, OI_DEF.devVibeIcon)}${oiSymReset("oiDevVibeIcon")}</div>`, t("oi_devVibeHint"))
+      + fRow(t("oi_devLow"), fInput("oiDevLow", c.devLow, 'type="number" min="0" max="100"'))
+      + fRow(t("oi_devList"), `<div id="oiVrList" class="oi-vr-list"></div>`, t("oi_devNameHint")))}`;
   let timer = 0;
   el.oninput = el.onchange = () => { clearTimeout(timer); timer = setTimeout(oiSave, 400); oiTabsUi(); oiLayDim(); };
   oiLayout = [...c.layout]; oiIcons = { ...OI_DEF.icons, ...c.icons };
+  for (const k of ["status", "media", "clock", "heart", "devices"])  // A part that's new in this version goes on its own line at the end
+    if (!oiLayout.includes(k)) oiLayout.push(...(oiLayout.length ? ["br", k] : [k]));
   oiLayUi();
   oiSrcUi();
   oiTabsUi();
@@ -3072,7 +3131,8 @@ function oiLayUi() {
     if (it.startsWith("sep:")) return `<span class="oi-chip sep" data-i="${i}"><input value="${escA(it.slice(4))}" maxlength="20" spellcheck="false"
       oninput="oiLayout[${i}]='sep:'+this.value;this.size=Math.max(this.value.length,2);oiSaveSoon()" size="${Math.max(it.length - 4, 2)}">
       <button class="oi-x" title="${t("oi_remove")}" onclick="oiDel(${i})">${icon("x")}</button></span>`;
-    return `<span class="oi-chip item" data-i="${i}" data-k="${it}"><button class="oi-emo" title="${t("oi_layoutHint")}" onclick="oiEmoji('${it}',this)">${oiIcons[it] || icon("plus")}</button>${t("oi_" + it)}</span>`;
+    const emo = it === "devices" ? "" : `<button class="oi-emo" title="${t("oi_layoutHint")}" onclick="oiEmoji('${it}',this)">${oiIcons[it] || icon("plus")}</button>`;  // Devices have their own icons
+    return `<span class="oi-chip item" data-i="${i}" data-k="${it}">${emo}${t("oi_" + it)}</span>`;
   }).join("");
   oiLayDim();
 }
@@ -3145,7 +3205,7 @@ function oiEmoji(k, anchor) {
   }), 0);
 }
 // One section at a time; each tab shows a dot when that part is switched on
-const OI_TABS = { overall: "sliders-horizontal", status: "sparkles", media: "music", clock: "clock", heart: "heart" };
+const OI_TABS = { overall: "sliders-horizontal", status: "sparkles", media: "music", clock: "clock", heart: "heart", devices: "battery-medium" };
 let oiTab = "overall";
 function oiTabsUi() {
   $("oiTabs").innerHTML = Object.entries(OI_TABS).map(([k, ic]) => `<button class="${oiTab === k ? "on" : ""}" onclick="oiTab='${k}';oiTabsUi()">${icon(ic)}${t("oi_" + k)}
@@ -3160,6 +3220,13 @@ function oiSave() {
     mediaTime: fv("oiMediaTime"), mediaDur: fv("oiMediaDur"), mediaBar: fv("oiMediaBar"), mediaBarStyle: fv("oiBarStyle") || "line",
     mediaBarLen: num("oiBarLen", OI_DEF.mediaBarLen), heart: fv("oi_heart"), heartFmt: fv("oiHeartFmt") || OI_DEF.heartFmt,
     hrSuffixOn: fv("oiHrSuffixOn"), hrSuffix: fv("oiHrSuffix") ?? "bpm", hrSuffixSup: fv("oiHrSuffixSup"),
+    devices: fv("oi_devices"), devTrkGroup: fv("oiDevTrkGroup"), devStat: fv("oiDevStat") || "lowest",
+    devHmd: fv("oiDevHmd"), devCtrl: fv("oiDevCtrl"), devTrk: fv("oiDevTrk"), devCharging: fv("oiDevCharging"),
+    devToy: fv("oiDevToy"), intiface: (fv("oiIntiface") || "").trim() || OI_DEF.intiface, intifaceRelay: num("oiRelay", OI_DEF.intifaceRelay),
+    devLow: num("oiDevLow", OI_DEF.devLow), devHidden: [...oiHidden()], devOff: [...oiOff()],
+    devVibe: fv("oiDevVibe"), devVibeIcon: (fv("oiDevVibeIcon") ?? OI_DEF.devVibeIcon).slice(0, 8),
+    devBattIcon: fv("oiDevBattIcon"), devBattSym: (fv("oiDevBattSym") ?? OI_DEF.devBattSym).slice(0, 8), devKindIcon: fv("oiDevKindIcon"),
+    devKindSyms: Object.fromEntries(Object.keys(OI_KIND).map(k => [k, (fv("oiSym_" + k) || OI_KIND[k]).slice(0, 8)])),
     hrSource: fv("oiSource") || "ble", bleAddr: fv("oiBleAddr") || "", bleName: fv("oiBleName") || "",
     pulsoid: fv("oiToken") || "", hrParams: fv("oiParams"), interval: num("oiInterval", OI_DEF.interval),
     layout: [...oiLayout], icons: { ...oiIcons } };
@@ -3181,9 +3248,74 @@ async function oiPoll() {
     $("oiHr").textContent = t(s.hr === "off" && oiCfg().hrSource === "ble" ? "oi_hr_offBle" : "oi_hr_" + s.hr, s.bpm ?? "—");
     $("oiHr").style.color = s.hr === "live" ? "var(--green)" : s.hr === "badToken" || s.hr === "error" ? "var(--red)" : s.hr === "searching" ? "var(--orange)" : "";
     oiLoginUi(s);
+    oiVrUi(s.vr || { state: "off", devices: [] }, s.toys || { state: "off", devices: [] });
     oiBleUi(s);
   }
   oiTimer = setTimeout(oiPoll, 1000);
+}
+// ---------- Integrate devices (SteamVR + Intiface Central): live list with battery; each one can be renamed ----------
+const OI_KIND = { hmd: "🥽", ctrl: "🎮", trk: "📍", toy: "📳" };  // Defaults; the user can change them
+// Small emoji box that remembers its default, and a button that puts the default back
+const oiSym = (id, value, def) => `<input class="field oi-sym" id="${id}" value="${escA(value ?? "")}" data-def="${escA(def)}" maxlength="8" spellcheck="false">`;
+const oiSymReset = (...ids) => `<button class="mini-btn" title="${escA(t("oi_resetIcon"))}" onclick="oiSymDefault('${ids.join("','")}')">${icon("rotate-ccw")}</button>`;
+function oiSymDefault(...ids) {
+  for (const id of ids) $(id).value = $(id).dataset.def;
+  oiSave();
+}
+let oiVrKey = "";
+function oiVrUi(vr, toys) {
+  if (!$("oiVr")) return;
+  const color = st => st === "ok" ? "var(--green)" : st === "error" ? "var(--red)" : "";
+  $("oiVr").textContent = t("oi_vr_" + vr.state, vr.devices.length);
+  $("oiVr").style.color = color(vr.state);
+  $("oiToy").textContent = t("oi_toy_" + toys.state, toys.devices.length);
+  $("oiToy").style.color = color(toys.state);
+  const port = oiCfg().intifaceRelay;
+  $("oiRelaySt").textContent = port ? t("oi_relay_" + (toys.relay || "off"), toys.relay === "app" ? toys.app : port) : "";
+  $("oiRelaySt").style.color = toys.relay === "app" ? "var(--green)" : toys.relay === "portBusy" ? "var(--red)" : "";
+  $("oiRelayHint").textContent = t("oi_relayHint", port || 12346);
+  const devices = [...vr.devices, ...toys.devices];
+  const key = vr.state + toys.state + devices.map(d => d.serial).join() + S.lang + JSON.stringify(oiCfg().devKindSyms);
+  if (key !== oiVrKey) {  // Rebuild rows only when devices come or go
+    oiVrKey = key;
+    $("oiVrList").innerHTML = devices.length ? devices.map(d => `<div class="oi-vr" data-serial="${escA(d.serial)}" data-label="${escA(d.label)}">
+        <label class="switch" title="${escA(t("oi_devShow"))}"><input type="checkbox" class="oi-show" ${oiOff().has(d.serial) ? "" : "checked"} onchange="oiShowToggle(this)"></label><span class="k">${esc(oiCfg().devKindSyms?.[d.kind] || OI_KIND[d.kind])}</span><span class="m"><b>${esc(d.model || d.label)}</b><small>${esc(d.serial.replace(/^intiface:/, "Intiface · "))}</small></span>
+        <span class="b"></span><button class="mini-btn oi-hide" onclick="oiHideToggle(this)"></button></div>`).join("")
+      : `<span class="hint-inline">${t("oi_devNone")}</span>`;
+    oiHideUi();
+  }
+  for (const d of devices) {
+    const b = $("oiVrList").querySelector(`.oi-vr[data-serial="${CSS.escape(d.serial)}"] .b`);
+    if (!b) continue;
+    const vibe = d.vibe != null ? `${oiCfg().devVibeIcon || "〰️"}${d.vibe}%` : "";
+    b.textContent = d.battery == null ? (vibe || t("oi_noBattery")) : `${oiCfg().devBattSym || "🔋"}${d.battery}%${d.charging ? " ⚡" : ""}${vibe ? " · " + vibe : ""}`;
+    b.classList.toggle("none", d.battery == null && !vibe);
+    b.classList.toggle("low", d.battery != null && d.battery <= (oiCfg().devLow ?? 20) && !d.charging);
+  }
+}
+// Devices whose name stays out of the Chatbox (kept for devices that aren't connected right now)
+let oiHiddenSet = null, oiOffSet = null;
+const oiOff = () => oiOffSet ??= new Set(oiCfg().devOff || []);  // Devices left out of the Chatbox
+function oiShowToggle(box) {
+  const serial = box.closest(".oi-vr").dataset.serial;
+  box.checked ? oiOff().delete(serial) : oiOff().add(serial);
+  box.closest(".oi-vr").classList.toggle("off", !box.checked);  // The page's change handler saves
+}
+const oiHidden = () => oiHiddenSet ??= new Set(oiCfg().devHidden || []);
+function oiHideToggle(btn) {
+  const serial = btn.closest(".oi-vr").dataset.serial, hidden = oiHidden();
+  hidden.has(serial) ? hidden.delete(serial) : hidden.add(serial);
+  oiHideUi();
+  oiSave();
+}
+function oiHideUi() {
+  $("oiVrList")?.querySelectorAll(".oi-vr").forEach(r => {
+    const off = oiHidden().has(r.dataset.serial), btn = r.querySelector(".oi-hide");
+    r.classList.toggle("anon", off);
+    r.classList.toggle("off", oiOff().has(r.dataset.serial));
+    btn.innerHTML = `${icon(off ? "eye-off" : "eye")}<span>${off ? r.dataset.label : t("oi_hideName")}</span>`;
+    btn.title = t(off ? "oi_showName" : "oi_hideName");
+  });
 }
 // Heart-rate source: Bluetooth device (free) or Pulsoid — only that source's rows are shown
 function oiSrcUi() {
@@ -3247,6 +3379,20 @@ VIEW_RENDER.osc = () => renderOsc();
 document.head.insertAdjacentHTML("beforeend", `<style>
 .oi-card { padding: 4px 14px; }
 .oi-tabs { margin: 14px 0 2px; }
+.oi-vr-list { display: grid; gap: 6px; }
+.oi-sym { width: 52px; text-align: center; padding-left: 4px; padding-right: 4px; }
+.oi-vr { display: grid; grid-template-columns: auto 26px minmax(0, 1fr) auto 140px; align-items: center; gap: 10px; padding: 6px 8px;
+         border-radius: 10px; background: var(--track); }
+.oi-vr .k { font-size: 17px; text-align: center; }
+.oi-vr .m { display: flex; flex-direction: column; min-width: 0; }
+.oi-vr .m b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oi-vr .m small { font: 10.5px var(--mono); color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oi-vr .b { font: 600 12.5px var(--mono); }
+.oi-vr .b.low { color: var(--red); }
+.oi-vr .b.none { font: 11.5px var(--font); color: var(--text3); }
+.oi-vr .oi-hide { justify-self: end; display: inline-flex; align-items: center; gap: 5px; width: auto; padding: 0 9px; font-size: 12px; }
+.oi-vr.off > :not(.switch) { opacity: .45; }
+.oi-vr.anon .m b { text-decoration: line-through; color: var(--text3); }
 .oi-top { padding: 12px 14px 4px; }
 .oi-top .oi-prev { margin-top: 0; }
 .oi-sec[data-tab="overall"] .card { margin-top: 8px; }
