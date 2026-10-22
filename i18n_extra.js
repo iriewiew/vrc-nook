@@ -41,7 +41,7 @@ I18N.ko = {
   g_searchPh: "그룹 이름 또는 짧은 코드 검색…", g_mine: "내 그룹", g_results: "검색 결과", members: n => `멤버 ${Number(n).toLocaleString()}명`,
   membersW: "멤버", onlineW: "온라인", joinGroup: "그룹 가입", requestJoin: "가입 요청", inviteOnly: "초대 전용", leaveGroup: "그룹 탈퇴",
   requested: "요청 보냄", joined: "멤버", joinedToast: "그룹에 가입했습니다", requestedToast: "가입 요청을 보냈습니다", leftToast: "그룹에서 탈퇴했습니다",
-  a_mine: "내 아바타", a_fav: "즐겨찾기", a_searchHint: "위의 검색창을 사용하세요 — VRChat API는 다른 사람의 아바타 검색을 허용하지 않습니다",
+  a_mine: "내 아바타", a_fav: "즐겨찾기", a_searchHint: "위의 검색창으로 내 아바타를 걸러냅니다 (이름, 제작자, 설명) — 공개 아바타는 검색 → 아바타에서 찾으세요",
   wearing: "착용 중", useAvatar: "이 아바타 사용", avatarChanged: "아바타를 변경했습니다", updated: "업데이트",
   i_gallery: "사진", i_emoji: "이모지", i_sticker: "스티커", i_items: "아이템", i_cosmetics: "꾸미기",
   i_hint_gallery: "PNG/JPG, 최대 2048px로 자동 조정", i_hint_emoji: "1024px 정사각형으로 자동 조정", i_hint_sticker: "1024px 정사각형으로 자동 조정",
@@ -149,7 +149,7 @@ I18N.ko = {
   st_notifyHint: "앱 창이 활성화되어 있지 않을 때 Windows 알림이 표시됩니다", st_tray: "닫으면 시스템 트레이로", st_trayHint: "계속 실행됩니다 (로그 + 알림); 트레이 아이콘을 클릭해 다시 열기",
   st_autostart: "Windows 시작 시 실행", st_autostartHint: "트레이에 숨겨진 상태로 시작",
   i_left: n => `${n}개 남음`, i_full: "가득 참 — 하나를 지워야 업로드할 수 있습니다", i_uploadedAt: "업로드", emk_static: "1프레임 = 정지 이모지로 업로드 (1024px)",
-  i_anim: "움직임", a_search: "아바타 검색", a_searchPublicPh: "공개 아바타 검색 (이름, 제작자, 태그)",
+  i_anim: "움직임", a_search: "아바타 검색", a_searchPublicPh: "공개 아바타 검색 (이름, 제작자, 설명, 태그)",
   a_searchSource: "avtrdb.com의 결과입니다 (VRCX도 사용하는 외부 데이터베이스). 검색어만 전송되며 계정 정보는 전송되지 않습니다.",
   set_general: "일반", set_log: "게임 로그", set_feed: "피드", set_kb: "키보드", kbs_langs: "전환할 언어",
   kbs_langsHint: "언어 키를 누르면 이 순서대로 바뀝니다 (앱 안 키보드와 떠 있는 키보드 모두)", kbs_jaHint: "가나만 입력 — 한자 변환 없음",
@@ -217,7 +217,7 @@ I18N.ru = {
   members: n => `${Number(n).toLocaleString()} ${ruN(Number(n), "участник", "участника", "участников")}`,
   membersW: "участников", onlineW: "в сети", joinGroup: "Вступить", requestJoin: "Подать заявку", inviteOnly: "Только по приглашению", leaveGroup: "Покинуть группу",
   requested: "Заявка отправлена", joined: "Участник", joinedToast: "Вы вступили в группу", requestedToast: "Заявка отправлена", leftToast: "Вы покинули группу",
-  a_mine: "Мои аватары", a_fav: "Избранное", a_searchHint: "Используйте поиск выше — API VRChat не позволяет искать чужие аватары",
+  a_mine: "Мои аватары", a_fav: "Избранное", a_searchHint: "Поиск выше фильтрует ваши аватары (название, автор, описание) — публичные аватары ищите в Поиск → Аватары",
   wearing: "Надет", useAvatar: "Надеть этот аватар", avatarChanged: "Аватар сменён", updated: "Обновлено",
   i_gallery: "Фото", i_emoji: "Эмодзи", i_sticker: "Стикеры", i_items: "Предметы", i_cosmetics: "Косметика",
   i_hint_gallery: "PNG/JPG, уменьшается до 2048px", i_hint_emoji: "Приводится к квадрату 1024px", i_hint_sticker: "Приводится к квадрату 1024px",
@@ -325,7 +325,7 @@ I18N.ru = {
   st_notifyHint: "Уведомления Windows появляются, когда окно приложения не активно", st_tray: "Сворачивать в трей при закрытии", st_trayHint: "Продолжает работать (лог + уведомления); нажмите на иконку в трее, чтобы открыть",
   st_autostart: "Запускать вместе с Windows", st_autostartHint: "Запускается скрыто в трее",
   i_left: n => `осталось ${n}`, i_full: "Заполнено — удалите что-нибудь, чтобы загрузить", i_uploadedAt: "Загружено", emk_static: "1 кадр = загружается как статичный эмодзи (1024px)",
-  i_anim: "Анимация", a_search: "Поиск аватаров", a_searchPublicPh: "Поиск публичных аватаров (название, автор, теги)",
+  i_anim: "Анимация", a_search: "Поиск аватаров", a_searchPublicPh: "Поиск публичных аватаров (название, автор, описание, теги)",
   a_searchSource: "Результаты с avtrdb.com (внешняя база, которую использует и VRCX). Отправляется только текст запроса, но не ваш аккаунт.",
   set_general: "Общие", set_log: "Игровой лог", set_feed: "Лента", set_kb: "Клавиатура", kbs_langs: "Языки для переключения",
   kbs_langsHint: "Клавиша языка переключает их по порядку (встроенная и плавающая клавиатура)", kbs_jaHint: "Только кана — без преобразования в кандзи",
@@ -389,7 +389,7 @@ I18N.vi = {
   g_searchPh: "Tìm tên nhóm hoặc mã ngắn…", g_mine: "Nhóm của tôi", g_results: "Kết quả tìm kiếm", members: n => `${Number(n).toLocaleString()} thành viên`,
   membersW: "thành viên", onlineW: "trực tuyến", joinGroup: "Tham gia nhóm", requestJoin: "Xin tham gia", inviteOnly: "Chỉ khi được mời", leaveGroup: "Rời nhóm",
   requested: "Đã gửi yêu cầu", joined: "Thành viên", joinedToast: "Đã tham gia nhóm", requestedToast: "Đã gửi yêu cầu tham gia", leftToast: "Đã rời nhóm",
-  a_mine: "Avatar của tôi", a_fav: "Yêu thích", a_searchHint: "Dùng ô tìm kiếm phía trên — API của VRChat không cho tìm avatar của người khác",
+  a_mine: "Avatar của tôi", a_fav: "Yêu thích", a_searchHint: "Ô tìm kiếm phía trên lọc avatar của bạn (tên, tác giả, mô tả) — tìm avatar công khai ở Tìm kiếm → Avatar",
   wearing: "Đang dùng", useAvatar: "Dùng avatar này", avatarChanged: "Đã đổi avatar", updated: "Cập nhật",
   i_gallery: "Ảnh", i_emoji: "Emoji", i_sticker: "Sticker", i_items: "Vật phẩm", i_cosmetics: "Trang trí",
   i_hint_gallery: "PNG/JPG, tự thu nhỏ tối đa 2048px", i_hint_emoji: "Tự chỉnh thành hình vuông 1024px", i_hint_sticker: "Tự chỉnh thành hình vuông 1024px",
@@ -497,7 +497,7 @@ I18N.vi = {
   st_notifyHint: "Thông báo Windows hiện khi cửa sổ ứng dụng không được chọn", st_tray: "Đóng xuống khay hệ thống", st_trayHint: "Vẫn chạy (log + thông báo); nhấn biểu tượng ở khay để mở lại",
   st_autostart: "Khởi động cùng Windows", st_autostartHint: "Khởi động ẩn trong khay",
   i_left: n => `còn ${n}`, i_full: "Đã đầy — xóa bớt để tải lên", i_uploadedAt: "Tải lên lúc", emk_static: "1 khung = tải lên dạng emoji tĩnh (1024px)",
-  i_anim: "Động", a_search: "Tìm avatar", a_searchPublicPh: "Tìm avatar công khai (tên, tác giả, thẻ)",
+  i_anim: "Động", a_search: "Tìm avatar", a_searchPublicPh: "Tìm avatar công khai (tên, tác giả, mô tả, thẻ)",
   a_searchSource: "Kết quả từ avtrdb.com (cơ sở dữ liệu bên ngoài mà VRCX cũng dùng). Chỉ gửi nội dung tìm kiếm, không gửi tài khoản của bạn.",
   set_general: "Chung", set_log: "Game Log", set_feed: "Bảng tin", set_kb: "Bàn phím", kbs_langs: "Ngôn ngữ để chuyển đổi",
   kbs_langsHint: "Phím ngôn ngữ chuyển lần lượt theo thứ tự này (bàn phím trong ứng dụng và bàn phím nổi)", kbs_jaHint: "Chỉ gõ kana — không chuyển sang kanji",
@@ -561,7 +561,7 @@ I18N.zh = {
   g_searchPh: "搜索群组名称或短代码…", g_mine: "我的群组", g_results: "搜索结果", members: n => `${Number(n).toLocaleString()} 名成员`,
   membersW: "成员", onlineW: "在线", joinGroup: "加入群组", requestJoin: "申请加入", inviteOnly: "仅限邀请", leaveGroup: "退出群组",
   requested: "已发送申请", joined: "成员", joinedToast: "已加入群组", requestedToast: "已发送加入申请", leftToast: "已退出群组",
-  a_mine: "我的模型", a_fav: "收藏", a_searchHint: "请使用上方的搜索框 —— VRChat API 不允许搜索他人的模型",
+  a_mine: "我的模型", a_fav: "收藏", a_searchHint: "上方的搜索框可筛选你的模型（名称、作者、简介）—— 公开模型请在 搜索 → 模型 中查找",
   wearing: "使用中", useAvatar: "使用此模型", avatarChanged: "已更换模型", updated: "更新于",
   i_gallery: "照片", i_emoji: "表情", i_sticker: "贴纸", i_items: "物品", i_cosmetics: "装扮",
   i_hint_gallery: "PNG/JPG，自动缩小至最大 2048px", i_hint_emoji: "自动调整为 1024px 正方形", i_hint_sticker: "自动调整为 1024px 正方形",
@@ -669,7 +669,7 @@ I18N.zh = {
   st_notifyHint: "应用窗口未处于焦点时会显示 Windows 通知", st_tray: "关闭时最小化到托盘", st_trayHint: "继续运行（日志 + 通知）；点击托盘图标重新打开",
   st_autostart: "随 Windows 启动", st_autostartHint: "启动时隐藏在托盘",
   i_left: n => `剩余 ${n}`, i_full: "已满 —— 删除一项后才能上传", i_uploadedAt: "上传于", emk_static: "1 帧 = 作为静态表情上传 (1024px)",
-  i_anim: "动态", a_search: "搜索模型", a_searchPublicPh: "搜索公开模型（名称、作者、标签）",
+  i_anim: "动态", a_search: "搜索模型", a_searchPublicPh: "搜索公开模型（名称、作者、简介、标签）",
   a_searchSource: "结果来自 avtrdb.com（VRCX 也在使用的外部数据库）。只会发送搜索文字，不会发送你的账号。",
   set_general: "通用", set_log: "游戏日志", set_feed: "动态", set_kb: "键盘", kbs_langs: "可切换的语言",
   kbs_langsHint: "语言键会按此顺序切换（应用内键盘和悬浮键盘）", kbs_jaHint: "仅假名 —— 不转换为汉字",
@@ -695,3 +695,129 @@ I18N.zh = {
 
 // Update dialog strings (defined in vrclog_more.js)
 for (const [l, tb] of Object.entries(UPD_I18N)) Object.assign(I18N[l], tb);
+
+// Pager strings (pagination is defined in vrclog_ui.html)
+Object.assign(I18N.ko, { pg_range: (a, b, n) => `${n.toLocaleString()}개 중 ${a}–${b}`, pg_per: n => `페이지당 ${n}개`, pg_all: "모두 보기", pg_prev: "이전 페이지", pg_next: "다음 페이지" });
+Object.assign(I18N.ru, { pg_range: (a, b, n) => `${a}–${b} из ${n.toLocaleString()}`, pg_per: n => `${n} на странице`, pg_all: "Показать все", pg_prev: "Предыдущая страница", pg_next: "Следующая страница" });
+Object.assign(I18N.vi, { pg_range: (a, b, n) => `${a}–${b} / ${n.toLocaleString()}`, pg_per: n => `${n} mỗi trang`, pg_all: "Hiện tất cả", pg_prev: "Trang trước", pg_next: "Trang sau" });
+Object.assign(I18N.zh, { pg_range: (a, b, n) => `第 ${a}–${b} 项，共 ${n.toLocaleString()} 项`, pg_per: n => `每页 ${n} 项`, pg_all: "全部显示", pg_prev: "上一页", pg_next: "下一页" });
+Object.assign(I18N.ko, { s_avatars: "아바타" });
+Object.assign(I18N.ru, { s_avatars: "Аватары" });
+Object.assign(I18N.vi, { s_avatars: "Avatar" });
+Object.assign(I18N.zh, { s_avatars: "模型" });
+Object.assign(I18N.ko, { i_download: "다운로드" });
+Object.assign(I18N.ru, { i_download: "Скачать" });
+Object.assign(I18N.vi, { i_download: "Tải xuống" });
+Object.assign(I18N.zh, { i_download: "下载" });
+
+// Chatbox info page (vrclog_more.js)
+Object.assign(I18N.ko, {
+  nav_osc: "챗박스 정보", oi_on: "챗박스로 보내기", oi_onHint: "머리 위 텍스트를 자동으로 갱신 · 직접 메시지를 보내면 15초 멈춤", oi_preview: "미리보기",
+  oi_previewEmpty: "아직 표시할 내용이 없습니다 — 아래에서 하나 이상 켜세요", oi_paused: n => `${n}초 일시정지 (방금 메시지를 보냄)`,
+  oi_status: "랜덤 상태", oi_statuses: "메시지", oi_statusesHint: "한 줄에 하나, 무작위로 하나씩 표시", oi_every: "변경 간격 (초)",
+  oi_media: "재생 중인 미디어", oi_format: "형식", oi_mediaHint: "{title} 제목 · {artist} 아티스트 · {pos} 재생 위치 · {dur} 길이",
+  oi_nowPlaying: "지금", oi_nothing: "재생 중인 항목 없음", oi_clock: "시계", oi_24h: "24시간 표시",
+  oi_heart: "심박수", oi_token: "Pulsoid 토큰", oi_getToken: "토큰 받기", oi_tokenHint: "또는 pulsoid.net의 토큰을 붙여넣기 (BRO 플랜 필요) · 이 PC에만 저장",
+  oi_heartHint: "{bpm} = 심박수", oi_params: "아바타 파라미터로도 보내기",
+  oi_paramsHint: "HR, onesHR, tensHR, hundredsHR, HRPercent, isHRConnected, isHRActive (HRtoVRChat과 같은 이름)",
+  oi_connection: "연결", oi_hr_off: "토큰 없음", oi_hr_connecting: "연결 중…", oi_hr_live: n => `연결됨 · ${n} bpm`,
+  oi_hr_badToken: "잘못된 토큰", oi_hr_error: "연결할 수 없음 — 다시 시도 중", oi_interval: "갱신 간격 (초)",
+  oi_intervalHint: "1–60초 · 약 1.5초보다 짧으면 VRChat이 일부를 건너뛸 수 있습니다",
+});
+Object.assign(I18N.ru, {
+  nav_osc: "Инфо в чатбоксе", oi_on: "Отправлять в чатбокс", oi_onHint: "Текст над головой обновляется сам · пауза 15 с после вашего сообщения", oi_preview: "Предпросмотр",
+  oi_previewEmpty: "Пока нечего показывать — включите что-нибудь ниже", oi_paused: n => `Пауза ${n} с (вы только что отправили сообщение)`,
+  oi_status: "Случайный статус", oi_statuses: "Фразы", oi_statusesHint: "По одной на строку, показываются по одной случайно", oi_every: "Менять каждые (с)",
+  oi_media: "Сейчас играет", oi_format: "Формат", oi_mediaHint: "{title} название · {artist} исполнитель · {pos} позиция · {dur} длительность",
+  oi_nowPlaying: "Сейчас", oi_nothing: "Ничего не играет", oi_clock: "Часы", oi_24h: "24-часовой формат",
+  oi_heart: "Пульс", oi_token: "Токен Pulsoid", oi_getToken: "Получить токен", oi_tokenHint: "Или вставьте токен с pulsoid.net (нужен план BRO) · хранится только на этом ПК",
+  oi_heartHint: "{bpm} = пульс", oi_params: "Также отправлять параметры аватара",
+  oi_paramsHint: "HR, onesHR, tensHR, hundredsHR, HRPercent, isHRConnected, isHRActive (как в HRtoVRChat)",
+  oi_connection: "Подключение", oi_hr_off: "Нет токена", oi_hr_connecting: "Подключение…", oi_hr_live: n => `Подключено · ${n} уд/мин`,
+  oi_hr_badToken: "Неверный токен", oi_hr_error: "Нет подключения — повтор", oi_interval: "Обновлять каждые (с)",
+  oi_intervalHint: "1–60 с · чаще ~1,5 с VRChat может пропускать обновления",
+});
+Object.assign(I18N.vi, {
+  nav_osc: "Thông tin Chatbox", oi_on: "Gửi lên Chatbox", oi_onHint: "Tự cập nhật chữ trên đầu · dừng 15 giây sau khi bạn tự gửi tin nhắn", oi_preview: "Xem trước",
+  oi_previewEmpty: "Chưa có gì để hiện — hãy bật ít nhất một mục bên dưới", oi_paused: n => `Tạm dừng ${n} giây (bạn vừa gửi tin nhắn)`,
+  oi_status: "Trạng thái ngẫu nhiên", oi_statuses: "Câu", oi_statusesHint: "Mỗi dòng một câu, hiện ngẫu nhiên từng câu", oi_every: "Đổi mỗi (giây)",
+  oi_media: "Đang phát", oi_format: "Định dạng", oi_mediaHint: "{title} tên bài · {artist} nghệ sĩ · {pos} vị trí · {dur} độ dài",
+  oi_nowPlaying: "Hiện tại", oi_nothing: "Không có gì đang phát", oi_clock: "Đồng hồ", oi_24h: "Dạng 24 giờ",
+  oi_heart: "Nhịp tim", oi_token: "Token Pulsoid", oi_getToken: "Lấy token", oi_tokenHint: "Hoặc dán token từ pulsoid.net (cần gói BRO) · chỉ lưu trên máy này",
+  oi_heartHint: "{bpm} = nhịp tim", oi_params: "Gửi cả tham số avatar",
+  oi_paramsHint: "HR, onesHR, tensHR, hundredsHR, HRPercent, isHRConnected, isHRActive (giống tên trong HRtoVRChat)",
+  oi_connection: "Kết nối", oi_hr_off: "Chưa có token", oi_hr_connecting: "Đang kết nối…", oi_hr_live: n => `Đã kết nối · ${n} bpm`,
+  oi_hr_badToken: "Token không hợp lệ", oi_hr_error: "Không kết nối được — đang thử lại", oi_interval: "Cập nhật mỗi (giây)",
+  oi_intervalHint: "1–60 giây · dưới ~1,5 giây VRChat có thể bỏ qua vài lần cập nhật",
+});
+Object.assign(I18N.zh, {
+  nav_osc: "聊天框信息", oi_on: "发送到聊天框", oi_onHint: "自动更新头顶文字 · 你自己发送消息后暂停 15 秒", oi_preview: "预览",
+  oi_previewEmpty: "暂无可显示内容 —— 请在下方至少开启一项", oi_paused: n => `已暂停 ${n} 秒（你刚发送了消息）`,
+  oi_status: "随机状态", oi_statuses: "文字", oi_statusesHint: "每行一条，随机轮流显示", oi_every: "切换间隔（秒）",
+  oi_media: "正在播放", oi_format: "格式", oi_mediaHint: "{title} 标题 · {artist} 艺术家 · {pos} 当前位置 · {dur} 时长",
+  oi_nowPlaying: "当前", oi_nothing: "没有正在播放的内容", oi_clock: "时钟", oi_24h: "24 小时制",
+  oi_heart: "心率", oi_token: "Pulsoid 令牌", oi_getToken: "获取令牌", oi_tokenHint: "或粘贴 pulsoid.net 的令牌（需要 BRO 套餐）· 只保存在这台电脑",
+  oi_heartHint: "{bpm} = 心率", oi_params: "同时发送模型参数",
+  oi_paramsHint: "HR、onesHR、tensHR、hundredsHR、HRPercent、isHRConnected、isHRActive（与 HRtoVRChat 相同）",
+  oi_connection: "连接", oi_hr_off: "尚未填写令牌", oi_hr_connecting: "连接中…", oi_hr_live: n => `已连接 · ${n} bpm`,
+  oi_hr_badToken: "令牌无效", oi_hr_error: "无法连接 —— 正在重试", oi_interval: "更新间隔（秒）",
+  oi_intervalHint: "1–60 秒 · 低于约 1.5 秒时 VRChat 可能会跳过部分更新",
+});
+Object.assign(I18N.ko, { oi_account: "Pulsoid 계정", oi_loginHint: "Pulsoid BRO 플랜 필요 — 누른 뒤 열린 페이지에서 Allow", oi_signIn: "Pulsoid로 로그인", oi_signOut: "로그아웃",
+  oi_signedIn: "로그인됨", oi_reopen: "페이지 다시 열기", oi_waiting: "브라우저에서 Allow를 누르기를 기다리는 중…", oi_login_denied: "허용되지 않음 — 다시 시도하세요",
+  oi_login_expired: "시간 초과 — 다시 시도하세요", oi_login_error: "Pulsoid에 연결할 수 없음", oi_noClient: "이 빌드에는 아직 로그인이 설정되지 않았습니다" });
+Object.assign(I18N.ru, { oi_account: "Аккаунт Pulsoid", oi_loginHint: "Нужен план Pulsoid BRO — нажмите и затем Allow на открывшейся странице", oi_signIn: "Войти через Pulsoid", oi_signOut: "Выйти",
+  oi_signedIn: "Вход выполнен", oi_reopen: "Открыть страницу снова", oi_waiting: "Ждём, пока вы нажмёте Allow в браузере…", oi_login_denied: "Доступ не разрешён — попробуйте снова",
+  oi_login_expired: "Время вышло — попробуйте снова", oi_login_error: "Не удалось связаться с Pulsoid", oi_noClient: "В этой сборке вход ещё не настроен" });
+Object.assign(I18N.vi, { oi_account: "Tài khoản Pulsoid", oi_loginHint: "Cần gói Pulsoid BRO — bấm rồi chọn Allow ở trang mở ra", oi_signIn: "Đăng nhập bằng Pulsoid", oi_signOut: "Đăng xuất",
+  oi_signedIn: "Đã đăng nhập", oi_reopen: "Mở lại trang", oi_waiting: "Đang chờ bạn bấm Allow trong trình duyệt…", oi_login_denied: "Chưa được cho phép — thử lại",
+  oi_login_expired: "Hết thời gian — thử lại", oi_login_error: "Không kết nối được Pulsoid", oi_noClient: "Bản này chưa cài đặt đăng nhập" });
+Object.assign(I18N.zh, { oi_account: "Pulsoid 账号", oi_loginHint: "需要 Pulsoid BRO 套餐 —— 点击后在打开的页面中选择 Allow", oi_signIn: "使用 Pulsoid 登录", oi_signOut: "退出登录",
+  oi_signedIn: "已登录", oi_reopen: "再次打开页面", oi_waiting: "等待你在浏览器中点击 Allow…", oi_login_denied: "未获授权 —— 请重试",
+  oi_login_expired: "已超时 —— 请重试", oi_login_error: "无法连接 Pulsoid", oi_noClient: "此版本尚未设置登录" });
+Object.assign(I18N.ko, { oi_source: "가져올 곳", oi_srcBle: "Bluetooth (무료)", oi_srcPulsoid: "Pulsoid", oi_device: "기기", oi_noDevice: "아직 선택 안 함",
+  oi_findDevices: "기기 찾기", oi_scanning: "찾는 중…", oi_use: "사용", oi_using: "사용 중",
+  oi_noneFound: "심박 기기를 찾지 못했습니다 — 시계에서 심박 브로드캐스트를 켜고 다시 찾으세요",
+  oi_bleHint: "가슴 스트랩은 바로 사용 가능 · 시계는 심박 브로드캐스트를 켜야 함 (Huawei: 심박수 공유, Garmin: Broadcast Heart Rate) · Apple Watch는 불가",
+  oi_hr_offBle: "기기를 아직 선택하지 않음", oi_hr_searching: "기기에 연결할 수 없음 — 다시 시도 중 (브로드캐스트가 켜져 있나요?)" });
+Object.assign(I18N.ru, { oi_source: "Источник", oi_srcBle: "Bluetooth (бесплатно)", oi_srcPulsoid: "Pulsoid", oi_device: "Устройство", oi_noDevice: "Не выбрано",
+  oi_findDevices: "Найти устройства", oi_scanning: "Поиск…", oi_use: "Выбрать", oi_using: "Используется",
+  oi_noneFound: "Пульсометр не найден — включите трансляцию пульса на часах и поищите снова",
+  oi_bleHint: "Нагрудные датчики работают сразу · на часах включите трансляцию пульса (Huawei: передача пульса, Garmin: Broadcast Heart Rate) · Apple Watch не поддерживается",
+  oi_hr_offBle: "Устройство не выбрано", oi_hr_searching: "Нет связи с устройством — повтор (трансляция включена?)" });
+Object.assign(I18N.vi, { oi_source: "Nguồn", oi_srcBle: "Bluetooth (miễn phí)", oi_srcPulsoid: "Pulsoid", oi_device: "Thiết bị", oi_noDevice: "Chưa chọn",
+  oi_findDevices: "Tìm thiết bị", oi_scanning: "Đang tìm…", oi_use: "Dùng", oi_using: "Đang dùng",
+  oi_noneFound: "Không thấy thiết bị đo nhịp tim — bật phát nhịp tim trên đồng hồ rồi tìm lại",
+  oi_bleHint: "Đai đeo ngực dùng được ngay · đồng hồ cần bật phát nhịp tim (Huawei: chia sẻ nhịp tim, Garmin: Broadcast Heart Rate) · Apple Watch không dùng được",
+  oi_hr_offBle: "Chưa chọn thiết bị", oi_hr_searching: "Không kết nối được thiết bị — đang thử lại (đã bật phát nhịp tim chưa?)" });
+Object.assign(I18N.zh, { oi_source: "来源", oi_srcBle: "蓝牙（免费）", oi_srcPulsoid: "Pulsoid", oi_device: "设备", oi_noDevice: "尚未选择",
+  oi_findDevices: "查找设备", oi_scanning: "查找中…", oi_use: "使用", oi_using: "使用中",
+  oi_noneFound: "未找到心率设备 —— 请在手表上开启心率广播后重新查找",
+  oi_bleHint: "胸带可直接使用 · 手表需开启心率广播（华为：心率共享，Garmin：Broadcast Heart Rate）· Apple Watch 不支持",
+  oi_hr_offBle: "尚未选择设备", oi_hr_searching: "无法连接设备 —— 正在重试（心率广播开着吗？）" });
+Object.assign(I18N.ko, { oi_layout: "배치", oi_layoutHint: "드래그로 이동 · 이모지를 눌러 변경", oi_addSep: "구분자", oi_addBr: "줄바꿈", oi_br: "줄바꿈",
+  oi_noEmoji: "없음", oi_customEmoji: "또는 직접 입력/붙여넣기", oi_remove: "제거", oi_reset: "초기화" });
+Object.assign(I18N.ru, { oi_layout: "Расположение", oi_layoutHint: "Перетаскивайте, чтобы переместить · нажмите на эмодзи, чтобы сменить", oi_addSep: "Разделитель",
+  oi_addBr: "Новая строка", oi_br: "Новая строка", oi_noEmoji: "Нет", oi_customEmoji: "Или введите/вставьте свой", oi_remove: "Убрать", oi_reset: "Сбросить" });
+Object.assign(I18N.vi, { oi_layout: "Bố cục", oi_layoutHint: "Kéo để di chuyển · bấm emoji để đổi", oi_addSep: "Dấu ngăn", oi_addBr: "Xuống dòng", oi_br: "Xuống dòng",
+  oi_noEmoji: "Không", oi_customEmoji: "Hoặc tự gõ/dán", oi_remove: "Bỏ", oi_reset: "Đặt lại" });
+Object.assign(I18N.zh, { oi_layout: "布局", oi_layoutHint: "拖动以移动 · 点击表情更换", oi_addSep: "分隔符", oi_addBr: "换行", oi_br: "换行",
+  oi_noEmoji: "无", oi_customEmoji: "或自己输入/粘贴", oi_remove: "移除", oi_reset: "重置" });
+Object.assign(I18N.ko, { oi_addText: "텍스트", oi_textPh: "텍스트 입력…", oi_mediaTime: "재생 시간 표시", oi_mediaDur: "곡 길이 표시",
+  oi_mediaBar: "시크바 표시", oi_barStyle: "바 모양", oi_barLen: "바 길이 (글자 수)", oi_timelineHint: "곡 이름 아래 줄에 표시",
+  oi_clockTz: "시간대 표시 (예: UTC+7)", oi_clockDate: "날짜 표시 (일/월)", oi_hrSuffixOn: "숫자 뒤 텍스트", oi_hrSuffixHint: "예: bpm, BPM" });
+Object.assign(I18N.ru, { oi_addText: "Текст", oi_textPh: "Введите текст…", oi_mediaTime: "Показывать прошедшее время", oi_mediaDur: "Показывать длительность",
+  oi_mediaBar: "Показывать полосу прокрутки", oi_barStyle: "Вид полосы", oi_barLen: "Длина полосы (символов)", oi_timelineHint: "Показывается строкой под песней",
+  oi_clockTz: "Показывать часовой пояс (напр. UTC+7)", oi_clockDate: "Показывать дату (день/месяц)", oi_hrSuffixOn: "Текст после числа", oi_hrSuffixHint: "напр. bpm, уд/мин" });
+Object.assign(I18N.vi, { oi_addText: "Chữ", oi_textPh: "Nhập chữ…", oi_mediaTime: "Hiện thời gian đã phát", oi_mediaDur: "Hiện độ dài bài",
+  oi_mediaBar: "Hiện thanh tiến trình", oi_barStyle: "Kiểu thanh", oi_barLen: "Độ dài thanh (ký tự)", oi_timelineHint: "Hiện ở dòng dưới tên bài",
+  oi_clockTz: "Hiện múi giờ (vd. UTC+7)", oi_clockDate: "Hiện ngày (ngày/tháng)", oi_hrSuffixOn: "Chữ sau con số", oi_hrSuffixHint: "vd. bpm, BPM" });
+Object.assign(I18N.zh, { oi_addText: "文字", oi_textPh: "输入文字…", oi_mediaTime: "显示已播放时间", oi_mediaDur: "显示歌曲时长",
+  oi_mediaBar: "显示进度条", oi_barStyle: "进度条样式", oi_barLen: "进度条长度（字符）", oi_timelineHint: "显示在歌曲名下方一行",
+  oi_clockTz: "显示时区（如 UTC+7）", oi_clockDate: "显示日期（日/月）", oi_hrSuffixOn: "数字后的文字", oi_hrSuffixHint: "例如 bpm、BPM" });
+Object.assign(I18N.ko, { oi_overall: "전체", oi_sup: "작은 위첨자 (예: 120ᶠᵖˢ)", oi_supHint: "a–z와 0–9만 · 다른 글자는 그대로", oi_clockTzSup: "시간대를 위첨자로", oi_hrSuffixSup: "뒤 텍스트를 위첨자로" });
+Object.assign(I18N.ru, { oi_overall: "Общее", oi_sup: "Маленький верхний индекс (как 120ᶠᵖˢ)", oi_supHint: "Только a–z и 0–9 · остальные символы не меняются",
+  oi_clockTzSup: "Часовой пояс верхним индексом", oi_hrSuffixSup: "Текст после числа верхним индексом" });
+Object.assign(I18N.vi, { oi_overall: "Tổng quan", oi_sup: "Chữ nhỏ trên cao (như 120ᶠᵖˢ)", oi_supHint: "Chỉ a–z và 0–9 · chữ khác giữ nguyên",
+  oi_clockTzSup: "Múi giờ dạng chữ nhỏ trên cao", oi_hrSuffixSup: "Chữ sau số dạng chữ nhỏ trên cao" });
+Object.assign(I18N.zh, { oi_overall: "总览", oi_sup: "小号上标（如 120ᶠᵖˢ）", oi_supHint: "仅适用于 a–z 和 0–9 · 其他文字保持不变", oi_clockTzSup: "时区用上标", oi_hrSuffixSup: "数字后的文字用上标" });

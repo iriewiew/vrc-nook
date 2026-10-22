@@ -42,3 +42,8 @@ def chatbox(text: str, sound=True):
 
 def typing(on: bool):
     _sock.sendto(message("/chatbox/typing", bool(on)), (HOST, PORT))
+
+
+def param(name: str, value):
+    """Set an avatar parameter (bool / int / float) — only does anything if the current avatar has that parameter"""
+    _sock.sendto(message("/avatar/parameters/" + name, value), (HOST, PORT))

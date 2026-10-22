@@ -144,7 +144,7 @@ body.compact .row .tile { width: 18px; height: 18px; border-radius: 5px; }
 body.compact .row .tile svg { width: 11px; height: 11px; }
 .world-head { position: sticky; top: 0; z-index: 2; margin: 14px 0 4px; padding: 10px 14px; border-radius: 14px;
               display: flex; align-items: center; gap: 12px; }
-.world-head:first-child { margin-top: 4px; }
+.world-sec:first-child > .world-head:first-child { margin-top: 4px; }
 .world-head .tile { width: 30px; height: 30px; border-radius: 9px; }
 .world-head .tile svg { width: 18px; height: 18px; }
 .world-head .name { font-size: 15px; font-weight: 650; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -293,6 +293,18 @@ input[type=range]::-webkit-slider-thumb { appearance: none; width: 20px; height:
             margin: 14px 4px 8px; text-transform: none; }
 .sec-head:first-child { margin-top: 4px; }
 .sec-head .n { color: var(--text3); font-weight: 600; }
+.pager { position: sticky; bottom: 6px; z-index: 3; width: fit-content; max-width: 100%; margin: 10px auto 6px; padding: 5px 6px;
+         border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; font-size: 12px;
+         background: var(--glass); backdrop-filter: blur(30px) saturate(180%); border: 1px solid var(--stroke); box-shadow: var(--shadow); }
+.pg-btn { min-width: 28px; height: 28px; padding: 0 8px; border: none; border-radius: 8px; background: var(--track); color: var(--text);
+          font: 600 12px var(--font); cursor: pointer; display: inline-grid; place-items: center; }
+.pg-btn svg { width: 14px; height: 14px; }
+.pg-btn:hover:not(:disabled) { background: var(--hover); }
+.pg-btn:disabled { opacity: .4; cursor: default; }
+.pg-btn.on { background: var(--accent); color: #fff; opacity: 1; }
+.pg-gap { color: var(--text3); padding: 0 2px; }
+.pg-info { color: var(--text2); margin: 0 8px; font-variant-numeric: tabular-nums; }
+.pager .pg-size { width: auto; padding: 4px 8px; font-size: 12px; }
 .sec-head button { margin-left: auto; }
 .live { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text2); }
 .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--gray); }
@@ -365,6 +377,8 @@ input[type=range]::-webkit-slider-thumb { appearance: none; width: 20px; height:
 .wcard .winfo { padding: 8px 10px; }
 .wcard .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wcard .sub { color: var(--text2); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wcard .desc { color: var(--text3); font-size: 11px; line-height: 1.35; margin-top: 3px; min-height: 2.7em;
+               display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 
 /* ---------- World card / profile extras ---------- */
 .wc-hero { height: 190px; background: var(--track); background-size: cover; background-position: center; }
@@ -740,7 +754,7 @@ Object.assign(I18N.th, {
   members: n => `${Number(n).toLocaleString()} สมาชิก`, membersW: "สมาชิก", onlineW: "ออนไลน์", joinGroup: "เข้าร่วมกลุ่ม", requestJoin: "ขอเข้าร่วม",
   inviteOnly: "ต้องได้รับเชิญ", leaveGroup: "ออกจากกลุ่ม", requested: "ส่งคำขอแล้ว", joined: "เป็นสมาชิก",
   joinedToast: "เข้าร่วมกลุ่มแล้ว", requestedToast: "ส่งคำขอเข้าร่วมแล้ว", leftToast: "ออกจากกลุ่มแล้ว",
-  a_mine: "อวตารของฉัน", a_fav: "Favorites", a_searchHint: "ใช้ช่องค้นหาด้านบน — VRChat ไม่อนุญาตให้ค้นหาอวตารของคนอื่นผ่าน API",
+  a_mine: "อวตารของฉัน", a_fav: "Favorites", a_searchHint: "ช่องค้นหาด้านบนกรองอวตารของคุณ (ชื่อ, ผู้สร้าง, คำอธิบาย) — หาอวตารสาธารณะได้ที่ ค้นหา → อวตาร",
   wearing: "ใส่อยู่", useAvatar: "ใช้อวตารนี้", avatarChanged: "เปลี่ยนอวตารแล้ว", updated: "อัปเดต",
   i_gallery: "รูปถ่าย", i_emoji: "อีโมจิ", i_sticker: "สติกเกอร์", i_items: "ไอเทม", i_cosmetics: "ของแต่ง",
   i_hint_gallery: "PNG/JPG ย่อให้ไม่เกิน 2048px อัตโนมัติ", i_hint_emoji: "ย่อเป็นสี่เหลี่ยมจัตุรัส 1024px", i_hint_sticker: "ย่อเป็นสี่เหลี่ยมจัตุรัส 1024px",
@@ -775,7 +789,7 @@ Object.assign(I18N.en, {
   members: n => `${Number(n).toLocaleString()} members`, membersW: "members", onlineW: "online", joinGroup: "Join group", requestJoin: "Request to join",
   inviteOnly: "Invite only", leaveGroup: "Leave group", requested: "Request sent", joined: "Member",
   joinedToast: "Joined group", requestedToast: "Join request sent", leftToast: "Left group",
-  a_mine: "My avatars", a_fav: "Favorites", a_searchHint: "Use the search box above — VRChat's API doesn't allow searching other people's avatars",
+  a_mine: "My avatars", a_fav: "Favorites", a_searchHint: "The search box above filters your avatars (name, author, description) — find public avatars in Search → Avatars",
   wearing: "Wearing", useAvatar: "Use this avatar", avatarChanged: "Avatar changed", updated: "Updated",
   i_gallery: "Photos", i_emoji: "Emojis", i_sticker: "Stickers", i_items: "Items", i_cosmetics: "Cosmetics",
   i_hint_gallery: "PNG/JPG, auto-resized to max 2048px", i_hint_emoji: "Auto-resized to a 1024px square", i_hint_sticker: "Auto-resized to a 1024px square",
@@ -810,7 +824,7 @@ Object.assign(I18N.ja, {
   members: n => `メンバー ${Number(n).toLocaleString()} 人`, membersW: "メンバー", onlineW: "オンライン", joinGroup: "参加する", requestJoin: "参加をリクエスト",
   inviteOnly: "招待制", leaveGroup: "グループを退出", requested: "リクエスト済み", joined: "メンバー",
   joinedToast: "グループに参加しました", requestedToast: "参加リクエストを送信しました", leftToast: "グループを退出しました",
-  a_mine: "マイアバター", a_fav: "お気に入り", a_searchHint: "上の検索欄で絞り込み — VRChat API では他人のアバターは検索できません",
+  a_mine: "マイアバター", a_fav: "お気に入り", a_searchHint: "上の検索欄で自分のアバターを絞り込み (名前・作者・説明) — 公開アバターは 検索 → アバター で探せます",
   wearing: "着用中", useAvatar: "このアバターを使う", avatarChanged: "アバターを変更しました", updated: "更新",
   i_gallery: "写真", i_emoji: "絵文字", i_sticker: "ステッカー", i_items: "アイテム", i_cosmetics: "コスメティック",
   i_hint_gallery: "PNG/JPG、最大 2048px に自動縮小", i_hint_emoji: "1024px の正方形に自動縮小", i_hint_sticker: "1024px の正方形に自動縮小",
@@ -1079,14 +1093,37 @@ function atBottom() { return logEl.scrollHeight - logEl.scrollTop - logEl.client
 function scrollBottom() { logEl.scrollTop = logEl.scrollHeight; $("jump").classList.remove("show"); }
 logEl.addEventListener("scroll", () => { if (atBottom()) $("jump").classList.remove("show"); });
 
+// Each world header opens its own section, so it only sticks while that world's rows are on screen
+// and the next world's header pushes it away instead of stacking on top of it
+function putRow(e) {
+  const d = makeRow(e);
+  if (e.k === "world") {
+    const sec = document.createElement("div");
+    sec.className = "world-sec";
+    sec.appendChild(d);
+    logEl.appendChild(sec);
+    return;
+  }
+  const last = logEl.lastElementChild;
+  (last?.classList.contains("world-sec") ? last : logEl).appendChild(d);
+}
+function trimRows() {
+  let extra = logEl.querySelectorAll(".row, .world-head").length - MAX_ROWS;
+  while (extra-- > 0) {
+    const first = logEl.firstElementChild;
+    if (!first.classList.contains("world-sec")) { first.remove(); continue; }
+    first.firstElementChild.remove();
+    if (!first.childElementCount) first.remove();
+  }
+}
+
 function appendRows(list) {
   const stick = atBottom();
-  const frag = document.createDocumentFragment();
-  for (const e of list) if (visible(e)) frag.appendChild(makeRow(e));
-  if (!frag.childNodes.length) return;
+  const shown = list.filter(visible);
+  if (!shown.length) return;
   logEl.querySelector(".empty")?.remove();
-  logEl.appendChild(frag);
-  while (logEl.childElementCount > MAX_ROWS) logEl.firstElementChild.remove();
+  shown.forEach(putRow);
+  trimRows();
   if (stick) scrollBottom(); else $("jump").classList.add("show");
 }
 
@@ -1099,9 +1136,7 @@ function render() {
     logEl.innerHTML = `<div class="empty">${t(events.length ? "noMatch" : "waiting")}</div>`;
     return;
   }
-  const frag = document.createDocumentFragment();
-  shown.forEach(e => frag.appendChild(makeRow(e)));
-  logEl.appendChild(frag);
+  shown.forEach(putRow);
   scrollBottom();
 }
 
@@ -1403,6 +1438,9 @@ function renderView() {
   cancelAnimationFrame(renderTimer);
   renderTimer = requestAnimationFrame(() => {
     (VIEW_RENDER[view] || window["render" + view[0].toUpperCase() + view.slice(1)])?.();
+    const el = document.querySelector(".content .view.on");
+    wrapPagers(el);
+    pgScroll(el);
     updateSubtitle();
   });
 }
@@ -1422,6 +1460,71 @@ function needLogin(el) {
 function emptyState(el, ic, msg) {
   el.innerHTML = `<div class="empty-state"><span class="tile" style="--c:var(--gray)">${icon(ic)}</span><div>${msg}</div></div>`;
 }
+
+// ---------- Pagination ----------
+// Long lists show a set number of items at a time (0 = everything). Each list (key) remembers its own page,
+// and goes back to page 1 when the search text changes. Feed has its own sizes and setting; every other page shares one
+const PAGE_SETS = { all: { sizes: [12, 25, 50, 100, 0], setting: "pageSize" }, feed: { sizes: [20, 40, 80, 160, 0], setting: "feedPageSize" } };
+const PAGES = {};
+Object.assign(I18N.th, { pg_range: (a, b, n) => `${a}–${b} จาก ${n.toLocaleString()}`, pg_per: n => `${n} ต่อหน้า`, pg_all: "แสดงทั้งหมด", pg_prev: "หน้าก่อน", pg_next: "หน้าถัดไป" });
+Object.assign(I18N.en, { pg_range: (a, b, n) => `${a}–${b} of ${n.toLocaleString()}`, pg_per: n => `${n} per page`, pg_all: "Show all", pg_prev: "Previous page", pg_next: "Next page" });
+Object.assign(I18N.ja, { pg_range: (a, b, n) => `${n.toLocaleString()} 件中 ${a}–${b}`, pg_per: n => `${n} 件ずつ`, pg_all: "すべて表示", pg_prev: "前のページ", pg_next: "次のページ" });
+function pageSize(set) { const { sizes, setting } = PAGE_SETS[set]; return sizes.includes(S[setting]) ? S[setting] : sizes[0]; }
+// Returns { items: this page's slice, bar: pager HTML ("" when everything fits on one page) }
+function paged(key, list, set = "all") {
+  key = key.replace(/[^\w:.-]/g, "_");  // The key goes into an onclick string
+  const size = pageSize(set);
+  const st = PAGES[key] ||= { p: 0, q: query };
+  if (st.q !== query) { st.p = 0; st.q = query; }
+  const pages = size ? Math.max(1, Math.ceil(list.length / size)) : 1;
+  st.p = Math.min(st.p, pages - 1);
+  return { items: size ? list.slice(st.p * size, (st.p + 1) * size) : list, bar: pagerHtml(key, set, st.p, pages, list.length) };
+}
+function pagerHtml(key, set, p, pages, total) {
+  const sizes = PAGE_SETS[set].sizes;
+  if (total <= sizes[0]) return "";  // Short lists need no pager
+  const size = pageSize(set);
+  const go = (n, label, title = "") => `<button class="pg-btn" ${title ? `title="${title}"` : ""} ${n < 0 || n >= pages ? "disabled" : ""} onclick="pgGo('${key}',${n})">${label}</button>`;
+  let nums = "", last = -1;
+  for (let i = 0; i < pages; i++) {
+    if (i !== 0 && i !== pages - 1 && Math.abs(i - p) > 1) continue;
+    if (i - last > 1) nums += `<span class="pg-gap">…</span>`;
+    nums += i === p ? `<button class="pg-btn on" disabled>${i + 1}</button>` : go(i, i + 1);
+    last = i;
+  }
+  const from = size ? p * size + 1 : 1, to = size ? Math.min(total, (p + 1) * size) : total;
+  return `<div class="pager" data-key="${key}">${pages > 1 ? go(p - 1, icon("chevron-left"), t("pg_prev")) + nums + go(p + 1, icon("chevron-right"), t("pg_next")) : ""}
+    <span class="pg-info">${t("pg_range", from, to, total)}</span>
+    <select class="field pg-size" onchange="pgSize('${set}',this.value,'${key}')">${sizes.map(n =>
+      `<option value="${n}" ${n === size ? "selected" : ""}>${n ? t("pg_per", n) : t("pg_all")}</option>`).join("")}</select></div>`;
+}
+// The pager sticks to the bottom of the page. Pages with several lists get one wrapper per list (the rows back to
+// the previous heading), so each pager only sticks while its own list is on screen instead of piling up
+function wrapPagers(root) {
+  root?.querySelectorAll(".pager").forEach(p => {
+    if (p.parentElement.classList.contains("pg-wrap")) return;
+    const rows = [];
+    for (let n = p.previousElementSibling; n && !n.matches(".sec-head, .pager, .pg-wrap, .toolbar, .search-head"); n = n.previousElementSibling) rows.unshift(n);
+    const w = document.createElement("div");
+    w.className = "pg-wrap";
+    p.before(w);
+    w.append(...rows, p);
+  });
+}
+// After a page change, keep the screen on the list that was paged: if its top has scrolled out of view,
+// bring its heading back to the top (the rest of the page doesn't move)
+let pgFocus = null;
+function pgScroll(root) {
+  const key = pgFocus;
+  pgFocus = null;
+  const wrap = key && root?.querySelector(`.pager[data-key="${key}"]`)?.closest(".pg-wrap");
+  if (!wrap) return;
+  const head = wrap.previousElementSibling?.matches(".sec-head") ? wrap.previousElementSibling : wrap;
+  const off = head.getBoundingClientRect().top - root.getBoundingClientRect().top;
+  if (off < 0) root.scrollTop += off - 6;
+}
+function pgGo(key, n) { PAGES[key].p = n; pgFocus = key; renderView(); }
+function pgSize(set, n, key) { S[PAGE_SETS[set].setting] = +n; save(); for (const k in PAGES) PAGES[k].p = 0; pgFocus = key; renderView(); }
 
 // ---------- Location / time ----------
 function parseLoc(loc) {
@@ -1516,10 +1619,12 @@ function renderFriends() {
       : st === "offline" ? `<button class="btn" style="padding:3px 12px" onclick="S.showOffline=!S.showOffline;save();renderView()">${t(S.showOffline ? "hide" : "show")}</button>` : "");
     el.appendChild(head);
     if (st === "offline" && !S.showOffline) continue;
+    const pg = paged("friends:" + st, arr);
     const grid = document.createElement("div");
     grid.className = "fgrid";
-    arr.forEach(f => grid.appendChild(friendCard(f)));
+    pg.items.forEach(f => grid.appendChild(friendCard(f)));
     el.appendChild(grid);
+    el.insertAdjacentHTML("beforeend", pg.bar);
   }
   el.scrollTop = scroll;
 }
@@ -1594,7 +1699,8 @@ function renderFeed() {
   const scroll = el.scrollTop;
   el.innerHTML = "";
   const frag = document.createDocumentFragment();
-  for (const e of list.slice(-800).reverse()) {
+  const pg = paged("feed", list.slice().reverse(), "feed");
+  for (const e of pg.items) {
     const [ic, col] = FEED_STYLE[e.type] || ["activity", "gray"];
     const r = document.createElement("div");
     r.className = "frow";
@@ -1613,6 +1719,7 @@ function renderFeed() {
     frag.appendChild(r);
   }
   el.appendChild(frag);
+  el.insertAdjacentHTML("beforeend", pg.bar);
   el.scrollTop = scroll;
 }
 
@@ -1622,7 +1729,8 @@ function renderNotifs() {
   if (!AUTH.loggedIn) return needLogin(el);
   if (!NOTIFS.length) return emptyState(el, "bell", t("noNotifs"));
   el.innerHTML = "";
-  for (const n of [...NOTIFS].sort((a, b) => (b.t || "").localeCompare(a.t || ""))) {
+  const pg = paged("notifs", [...NOTIFS].sort((a, b) => (b.t || "").localeCompare(a.t || "")));
+  for (const n of pg.items) {
     const wid = parseLoc(n.world).wid;
     const wname = n.worldName || WORLDS[wid]?.name || "";
     const c = document.createElement("div");
@@ -1640,6 +1748,7 @@ function renderNotifs() {
     c.querySelector(".sub").textContent = `${t("n_" + n.type, wname)}${n.msg ? ` — “${n.msg}”` : ""} · ${when}`;
     el.appendChild(c);
   }
+  el.insertAdjacentHTML("beforeend", pg.bar);
 }
 async function respond(id, accept) {
   const r = await api("notif_respond", id, accept);
@@ -1660,7 +1769,8 @@ function renderHistory() {
   if (!list.length) return emptyState(el, "history", t("noHistory"));
   const scroll = el.scrollTop;
   el.innerHTML = "";
-  list.forEach((v, i) => {
+  const pg = paged("history", list);
+  pg.items.forEach(v => {
     const L2 = parseLoc(v.loc), w = WORLDS[L2.wid];
     const ongoing = !v.end && v === historyData[0];
     const dur = v.end ? tsDate(v.end) - tsDate(v.t) : ongoing ? Date.now() - tsDate(v.t) : 0;
@@ -1679,6 +1789,7 @@ function renderHistory() {
     if (histOpen.has(v.t)) fillVisit(v, row);
     el.appendChild(row);
   });
+  el.insertAdjacentHTML("beforeend", pg.bar);
   el.scrollTop = scroll;
 }
 async function fillVisit(v, row) {
@@ -1720,7 +1831,8 @@ function renderSearch() {
   res.innerHTML = "";
   const grid = document.createElement("div");
   grid.className = searchRes.kind === "users" ? "fgrid" : "wgrid";
-  for (const id of searchRes.ids) {
+  const pg = paged("search:" + searchRes.kind, searchRes.ids);
+  for (const id of pg.items) {
     if (searchRes.kind === "users") {
       const p = PROFILES[id] || {};
       const d = document.createElement("div");
@@ -1743,6 +1855,7 @@ function renderSearch() {
     }
   }
   res.appendChild(grid);
+  res.insertAdjacentHTML("beforeend", pg.bar);
 }
 async function doSearch() {
   const q = $("sq")?.value.trim();
@@ -1864,10 +1977,12 @@ function renderGroups() {
   res.innerHTML = `<div class="sec-head">${t(GRP.results ? "g_results" : "g_mine")} <span class="n">${list.length}</span></div>`;
   if (GRP.loading) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("loading")}</div>`);
   if (!list.length) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("noResults")}</div>`);
+  const pg = paged(GRP.results ? "groups:results" : "groups:mine", list);
   const grid = document.createElement("div");
   grid.className = "wgrid";
-  list.forEach(g => grid.appendChild(groupCard(g)));
+  pg.items.forEach(g => grid.appendChild(groupCard(g)));
   res.appendChild(grid);
+  res.insertAdjacentHTML("beforeend", pg.bar);
 }
 let groupOpen = null;
 async function openGroup(g) {
@@ -1929,16 +2044,18 @@ function renderAvatars() {
   const el = $("v_avatars");
   if (!AUTH.loggedIn) return needLogin(el);
   if (!AVA[AVA.tab] && !AVA.loading) loadAvatars(AVA.tab);
-  const list = (AVA[AVA.tab] || []).filter(a => !query || a.name?.toLowerCase().includes(query) || a.authorName?.toLowerCase().includes(query));
+  const list = (AVA[AVA.tab] || []).filter(a => !query || a.name?.toLowerCase().includes(query) || a.authorName?.toLowerCase().includes(query)
+    || a.description?.toLowerCase().includes(query));
   el.innerHTML = `<div class="search-head"><div class="segmented">${AVA_TABS.map(k =>
       `<button class="${AVA.tab === k ? "on" : ""}" onclick="AVA.tab='${k}';renderView()">${t("a_" + k)}</button>`).join("")}</div>
     <span class="hint-inline">${t("a_searchHint")}</span></div>
     <div class="sec-head">${t("a_" + AVA.tab)} <span class="n">${list.length}</span></div>`;
   if (AVA.loading) return el.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("loading")}</div>`);
   if (!list.length) return el.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("noResults")}</div>`);
+  const pg = paged("avatars:" + AVA.tab, list);
   const grid = document.createElement("div");
   grid.className = "wgrid";
-  for (const a of list) {
+  for (const a of pg.items) {
     const d = document.createElement("div");
     d.className = "wcard" + (a.id === AVA.current ? " current" : "");
     d.innerHTML = `<div class="wimg" ${thumbAttr(a.thumb)}>${a.id === AVA.current ? `<span class="wear">${t("wearing")}</span>` : ""}</div>
@@ -1949,6 +2066,7 @@ function renderAvatars() {
     grid.appendChild(d);
   }
   el.appendChild(grid);
+  el.insertAdjacentHTML("beforeend", pg.bar);
 }
 let avatarOpen = null;
 function openAvatar(a) { profileOpen = null; worldOpen = null; groupOpen = null; avatarOpen = a; buildAvatar(); $("pOverlay").classList.add("show"); }
@@ -2013,7 +2131,8 @@ function renderInventory() {
   if (tab === "cosmetics") return renderCosmetics(el, list);
   const grid = document.createElement("div");
   grid.className = "igrid" + (tab === "gallery" ? " photos" : "");
-  for (const x of list) {
+  const pg = paged("inv:" + tab, list);
+  for (const x of pg.items) {
     const d = document.createElement("div");
     d.className = "itile" + (x.isArchived ? " dim" : "");
     const anim = tab === "emoji" && x.frames > 1;
@@ -2034,6 +2153,7 @@ function renderInventory() {
     grid.appendChild(d);
   }
   el.appendChild(grid);
+  el.insertAdjacentHTML("beforeend", pg.bar);
 }
 function renderCosmetics(el, list) {
   const slots = {};
@@ -2043,9 +2163,10 @@ function renderCosmetics(el, list) {
     const equipped = items.find(x => x.equipSlot);
     el.insertAdjacentHTML("beforeend", `<div class="sec-head">${esc(t("slot_" + slot) || slot)} <span class="n">${items.length}</span>
       ${equipped ? `<button class="btn" style="padding:3px 12px" onclick="doUnequip('${esc(slot)}')">${t("unequip")}</button>` : ""}</div>`);
+    const pg = paged("cos:" + slot, items);
     const grid = document.createElement("div");
     grid.className = "igrid";
-    for (const x of items) {
+    for (const x of pg.items) {
       const d = document.createElement("div");
       const on = x.equipSlot === slot;
       d.className = "itile" + (on ? " on" : "");
@@ -2057,6 +2178,7 @@ function renderCosmetics(el, list) {
       grid.appendChild(d);
     }
     el.appendChild(grid);
+    el.insertAdjacentHTML("beforeend", pg.bar);
   }
 }
 async function doEquip(id, slot) {

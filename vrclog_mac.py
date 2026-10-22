@@ -16,6 +16,7 @@ from pathlib import Path
 
 import webview
 
+import chatinfo
 import osc
 import vkbd
 import vrc_api
@@ -31,7 +32,7 @@ from vrclog import KINDS, Room, parse_line
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w", encoding="utf-8")
 
-VERSION = "0.4.4"
+VERSION = "0.5.0"
 log = logging.getLogger("vrclog")
 UPLOAD_FIELDS = ("animationStyle", "maskTag", "frames", "framesOverTime", "loopStyle")
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
@@ -107,6 +108,7 @@ class Api:
         self._kb = None        # Floating keyboard window
         self._kb_hwnd = None
         self._kb_rect = None
+        self._info = chatinfo.ChatInfo()  # Now playing / clock / heart rate / random status in the Chatbox
 
     def _fetch_user(self, uid):
         p = self._client.get_profile(uid)
@@ -449,6 +451,24 @@ class Api:
         Path(path if isinstance(path, str) else path[0]).write_bytes(base64.b64decode(b64png.split(",", 1)[-1]))
         return True
 
+    def save_image(self, url, name):
+        """Download a full-size photo/print from VRChat and save it (the user chooses where)"""
+        if not self._client.logged_in:
+            return {"error": 401}
+        if not isinstance(url, str) or not url.startswith("https://api.vrchat.cloud/"):
+            return {"error": 400}
+        try:
+            data, _ = self._client._request("GET", url, raw=True, timeout=120)
+        except vrc_api.ApiError as e:
+            return {"error": e.status, "message": e.message}
+        ext = ".jpg" if data[:3] == b"\xff\xd8\xff" else ".webp" if data[8:12] == b"WEBP" else ".png"
+        name = re.sub(r"[^\w.-]+", "_", name or "photo") + ext
+        path = self._window.create_file_dialog(webview.FileDialog.SAVE, save_filename=name)
+        if not path:
+            return {"ok": False}
+        Path(path if isinstance(path, str) else path[0]).write_bytes(data)
+        return {"ok": True}
+
     def delete_file(self, fid):
         if not re.fullmatch(r"file_[\w-]+", fid or ""):
             return {"error": 400}
@@ -589,6 +609,7 @@ class Api:
             osc.chatbox(text, sound)
         except OSError as e:
             return {"error": str(e)}
+        self._info.pause()  # Keep the info lines from covering this message right away
         room = self._pump.room if self._pump else None
         world = room.world if room and room.location else ""
         return self._store.add_chat(text, world)
@@ -598,6 +619,23 @@ class Api:
             osc.typing(bool(on))
         except OSError:
             pass
+
+    def info_set(self, cfg):
+        self._info.configure(cfg)
+        return True
+
+    def info_state(self):
+        return self._info.state()
+
+    def info_ble_scan(self):
+        return self._info.ble_scan()
+
+    def pulsoid_login(self):
+        return self._info.pulsoid_login()
+
+    def pulsoid_login_cancel(self):
+        self._info.pulsoid_login_cancel()
+        return True
 
     def chat_history(self):
         return {"items": self._store.recent_chat(), "inGame": bool(self._pump and self._pump.room.location)}
@@ -724,6 +762,10 @@ class KbApi:
     def resize(self, w, h):
         if self._o._kb:
             self._o._kb.resize(max(int(w), 360), max(int(h), 160))
+
+    def move(self, x, y):
+        if self._o._kb:
+            self._o._kb.move(int(x), int(y))
 
     def set_lang(self, k):
         if k in ("th", "en", "ja", "jk", "ko", "ru", "vi", "zh", "emoji"):

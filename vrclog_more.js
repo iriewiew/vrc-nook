@@ -1325,21 +1325,26 @@ renderGroups = function () {
       const managed = (GRP.mine || []).filter(g => match(g) && g.ownerId !== AUTH.id && gCanManage(GRP.perms?.[g.id]));
       if (GRP.loading) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("loading")}</div>`);
       const grid = cls => { const d = document.createElement("div"); d.className = "wgrid" + (cls ? " " + cls : ""); return d; };
-      const a = grid(); list.forEach(g => a.appendChild(groupCard(g)));
-      if (list.length) res.appendChild(a);
+      const pa = paged("groups:owned", list);
+      const a = grid(); pa.items.forEach(g => a.appendChild(groupCard(g)));
+      if (list.length) { res.appendChild(a); res.insertAdjacentHTML("beforeend", pa.bar); }
       else res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:100px">${t("noResults")}</div>`);
       res.insertAdjacentHTML("beforeend", `<div class="sec-head" style="margin-top:18px">${t("g_canManage")} <span class="n">${GRP.perms ? managed.length : "…"}</span></div>`);
       if (!GRP.perms) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:100px">${t("loading")}</div>`);
       if (!managed.length) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:100px">${t("noResults")}</div>`);
-      const b = grid(); managed.forEach(g => b.appendChild(groupCard(g)));
-      return res.appendChild(b);
+      const pb = paged("groups:managed", managed);
+      const b = grid(); pb.items.forEach(g => b.appendChild(groupCard(g)));
+      res.appendChild(b);
+      return res.insertAdjacentHTML("beforeend", pb.bar);
     }
     if (GRP.loading) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("loading")}</div>`);
     if (!list.length) return res.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:160px">${t("noResults")}</div>`);
+    const pg = paged(GRP.results ? "groups:results" : "groups:mine", list);
     const grid = document.createElement("div");
     grid.className = "wgrid";
-    list.forEach(g => grid.appendChild(groupCard(g)));
-    return res.appendChild(grid);
+    pg.items.forEach(g => grid.appendChild(groupCard(g)));
+    res.appendChild(grid);
+    return res.insertAdjacentHTML("beforeend", pg.bar);
   }
   const ops = { invited: "getInvitedGroups", requested: "getUserGroupRequests", blocked: "getBlockedGroups", instances: "getUserGroupInstances" };
   const c = CACHE["ug_" + GT.tab];
@@ -1347,19 +1352,22 @@ renderGroups = function () {
   if (GT.tab === "instances") {
     const list = c?.data?.instances;
     const name = gid => (GRP.mine || []).find(g => g.id === gid)?.name || "";
-    res.innerHTML = stateHtml(c && { ...c, data: list }, "noResults", 160) || list.map(i => lrow({ thumb: imgUrl(i.world), name: i.world?.name || i.location,
+    const pg = paged("groups:instances", list || []);
+    res.innerHTML = stateHtml(c && { ...c, data: list }, "noResults", 160) || pg.items.map(i => lrow({ thumb: imgUrl(i.world), name: i.world?.name || i.location,
       sub: [esc(name(i.ownerId)), esc(itypeLabel(parseLoc(i.location))), `${i.n_users ?? i.userCount ?? "?"}/${i.capacity ?? "?"}`].filter(Boolean).join(" · "),
       onclick: `openWorld('${esc(i.worldId || i.world?.id)}','${esc(i.location)}')`,
       acts: `<button class="mini-btn" title="${t("join")}" onclick="doLaunch('${esc(i.location)}')">${icon("rocket")}</button>
-             <button class="mini-btn" title="${t("inviteMe")}" onclick="doInvite('${esc(i.location)}')">${icon("send")}</button>` })).join("");
+             <button class="mini-btn" title="${t("inviteMe")}" onclick="doInvite('${esc(i.location)}')">${icon("send")}</button>` })).join("") + pg.bar;
     return;
   }
   res.innerHTML = stateHtml(c, "noResults", 160);
   if (!res.innerHTML) {
+    const pg = paged("groups:" + GT.tab, c.data);
     const grid = document.createElement("div");
     grid.className = "wgrid";
-    c.data.forEach(g => grid.appendChild(groupCard({ ...g, id: g.groupId || g.id, membershipStatus: g.myMember?.membershipStatus || g.membershipStatus })));
+    pg.items.forEach(g => grid.appendChild(groupCard({ ...g, id: g.groupId || g.id, membershipStatus: g.myMember?.membershipStatus || g.membershipStatus })));
     res.appendChild(grid);
+    res.insertAdjacentHTML("beforeend", pg.bar);
   }
 };
 function gtSet(tab) { GT.tab = tab; renderView(); }
@@ -1392,13 +1400,15 @@ function renderEvents() {
   if (!c) EV_LOAD[EV.tab]();
   const head = `<div class="toolbar">${tabsHtml(Object.fromEntries(Object.keys(EV_LOAD).map(k => [k, t("ev_" + k)])), EV.tab, "evSet")}</div>`;
   if (EV.tab === "jams") {
-    el.innerHTML = head + (stateHtml(c, "noResults", 160) || c.data.map(j => lrow({ thumb: "", name: j.title,
+    const pg = paged("events:jams", c?.data || []);
+    el.innerHTML = head + (stateHtml(c, "noResults", 160) || pg.items.map(j => lrow({ thumb: "", name: j.title,
       sub: `${esc(j.state || "")} · ${fmtIso(j.stateChangeDates?.submissionsOpened, true)} – ${fmtIso(j.stateChangeDates?.closed, true)}`, onclick: `openJam('${esc(j.id)}')` })
-      .replace('<span class="lthumb" ></span>', "")).join(""));
+      .replace('<span class="lthumb" ></span>', "")).join("") + pg.bar);
     return;
   }
   const list = (c?.data?.results || c?.data || []).filter(e => !query || (e.title || "").toLowerCase().includes(query));
-  el.innerHTML = head + (stateHtml(c && { ...c, data: list }, "noResults", 160) || `<div class="wgrid">${list.map(eventCard).join("")}</div>`);
+  const pg = paged("events:" + EV.tab, list);
+  el.innerHTML = head + (stateHtml(c && { ...c, data: list }, "noResults", 160) || `<div class="wgrid">${pg.items.map(eventCard).join("")}</div>${pg.bar}`);
 }
 function evSet(tab) { EV.tab = tab; renderView(); }
 VIEW_REFRESH.events = () => { delete CACHE["ev_" + EV.tab]; renderView(); };
@@ -1537,13 +1547,17 @@ renderNotifs = function () {
   el.innerHTML = `<div class="sec-head">${t("n_v1")} <span class="n">${NOTIFS.length}</span>
     ${NOTIFS.length ? `<button class="btn" style="padding:3px 12px" onclick="confirmBtn(this,()=>vrcDo('clearNotifications',{},'done'))">${t("n_clearAll")}</button>` : ""}</div>`;
   if (!NOTIFS.length) el.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:80px">${t("noNotifs")}</div>`);
-  for (const n of [...NOTIFS].sort((a, b) => (b.t || "").localeCompare(a.t || ""))) el.appendChild(notifCard(n));
+  const pg1 = paged("notifs:v1", [...NOTIFS].sort((a, b) => (b.t || "").localeCompare(a.t || "")));
+  pg1.items.forEach(n => el.appendChild(notifCard(n)));
+  el.insertAdjacentHTML("beforeend", pg1.bar);
   const v2 = N2.list || [];
   el.insertAdjacentHTML("beforeend", `<div class="sec-head" style="margin-top:16px">${t("n_v2")} <span class="n">${v2.length}</span>
     ${v2.length ? `<button class="btn" style="padding:3px 12px" onclick="confirmBtn(this,()=>n2DeleteAll())">${t("n_clearAll")}</button>` : ""}</div>`);
   if (N2.loading && !N2.list) el.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:80px">${t("loading")}</div>`);
   else if (!v2.length) el.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:80px">${t("noNotifs")}</div>`);
-  for (const n of v2) el.appendChild(notif2Card(n));
+  const pg2 = paged("notifs:v2", v2);
+  pg2.items.forEach(n => el.appendChild(notif2Card(n)));
+  el.insertAdjacentHTML("beforeend", pg2.bar);
   fillSlots(el);
   el.scrollTop = scroll;
 };
@@ -1642,7 +1656,7 @@ tx({
   i_code: ["โค้ด", "Code", "コード"], i_redeemed: ["แลกโค้ดแล้ว", "Code redeemed", "コードを引き換えました"],
   i_drops: ["กิจกรรมแจกของ", "Item drops", "アイテムドロップ"], i_catalog: ["แคตตาล็อกของแต่ง", "Cosmetics catalog", "コスメティック一覧"],
   i_uploadPrint: ["อัปโหลด Print", "Upload print", "プリントをアップロード"], i_note: ["โน้ต", "Note", "メモ"], i_world: ["โลก", "World", "ワールド"],
-  i_taken: ["ถ่ายเมื่อ", "Taken", "撮影日時"], i_shared: ["แชร์แล้ว", "Shared", "共有しました"], i_used: ["ใช้แล้ว", "Used", "使用しました"],
+  i_taken: ["ถ่ายเมื่อ", "Taken", "撮影日時"], i_download: ["ดาวน์โหลด", "Download", "ダウンロード"], i_shared: ["แชร์แล้ว", "Shared", "共有しました"], i_used: ["ใช้แล้ว", "Used", "使用しました"],
   i_collection: ["คอลเลกชัน", "Collection", "コレクション"], i_all: ["ทั้งหมด", "All", "すべて"],
 });
 Object.assign(INV_TABS, { icon: ["circle-user-round", "teal"], prints: ["printer", "green"], props: ["boxes", "gray"] });
@@ -1700,7 +1714,7 @@ function invAugment(tab) {
   if (isFile) fileQuota(el, tab);
   const tiles = el.querySelectorAll(".igrid .itile");
   if (!isFile && !["items", "prints", "props"].includes(tab)) return;
-  const list = invList(tab);
+  const list = paged("inv:" + tab, invList(tab)).items;  // Same page the tiles were drawn from
   tiles.forEach((d, i) => {
     const x = list[i];
     if (!x) return;
@@ -1708,7 +1722,16 @@ function invAugment(tab) {
     if (isFile) d.onclick = () => openFilePreview(tab, x.id);
     else d.onclick = () => (tab === "items" ? openItem : tab === "prints" ? openPrint : openProp)(x.id);
     if (tab === "icon") d.insertAdjacentHTML("beforeend", `<button class="mini-btn imenu" title="${t("i_useIcon")}" onclick="event.stopPropagation();useIcon('${esc(x.url)}')">${icon("circle-user-round")}</button>`);
+    const photo = tab === "gallery" ? x.url : tab === "prints" ? x._p?.files?.image : "";
+    if (photo) d.insertAdjacentHTML("beforeend", `<button class="mini-btn imenu" title="${t("i_download")}" onclick="event.stopPropagation();saveImage('${esc(photo)}','${esc(x.id)}')">${icon("download")}</button>`);
   });
+}
+// Full-size photo/print, saved where the user picks
+async function saveImage(url, name) {
+  toast(t("loading"));
+  const r = await api("save_image", url, name);
+  if (r?.ok) toast(t("ev_saved"));
+  else if (r && "error" in r) apiError(r);
 }
 // ---------- Upload limits / in-app image viewer ----------
 const FILE_TABS = ["gallery", "emoji", "sticker", "icon"];
@@ -1741,6 +1764,7 @@ function openFilePreview(tab, id) {
       ${x.maskTag && tab === "sticker" ? `<span>Mask</span><span>${esc(x.maskTag)}</span>` : ""}</div>
     <div class="form-actions">
       ${tab === "icon" ? btn(t("i_useIcon"), `useIcon('${esc(x.url)}')`, "primary", "circle-user-round") : ""}
+      ${tab === "gallery" ? btn(t("i_download"), `saveImage('${esc(x.url)}','${esc(x.id)}')`, "primary", "download") : ""}
       <button class="btn danger" onclick="confirmBtn(this,async()=>{await deleteFile('${esc(x.id)}');closeX()})">${icon("trash-2")}${t("del")}</button></div>`, null, tab === "gallery");
 }
 async function useIcon(url) { await vrcDo("updateProfile", { userIcon: url }, "i_iconSet"); }
@@ -1815,6 +1839,7 @@ function openPrint(id) {
       <span>${t("i_taken")}</span><span>${fmtIso(p.timestamp || p.createdAt)}</span>${p.authorName ? `<span>by</span><span>${esc(p.authorName)}</span>` : ""}</div>
     ${fRow(t("i_note"), fArea("prNote", p.note, 3))}
     <div class="form-actions"><button class="btn danger" onclick="confirmBtn(this,()=>printDo('deletePrint','${id}',{},'deleted'))">${icon("trash-2")}${t("del")}</button>
+      ${p.files?.image ? btn(t("i_download"), `saveImage('${esc(p.files.image)}','${esc(id)}')`, "", "download") : ""}
       ${btn(t("save"), `printDo('editPrint','${id}',{note:fv('prNote'),_imageUrl:'${esc(p.files?.image)}'},'saved')`, "primary", "save")}</div>`, null, true);
 }
 async function printDo(op, id, extra, okKey) {
@@ -1872,13 +1897,18 @@ renderSearch = function () {
   if (searchRes.kind === "groups") {
     if (!searchRes.list.length) return res.innerHTML = `<div class="empty-state" style="height:200px">${t("noResults")}</div>`;
     res.innerHTML = "";
+    const pg = paged("search:groups", searchRes.list);
     const grid = document.createElement("div");
     grid.className = "wgrid";
-    searchRes.list.forEach(g => grid.appendChild(groupCard(g)));
-    return res.appendChild(grid);
+    pg.items.forEach(g => grid.appendChild(groupCard(g)));
+    res.appendChild(grid);
+    return res.insertAdjacentHTML("beforeend", pg.bar);
   }
-  if (searchRes.kind === "events") return res.innerHTML = searchRes.list.length ? `<div class="wgrid">${searchRes.list.map(eventCard).join("")}</div>`
-    : `<div class="empty-state" style="height:200px">${t("noResults")}</div>`;
+  if (searchRes.kind === "events") {
+    const pg = paged("search:events", searchRes.list);
+    return res.innerHTML = searchRes.list.length ? `<div class="wgrid">${pg.items.map(eventCard).join("")}</div>${pg.bar}`
+      : `<div class="empty-state" style="height:200px">${t("noResults")}</div>`;
+  }
   if (searchRes.kind === "link") return res.innerHTML = "";
   _renderSearchBase();
 };
@@ -1889,7 +1919,8 @@ function _renderSearchBase() {
   res.innerHTML = "";
   const grid = document.createElement("div");
   grid.className = searchRes.kind === "users" ? "fgrid" : "wgrid";
-  for (const id of searchRes.ids) {
+  const pg = paged("search:" + searchRes.kind, searchRes.ids);
+  for (const id of pg.items) {
     const d = document.createElement("div");
     if (searchRes.kind === "users") {
       const p = PROFILES[id] || {};
@@ -1910,11 +1941,13 @@ function _renderSearchBase() {
     grid.appendChild(d);
   }
   res.appendChild(grid);
+  res.insertAdjacentHTML("beforeend", pg.bar);
 }
 const _doSearch = doSearch;
 doSearch = async function () {
   const q = $("sq")?.value.trim();
   if (!q) return;
+  for (const k in PAGES) if (k.startsWith("search:")) delete PAGES[k];  // New results start on page 1
   if (searchKind === "users" || searchKind === "worlds") return _doSearch();
   searching = true; renderSearch();
   const kind = searchKind;
@@ -1985,9 +2018,10 @@ function renderWorlds() {
   const match = w => !query || (w.name || "").toLowerCase().includes(query) || (w.authorName || "").toLowerCase().includes(query);
   if (tab === "favorites") {
     if (!FAV.groups) return el.innerHTML = head + stateHtml({ loading: true }, "", 160);
-    el.innerHTML = head + favGroups("world").map(g => {
+    el.innerHTML = head + favGroups("world").map((g, i) => {
       const list = (FAV.world || []).filter(w => w.favoriteGroup === g.name && match(w));
-      return `<div class="sec-head">${esc(g.displayName || g.name)} <span class="n">${list.length}</span></div><div class="wgrid">${list.map(worldTile).join("")}</div>`;
+      const pg = paged("worlds:fav:" + i, list);
+      return `<div class="sec-head">${esc(g.displayName || g.name)} <span class="n">${list.length}</span></div><div class="wgrid">${pg.items.map(worldTile).join("")}</div>${pg.bar}`;
     }).join("");
     return;
   }
@@ -1996,16 +2030,18 @@ function renderWorlds() {
     const locs = (c?.data || []).filter(Boolean);
     const wids = [...new Set(locs.map(l => parseLoc(l).wid).filter(Boolean))];
     if (wids.length && !WT.asked) { WT.asked = true; api("worlds", wids); }
-    el.innerHTML = head + (stateHtml(c && { ...c, data: locs }, "noResults", 160) || locs.map(l => {
+    const pg = paged("worlds:locations", locs);
+    el.innerHTML = head + (stateHtml(c && { ...c, data: locs }, "noResults", 160) || pg.items.map(l => {
       const L2 = parseLoc(l), w = WORLDS[L2.wid] || {};
       return `<div class="lrow" onclick="openWorld('${esc(L2.wid)}','${esc(l)}')"><span class="lthumb" ${w.img ? `style="background-image:url('${w.img}')"` : ""}></span>
         <div class="info"><div class="nm">${esc(w.name || L2.wid || l)}</div><div class="sub">#${esc(L2.name || "")} · ${esc(itypeLabel(L2))}</div></div>
         <div class="acts" onclick="event.stopPropagation()">${joinButtons(l)}</div></div>`;
-    }).join(""));
+    }).join("") + pg.bar);
     return;
   }
   const list = (c?.data || []).filter(match);
-  el.innerHTML = head + (stateHtml(c && { ...c, data: list }, "noResults", 160) || `<div class="wgrid">${list.map(worldTile).join("")}</div>`);
+  const pg = paged("worlds:" + tab, list);
+  el.innerHTML = head + (stateHtml(c && { ...c, data: list }, "noResults", 160) || `<div class="wgrid">${pg.items.map(worldTile).join("")}</div>${pg.bar}`);
 }
 function wtSet(tab) { WT.tab = tab; WT.asked = false; renderView(); }
 VIEW_REFRESH.worlds = () => { if (WT.tab === "favorites") loadFav(true); else { delete CACHE["wt_" + WT.tab]; renderView(); } };
@@ -2028,7 +2064,7 @@ function renderFavorites() {
   const type = FT.tab;
   const max = FAV.limits?.maxFavoritesPerGroup || {};
   let html = `<div class="toolbar">${tabsHtml({ friend: t("ft_friend"), world: t("ft_world"), avatar: t("ft_avatar") }, type, "ftSet")}</div>`;
-  for (const g of favGroups(type)) {
+  favGroups(type).forEach((g, gi) => {
     const head = `<div class="sec-head">${esc(g.displayName || g.name)} <span class="n">${favCount(type, g.name)}/${max[g.type] ?? ""}</span>
       <select class="field" style="width:auto;margin-left:auto;padding:3px 8px" onchange="favGroupUpdate('${g.type}','${esc(g.name)}',{visibility:this.value})">
         ${["private", "friends", "public"].map(v => `<option value="${v}" ${g.visibility === v ? "selected" : ""}>${t("f_vis_" + v)}</option>`).join("")}</select>
@@ -2038,16 +2074,18 @@ function renderFavorites() {
       const ids = (FAV.friend || []).filter(f => f.tags?.includes(g.name)).map(f => f.favoriteId);
       const list = ids.map(id => FRIENDS[id] || { id, displayName: PROFILES[id]?.displayName || id, state: "offline" })
         .filter(f => !query || (f.displayName || "").toLowerCase().includes(query));
-      html += head + `<div class="fgrid" data-fav="${esc(g.name)}"></div>`;
+      const pg = paged(`fav:${type}:${gi}`, list);
+      html += head + `<div class="fgrid" data-fav="${esc(g.name)}"></div>${pg.bar}`;
       FT.pending = FT.pending || {};
-      FT.pending[g.name] = list;
+      FT.pending[g.name] = pg.items;
     } else {
       const list = (FAV[type] || []).filter(x => x.favoriteGroup === g.name && (!query || (x.name || "").toLowerCase().includes(query)));
-      html += head + `<div class="wgrid">${list.map(x => type === "world" ? worldTile(x)
+      const pg = paged(`fav:${type}:${gi}`, list);
+      html += head + `<div class="wgrid">${pg.items.map(x => type === "world" ? worldTile(x)
         : `<div class="wcard" onclick='openAvatar(${JSON.stringify(avatarSlim(x)).replace(/'/g, "&#39;")})'><div class="wimg" ${thumbAttr(imgUrl(x))}></div>
-           <div class="winfo"><div class="nm">${esc(x.name)}</div><div class="sub">${esc(x.authorName || "")}</div></div></div>`).join("")}</div>`;
+           <div class="winfo"><div class="nm">${esc(x.name)}</div><div class="sub">${esc(x.authorName || "")}</div></div></div>`).join("")}</div>${pg.bar}`;
     }
-  }
+  });
   el.innerHTML = html;
   if (type === "friend") {
     el.querySelectorAll("[data-fav]").forEach(grid => (FT.pending[grid.dataset.fav] || []).forEach(f => grid.appendChild(friendCard(f))));
@@ -2085,22 +2123,25 @@ function renderSafety() {
     for (const ty of [...new Set([...MOD_TYPES, ...MODS.list.map(m => m.type)])]) {
       const list = MODS.list.filter(m => m.type === ty && (!query || (m.targetDisplayName || "").toLowerCase().includes(query)));
       if (!list.length) continue;
+      const pg = paged("safety:" + ty, list);
       html += `<div class="sec-head">${icon(MOD_ICON[ty] || "shield")} ${t("m_" + ty)} <span class="n">${list.length}</span></div>`
-        + list.map(m => lrow({ uid: m.targetUserId, name: m.targetDisplayName, sub: fmtIso(m.created), onclick: `showProfile('${esc(m.targetUserId)}')`,
-          acts: btn(t("remove"), `modToggle('${esc(m.targetUserId)}','${ty}')`, "sm") })).join("");
+        + pg.items.map(m => lrow({ uid: m.targetUserId, name: m.targetDisplayName, sub: fmtIso(m.created), onclick: `showProfile('${esc(m.targetUserId)}')`,
+          acts: btn(t("remove"), `modToggle('${esc(m.targetUserId)}','${ty}')`, "sm") })).join("") + pg.bar;
     }
     el.innerHTML = html === head ? head + `<div class="empty-state" style="height:160px">${t("noResults")}</div>` : html;
     fillSlots(el);
   } else if (SF.tab === "avatars") {
     const list = MODS.avatars || [];
-    el.innerHTML = head + (list.length ? list.map(m => lrow({ thumb: "", name: m.targetAvatarId, sub: fmtIso(m.created),
+    const pg = paged("safety:avatars", list);
+    el.innerHTML = head + (list.length ? pg.items.map(m => lrow({ thumb: "", name: m.targetAvatarId, sub: fmtIso(m.created),
       onclick: `openAnything('${esc(m.targetAvatarId)}')`, acts: btn(t("remove"), `avatarBlockToggle('${esc(m.targetAvatarId)}')`, "sm") })
-      .replace('<span class="lthumb" ></span>', "")).join("") : `<div class="empty-state" style="height:160px">${t("noResults")}</div>`);
+      .replace('<span class="lthumb" ></span>', "")).join("") + pg.bar : `<div class="empty-state" style="height:160px">${t("noResults")}</div>`);
   } else {
     const c = CACHE.ug_blocked;
     if (!c) loadOp("ug_blocked", "getBlockedGroups");
-    el.innerHTML = head + (stateHtml(c, "noResults", 160) || `<div class="wgrid"></div>`);
-    if (c?.data?.length) c.data.forEach(g => el.querySelector(".wgrid").appendChild(groupCard({ ...g, id: g.groupId || g.id })));
+    const pg = paged("safety:groups", c?.data || []);
+    el.innerHTML = head + (stateHtml(c, "noResults", 160) || `<div class="wgrid"></div>${pg.bar}`);
+    if (c?.data?.length) pg.items.forEach(g => el.querySelector(".wgrid").appendChild(groupCard({ ...g, id: g.groupId || g.id })));
   }
 }
 function sfSet(tab) { SF.tab = tab; renderView(); }
@@ -2299,7 +2340,7 @@ tx({
   i_left: [n => `เหลือ ${n}`, n => `${n} left`, n => `残り ${n}`], i_full: ["เต็มแล้ว — ลบอันเก่าก่อนอัปโหลด", "Full — delete one to upload", "上限です。削除してからアップロード"],
   i_uploadedAt: ["อัปโหลดเมื่อ", "Uploaded", "アップロード日時"],
   emk_static: ["1 เฟรม = อัปโหลดเป็นอีโมจิแบบนิ่ง (1024px)", "1 frame = uploads as a static emoji (1024px)", "1 フレーム = 静止画の絵文字 (1024px)"], i_anim: ["เคลื่อนไหว", "Animated", "アニメ"], a_search: ["ค้นหาอวตาร", "Search avatars", "アバター検索"],
-  a_searchPublicPh: ["ค้นหาอวตารสาธารณะ (ชื่อ, ผู้สร้าง, แท็ก)", "Search public avatars (name, author, tags)", "公開アバターを検索 (名前・作者・タグ)"],
+  a_searchPublicPh: ["ค้นหาอวตารสาธารณะ (ชื่อ, ผู้สร้าง, คำอธิบาย, แท็ก)", "Search public avatars (name, author, description, tags)", "公開アバターを検索 (名前・作者・説明・タグ)"],
   a_searchSource: ["ผลจาก avtrdb.com (ฐานข้อมูลภายนอกที่ VRCX ใช้) — ส่งไปแค่คำค้นหา ไม่ส่งข้อมูลบัญชี",
                    "Results from avtrdb.com (an external database also used by VRCX). Only your search text is sent, never your account.",
                    "avtrdb.com (VRCX も使う外部データベース) の結果。送信するのは検索語のみです"],
@@ -2358,50 +2399,60 @@ window.addEventListener("pywebviewready", async () => { S.autostart = !!(await a
 // ---------- Public avatar search (avtrdb.com) ----------
 const _thumbStyleN = thumbStyle;
 thumbStyle = url => url && url.startsWith("https://thumb.avtrdb.com/") ? `background-image:url('${esc(url)}')` : _thumbStyleN(url);
-AVA_TABS.push("search");
-const AVS = { q: "", list: null, loading: false, page: 0, more: false };
-async function avatarSearch(more) {
-  const q = $("avq")?.value.trim();
-  if (!q) return;
-  if (!more) Object.assign(AVS, { q, list: [], page: 0 });
-  AVS.loading = true; renderView();
-  const r = await api("avatar_search", AVS.q, AVS.page);
-  AVS.loading = false;
-  if (r?.ok) { AVS.list.push(...r.ok); AVS.more = r.more; AVS.page++; } else apiError(r);
-  renderView();
+// Lives on the Search page as the "Avatars" kind. avtrdb matches the name, author, description and tags;
+// each card shows the description so it's clear why an avatar matched
+tx({ s_avatars: ["อวตาร", "Avatars", "アバター"] });
+SEARCH_KINDS.splice(SEARCH_KINDS.indexOf("worlds") + 1, 0, "avatars");
+async function avatarSearch(q) {
+  const more = q === undefined;
+  if (more) { if (searchRes?.kind !== "avatars" || searchRes.loading) return; }
+  else searchRes = { kind: "avatars", q, list: [], page: 0, more: false };
+  const sr = searchRes;
+  sr.loading = true;
+  if (more) renderSearch();
+  const r = await api("avatar_search", sr.q, sr.page);
+  sr.loading = false;
+  if (r?.ok) { sr.list.push(...r.ok); sr.more = r.more; sr.page++; } else if (!sr.list.length) sr.error = r?.error ?? 0; else apiError(r);
 }
-const _renderAvatarsN = renderAvatars;
-renderAvatars = function () {
-  if (AVA.tab !== "search") return _renderAvatarsN();
-  const el = $("v_avatars");
-  if (!el.querySelector("#avq")) {
-    el.innerHTML = `<div class="search-head" id="avHead"></div><div class="search-head">${sboxHtml("avq")}</div><div id="avres"></div>`;
-    wireSbox("avq", () => avatarSearch(), () => { AVS.list = null; AVS.q = ""; renderView(); });
-    $("avq").value = AVS.q;
-  }
-  $("avHead").innerHTML = `<div class="segmented">${AVA_TABS.map(k => `<button class="${AVA.tab === k ? "on" : ""}" onclick="AVA.tab='${k}';$('v_avatars').innerHTML='';renderView()">${t("a_" + k)}</button>`).join("")}</div>`;
-  $("avq").placeholder = t("a_searchPublicPh");
-  const res = $("avres");
-  if (!AVS.list) return res.innerHTML = "";
-  if (!AVS.list.length) return res.innerHTML = `<div class="empty-state" style="height:160px">${t(AVS.loading ? "searching" : "noResults")}</div>`;
-  res.innerHTML = `<div class="sec-head">${t("a_search")} <span class="n">${AVS.list.length}</span></div>`;
+function avatarResultCard(a) {
+  const d = document.createElement("div");
+  d.className = "wcard" + (a.id === AVA.current ? " current" : "");
+  d.innerHTML = `<div class="wimg" ${thumbAttr(a.thumb)}></div><div class="winfo"><div class="nm"></div><div class="sub"></div><div class="desc"></div></div>`;
+  d.querySelector(".nm").textContent = a.name;
+  d.querySelector(".sub").textContent = [a.authorName, a.perf].filter(Boolean).join(" · ");
+  d.querySelector(".desc").textContent = a.description || "";
+  d.title = a.description || "";
+  d.onclick = () => openAvatar(a);
+  return d;
+}
+const _renderSearchAv = renderSearch;
+renderSearch = function () {
+  _renderSearchAv();
+  if (!AUTH.loggedIn) return;
+  if (searchKind === "avatars") $("sq").placeholder = t("a_searchPublicPh");
+  if (searching || searchRes?.kind !== "avatars" || searchRes.error !== undefined) return;
+  const res = $("sres"), list = searchRes.list;
+  if (!list.length) return res.innerHTML = `<div class="empty-state" style="height:200px">${t("noResults")}</div>`;
+  res.innerHTML = `<div class="sec-head">${t("a_search")} <span class="n">${list.length}</span></div>`;
+  const pg = paged("search:avatars", list);
   const grid = document.createElement("div");
   grid.className = "wgrid";
-  AVS.list.forEach((a, i) => {
-    const d = document.createElement("div");
-    d.className = "wcard" + (a.id === AVA.current ? " current" : "");
-    d.innerHTML = `<div class="wimg" ${thumbAttr(a.thumb)}></div><div class="winfo"><div class="nm"></div><div class="sub"></div></div>`;
-    d.querySelector(".nm").textContent = a.name;
-    d.querySelector(".sub").textContent = [a.authorName, a.perf].filter(Boolean).join(" · ");
-    d.onclick = () => openAvatar(AVS.list[i]);
-    grid.appendChild(d);
-  });
+  pg.items.forEach(a => grid.appendChild(avatarResultCard(a)));
   res.appendChild(grid);
-  if (AVS.more) res.insertAdjacentHTML("beforeend", `<div class="form-actions">${btn(t(AVS.loading ? "searching" : "loadMore"), "avatarSearch(true)", "", "arrow-down")}</div>`);
+  res.insertAdjacentHTML("beforeend", pg.bar);
+  if (searchRes.more) res.insertAdjacentHTML("beforeend", `<div class="form-actions">${btn(t(searchRes.loading ? "searching" : "loadMore"),
+    "avatarSearch().then(renderSearch)", "", "arrow-down")}</div>`);
 };
-// Leaving the search tab must clear the page so the original function redraws everything
-const _loadAvatarsN = loadAvatars;
-loadAvatars = (tab, force) => tab === "search" ? undefined : _loadAvatarsN(tab, force);
+const _doSearchAv = doSearch;
+doSearch = async function () {
+  const q = $("sq")?.value.trim();
+  if (searchKind !== "avatars" || !q) return _doSearchAv();
+  for (const k in PAGES) if (k.startsWith("search:")) delete PAGES[k];
+  searching = true; renderSearch();
+  await avatarSearch(q);
+  searching = false;
+  renderSearch();
+};
 
 // ======================= Tabbed settings (Game Log / Feed filters moved here from the sidebar) =======================
 tx({ set_general: ["ทั่วไป", "General", "一般"], set_log: ["Game Log", "Game Log", "ゲームログ"], set_feed: ["Feed", "Feed", "フィード"],
@@ -2634,10 +2685,12 @@ renderFriends = function () {
       : st === "offline" ? `<button class="btn" style="padding:3px 12px" onclick="S.showOffline=!S.showOffline;save();renderView()">${t(S.showOffline ? "hide" : "show")}</button>` : "");
     el.appendChild(head);
     if (st === "offline" && !S.showOffline) continue;
+    const pg = paged("friends:" + st, arr);
     const grid = document.createElement("div");
     grid.className = mode === "list" ? "flist" : mode === "icons" ? "ficons" : "fgrid";
-    arr.forEach(f => grid.appendChild(mode === "list" ? friendRow(f) : mode === "icons" ? friendIcon(f) : friendCardLast(f)));
+    pg.items.forEach(f => grid.appendChild(mode === "list" ? friendRow(f) : mode === "icons" ? friendIcon(f) : friendCardLast(f)));
     el.appendChild(grid);
+    el.insertAdjacentHTML("beforeend", pg.bar);
   }
   el.scrollTop = scroll;
 };
@@ -2870,6 +2923,378 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .chat-n.over { color: var(--red); font-weight: 600; }
 .chat-hint { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text2); padding: 6px 22px 12px; }
 .chat-hint svg { width: 13px; height: 13px; flex-shrink: 0; }
+</style>`);
+
+// ======================= Chatbox info (OSC): random status, now playing, clock, Pulsoid heart rate =======================
+// Python (chatinfo.py) builds and sends the text; this page edits the settings and shows a live preview
+tx({
+  nav_osc: ["ข้อมูลใน Chatbox", "Chatbox info", "チャットボックス情報"],
+  oi_on: ["ส่งไปที่ Chatbox", "Send to Chatbox", "チャットボックスに送信"],
+  oi_onHint: ["อัปเดตข้อความเหนือหัวอัตโนมัติ · หยุด 15 วิ หลังส่งข้อความเองจากหน้าแชท", "Updates the text above your head · pauses 15 s after you send a message yourself", "頭上のテキストを自動更新 · 自分でメッセージを送ると 15 秒停止"],
+  oi_preview: ["ตัวอย่าง", "Preview", "プレビュー"],
+  oi_previewEmpty: ["ยังไม่มีอะไรจะแสดง — เปิดอย่างน้อยหนึ่งอย่างด้านล่าง", "Nothing to show yet — turn something on below", "表示する内容がありません — 下で何かをオンにしてください"],
+  oi_paused: [n => `หยุดชั่วคราว ${n} วิ (เพิ่งส่งข้อความเอง)`, n => `Paused for ${n} s (you just sent a message)`, n => `${n} 秒一時停止中（メッセージを送信したため）`],
+  oi_status: ["สถานะสุ่ม", "Random status", "ランダムステータス"],
+  oi_statuses: ["ข้อความ", "Lines", "メッセージ"], oi_statusesHint: ["บรรทัดละ 1 ข้อความ สุ่มมาแสดงทีละอัน", "One per line, shown one at a time at random", "1 行に 1 つ、ランダムに 1 つずつ表示"],
+  oi_every: ["เปลี่ยนทุก (วินาที)", "Change every (seconds)", "切り替え間隔（秒）"],
+  oi_media: ["เพลง / สื่อที่กำลังเล่น", "Now playing", "再生中のメディア"], oi_format: ["รูปแบบ", "Format", "書式"],
+  oi_mediaHint: ["{title} ชื่อเพลง · {artist} ศิลปิน · {pos} เวลาที่เล่น · {dur} ความยาว", "{title} · {artist} · {pos} position · {dur} length", "{title} 曲名 · {artist} アーティスト · {pos} 再生位置 · {dur} 長さ"],
+  oi_nowPlaying: ["ตอนนี้", "Now", "現在"], oi_nothing: ["ไม่มีอะไรเล่นอยู่", "Nothing playing", "再生していません"],
+  oi_clock: ["นาฬิกา", "Clock", "時計"], oi_24h: ["แบบ 24 ชั่วโมง", "24-hour", "24 時間表示"],
+  oi_heart: ["อัตราการเต้นหัวใจ", "Heart rate", "心拍数"],
+  oi_token: ["Pulsoid token", "Pulsoid token", "Pulsoid トークン"], oi_getToken: ["ขอ token", "Get a token", "トークンを取得"],
+  oi_tokenHint: ["หรือวาง token จาก pulsoid.net (ต้องใช้แพ็กเกจ BRO) · เก็บไว้ในเครื่องนี้เท่านั้น", "Or paste a token from pulsoid.net (needs the BRO plan) · kept on this PC only", "または pulsoid.net のトークンを貼り付け（BRO プランが必要）· この PC にのみ保存"],
+  oi_account: ["บัญชี Pulsoid", "Pulsoid account", "Pulsoid アカウント"],
+  oi_loginHint: ["ต้องมีแพ็กเกจ BRO ของ Pulsoid — กดแล้วกด Allow ในหน้าเว็บที่เปิดขึ้นมา", "Needs a Pulsoid BRO plan — click, then Allow on the page that opens", "Pulsoid の BRO プランが必要 — クリックして、開いたページで Allow"],
+  oi_signIn: ["เข้าสู่ระบบด้วย Pulsoid", "Sign in with Pulsoid", "Pulsoid でサインイン"], oi_signOut: ["ออกจากระบบ", "Sign out", "サインアウト"],
+  oi_signedIn: ["เชื่อมบัญชีแล้ว", "Signed in", "サインイン済み"], oi_reopen: ["เปิดหน้าอีกครั้ง", "Open the page again", "ページを再度開く"],
+  oi_waiting: ["รอคุณกด Allow ในเบราว์เซอร์…", "Waiting for you to click Allow in the browser…", "ブラウザで Allow を押すのを待っています…"],
+  oi_login_denied: ["ไม่ได้รับอนุญาต — ลองใหม่ได้", "Access wasn't allowed — try again", "許可されませんでした — もう一度お試しください"],
+  oi_login_expired: ["หมดเวลา — ลองใหม่ได้", "Timed out — try again", "時間切れです — もう一度お試しください"],
+  oi_login_error: ["ติดต่อ Pulsoid ไม่ได้", "Couldn't reach Pulsoid", "Pulsoid に接続できません"],
+  oi_noClient: ["ยังไม่ได้ตั้งค่าการเข้าสู่ระบบในแอปนี้", "Sign-in isn't set up in this build yet", "このビルドではサインインがまだ設定されていません"],
+  oi_heartHint: ["{bpm} = ค่าหัวใจ", "{bpm} = heart rate", "{bpm} = 心拍数"],
+  oi_params: ["ส่งเป็นพารามิเตอร์อวตารด้วย", "Also send avatar parameters", "アバターパラメーターにも送信"],
+  oi_paramsHint: ["HR, onesHR, tensHR, hundredsHR, HRPercent, isHRConnected, isHRActive (ชื่อเดียวกับ HRtoVRChat)",
+    "HR, onesHR, tensHR, hundredsHR, HRPercent, isHRConnected, isHRActive (same names as HRtoVRChat)",
+    "HR, onesHR, tensHR, hundredsHR, HRPercent, isHRConnected, isHRActive（HRtoVRChat と同じ名前）"],
+  oi_connection: ["การเชื่อมต่อ", "Connection", "接続"],
+  oi_source: ["รับค่าจาก", "Source", "取得元"], oi_srcBle: ["Bluetooth (ฟรี)", "Bluetooth (free)", "Bluetooth（無料）"], oi_srcPulsoid: ["Pulsoid", "Pulsoid", "Pulsoid"],
+  oi_device: ["อุปกรณ์", "Device", "デバイス"], oi_noDevice: ["ยังไม่ได้เลือก", "None chosen yet", "未選択"],
+  oi_findDevices: ["ค้นหาอุปกรณ์", "Find devices", "デバイスを探す"], oi_scanning: ["กำลังค้นหา…", "Searching…", "検索中…"],
+  oi_use: ["ใช้อันนี้", "Use", "使う"], oi_using: ["กำลังใช้", "In use", "使用中"],
+  oi_noneFound: ["ไม่เจออุปกรณ์วัดหัวใจ — เปิดโหมดส่งค่าหัวใจบนนาฬิกาแล้วค้นหาใหม่", "No heart-rate device found — turn on heart-rate broadcast on your watch and search again", "心拍デバイスが見つかりません — 時計の心拍ブロードキャストをオンにして再検索"],
+  oi_bleHint: ["สายคาดอกใช้ได้เลย · นาฬิกาต้องเปิดโหมดส่งค่าหัวใจ (Huawei: แชร์ข้อมูลหัวใจ, Garmin: Broadcast Heart Rate) · Apple Watch ใช้ไม่ได้",
+    "Chest straps work as is · watches need heart-rate broadcast on (Huawei: heart rate sharing, Garmin: Broadcast Heart Rate) · Apple Watch can't",
+    "胸ストラップはそのまま使えます · 時計は心拍ブロードキャストをオン（Huawei: 心拍数共有、Garmin: Broadcast Heart Rate）· Apple Watch は不可"],
+  oi_hr_offBle: ["ยังไม่ได้เลือกอุปกรณ์", "No device chosen yet", "デバイス未選択"],
+  oi_hr_searching: ["หาอุปกรณ์ไม่เจอ — กำลังลองใหม่ (เปิดโหมดส่งค่าหัวใจไว้หรือยัง?)", "Can't reach the device — retrying (is broadcast on?)", "デバイスに接続できません — 再試行中（ブロードキャストはオン？）"],
+  oi_hr_off: ["ยังไม่ได้ใส่ token", "No token yet", "トークン未設定"], oi_hr_connecting: ["กำลังเชื่อมต่อ…", "Connecting…", "接続中…"],
+  oi_hr_live: [n => `เชื่อมต่อแล้ว · ${n} bpm`, n => `Connected · ${n} bpm`, n => `接続済み · ${n} bpm`],
+  oi_hr_badToken: ["token ไม่ถูกต้อง", "Invalid token", "トークンが無効です"], oi_hr_error: ["เชื่อมต่อไม่ได้ — กำลังลองใหม่", "Can't connect — retrying", "接続できません — 再試行中"],
+  oi_interval: ["ส่งทุก (วินาที)", "Update every (seconds)", "更新間隔（秒）"],
+  oi_layout: ["การจัดวาง", "Layout", "レイアウト"],
+  oi_layoutHint: ["ลากเพื่อย้ายตำแหน่ง · กดอีโมจิเพื่อเปลี่ยน", "Drag to move · click an emoji to change it", "ドラッグで移動 · 絵文字をクリックで変更"],
+  oi_addSep: ["ตัวคั่น", "Separator", "区切り"], oi_addBr: ["ขึ้นบรรทัดใหม่", "New line", "改行"], oi_br: ["ขึ้นบรรทัด", "New line", "改行"],
+  oi_noEmoji: ["ไม่มี", "None", "なし"], oi_customEmoji: ["หรือพิมพ์/วางอีโมจิเอง", "Or type/paste your own", "または自分で入力・貼り付け"],
+  oi_remove: ["เอาออก", "Remove", "削除"], oi_reset: ["คืนค่าเริ่มต้น", "Reset", "リセット"],
+  oi_overall: ["ภาพรวม", "Overall", "全体"],
+  oi_sup: ["ตัวยกเล็ก (เช่น 120ᶠᵖˢ)", "Small superscript (like 120ᶠᵖˢ)", "小さい上付き（例: 120ᶠᵖˢ）"],
+  oi_supHint: ["ได้กับ a–z และ 0–9 · ภาษาไทยไม่เปลี่ยน", "Works for a–z and 0–9 · other scripts stay as they are", "a–z と 0–9 のみ · 他の文字はそのまま"],
+  oi_clockTzSup: ["เขตเวลาเป็นตัวยกเล็ก", "Time zone in superscript", "タイムゾーンを上付きに"],
+  oi_hrSuffixSup: ["ข้อความต่อท้ายเป็นตัวยกเล็ก", "Suffix in superscript", "後ろのテキストを上付きに"],
+  oi_addText: ["ข้อความ", "Text", "テキスト"], oi_textPh: ["พิมพ์ข้อความ…", "Type text…", "テキストを入力…"],
+  oi_mediaTime: ["แสดงเวลาที่เล่นไป", "Show time played", "再生位置を表示"], oi_mediaDur: ["แสดงความยาวเพลง", "Show length", "曲の長さを表示"],
+  oi_mediaBar: ["แสดงแถบเวลา (seek bar)", "Show seek bar", "シークバーを表示"], oi_barStyle: ["แบบแถบ", "Bar style", "バーの形"],
+  oi_barLen: ["ความยาวแถบ (ตัวอักษร)", "Bar length (characters)", "バーの長さ（文字数）"],
+  oi_timelineHint: ["แสดงเป็นบรรทัดใต้ชื่อเพลง", "Shown on a line under the song", "曲名の下の行に表示"],
+  oi_clockTz: ["แสดงเขตเวลา (เช่น UTC+7)", "Show time zone (e.g. UTC+7)", "タイムゾーンを表示（例: UTC+7）"],
+  oi_clockDate: ["แสดงวันที่ (วัน/เดือน)", "Show date (day/month)", "日付を表示（日/月）"],
+  oi_hrSuffixOn: ["ข้อความต่อท้ายค่าหัวใจ", "Text after the number", "数値の後ろのテキスト"],
+  oi_hrSuffixHint: ["เช่น bpm, BPM, ครั้ง/นาที", "e.g. bpm, BPM", "例: bpm、BPM"],
+  oi_intervalHint: ["1–60 วิ · ถ้าต่ำกว่า ~1.5 วิ VRChat อาจข้ามบางข้อความ", "1–60 s · under ~1.5 s VRChat may skip some updates", "1〜60 秒 · 約 1.5 秒未満だと VRChat が一部を表示しないことがあります"],
+});
+NAV.osc = ["radio", "pink"];
+VIEWS.splice(VIEWS.indexOf("chat") + 1, 0, "osc");
+$("jump").insertAdjacentHTML("beforebegin", `<div class="view" id="v_osc"></div>`);
+const OI_DEF = { on: false, status: true, statuses: [], statusEvery: 60, media: true, mediaFmt: "{artist} - {title}", clock: true, clock24: true,
+  layout: ["status", "br", "media", "br", "clock", "sep:   ", "heart"], icons: { status: "", media: "🎵", clock: "🕒", heart: "❤️" },
+  mediaTime: false, mediaDur: false, mediaBar: false, mediaBarStyle: "line", mediaBarLen: 10, clockTz: false, clockTzSup: false, clockDate: false,
+  heart: false, heartFmt: "{bpm}", hrSuffixOn: false, hrSuffix: "bpm", hrSuffixSup: false, hrParams: true, hrSource: "ble", bleAddr: "", bleName: "", pulsoid: "", interval: 3 };
+const oiCfg = () => {
+  const c = { ...OI_DEF, ...(S.chatInfo || {}) };
+  if (c.mediaFmt === "🎵 {artist} - {title}") c.mediaFmt = OI_DEF.mediaFmt;  // Icons used to be part of the format
+  if (c.heartFmt === "❤️ {bpm}") c.heartFmt = OI_DEF.heartFmt;
+  return c;
+};
+function renderOsc() {
+  const el = $("v_osc");
+  if ($("oiPrev") && el.dataset.lang === S.lang) return;  // Built already — only the preview updates (see oiPoll)
+  const c = oiCfg();
+  const sec = (key, ic, on, body) => `<div class="oi-sec" data-tab="${key}"><div class="sec-head">${icon(ic)} ${t("oi_" + key)}<span class="grow"></span>${fCheck("oi_" + key, on)}</div>
+    <div class="card oi-card">${body}</div></div>`;
+  el.dataset.lang = S.lang;
+  oiLoginKey = oiBleKey = "";  // These rows are empty again — draw them on the next poll
+  el.innerHTML = `<div class="card oi-card oi-top"><div class="oi-prev" id="oiPrev"></div><div class="oi-note" id="oiNote"></div></div>
+    <div class="toolbar oi-tabs"><div class="segmented scroll-x" id="oiTabs"></div></div>
+    <div class="oi-sec" data-tab="overall"><div class="card oi-card">${fRow(t("oi_on"), fCheck("oiOn", c.on), t("oi_onHint"))}
+      ${fRow(t("oi_interval"), fInput("oiInterval", c.interval, 'type="number" min="1" max="60"'), t("oi_intervalHint"))}
+      <div class="oi-lay-head"><b>${t("oi_layout")}</b><span class="hint-inline">${t("oi_layoutHint")}</span><span class="grow"></span>
+        ${btn(t("oi_addText"), "oiAdd('text:')", "sm", "plus")}${btn(t("oi_addSep"), "oiAdd('sep: | ')", "sm", "plus")}${btn(t("oi_addBr"), "oiAdd('br')", "sm", "corner-down-left")}
+        <button class="mini-btn" title="${t("oi_reset")}" onclick="oiLayoutReset()">${icon("rotate-ccw")}</button></div>
+      <div class="oi-lay" id="oiLay"></div></div></div>
+    ${sec("status", "sparkles", c.status, fRow(t("oi_statuses"), fArea("oiStatuses", c.statuses.join("\n"), 5), t("oi_statusesHint"))
+      + fRow(t("oi_every"), fInput("oiEvery", c.statusEvery, 'type="number" min="5" max="3600"')))}
+    ${sec("media", "music", c.media, fRow(t("oi_format"), fInput("oiMediaFmt", c.mediaFmt), t("oi_mediaHint"))
+      + fRow(t("oi_mediaTime"), fCheck("oiMediaTime", c.mediaTime), t("oi_timelineHint"))
+      + fRow(t("oi_mediaDur"), fCheck("oiMediaDur", c.mediaDur))
+      + fRow(t("oi_mediaBar"), fCheck("oiMediaBar", c.mediaBar))
+      + fRow(t("oi_barStyle"), fSelect("oiBarStyle", { line: "━━━●────", blocks: "▰▰▰▱▱▱▱▱", squares: "■■■□□□□□", dots: "●●●○○○○○" }, c.mediaBarStyle))
+      + fRow(t("oi_barLen"), fInput("oiBarLen", c.mediaBarLen, 'type="number" min="5" max="20"'))
+      + fRow(t("oi_nowPlaying"), `<span class="hint-inline" id="oiMedia"></span>`))}
+    ${sec("clock", "clock", c.clock, fRow(t("oi_24h"), fCheck("oiClock24", c.clock24))
+      + fRow(t("oi_clockTz"), fCheck("oiClockTz", c.clockTz))
+      + fRow(t("oi_clockTzSup"), fCheck("oiClockTzSup", c.clockTzSup), t("oi_supHint"))
+      + fRow(t("oi_clockDate"), fCheck("oiClockDate", c.clockDate)))}
+    ${sec("heart", "heart", c.heart, fRow(t("oi_source"), `<div class="segmented oi-src" id="oiSrc"></div><input type="hidden" id="oiSource" value="${escA(c.hrSource)}">`)
+      + `<div class="oi-ble">${fRow(t("oi_device"), `<div class="oi-token" id="oiBle"></div>`, t("oi_bleHint"))}<div id="oiBleList"></div>
+          <input type="hidden" id="oiBleAddr" value="${escA(c.bleAddr)}"><input type="hidden" id="oiBleName" value="${escA(c.bleName)}"></div>`
+      + `<div class="oi-pulsoid">${fRow(t("oi_account"), `<div class="oi-token" id="oiLogin"></div>`, t("oi_loginHint"))
+      + fRow(t("oi_token"), `<div class="oi-token"><input class="field" id="oiToken" type="password" value="${escA(c.pulsoid)}" spellcheck="false" autocomplete="off">
+        ${btn(t("oi_getToken"), "api('open_url','https://pulsoid.net/ui/keys')", "sm", "external-link")}</div>`, t("oi_tokenHint"))}</div>`
+      + fRow(t("oi_connection"), `<span class="hint-inline" id="oiHr"></span>`)
+      + fRow(t("oi_format"), fInput("oiHeartFmt", c.heartFmt), t("oi_heartHint"))
+      + fRow(t("oi_hrSuffixOn"), `<div class="oi-token">${fCheck("oiHrSuffixOn", c.hrSuffixOn)}${fInput("oiHrSuffix", c.hrSuffix, 'maxlength="16"')}</div>`, t("oi_hrSuffixHint"))
+      + fRow(t("oi_hrSuffixSup"), fCheck("oiHrSuffixSup", c.hrSuffixSup), t("oi_supHint"))
+      + fRow(t("oi_params"), fCheck("oiParams", c.hrParams), t("oi_paramsHint")))}`;
+  let timer = 0;
+  el.oninput = el.onchange = () => { clearTimeout(timer); timer = setTimeout(oiSave, 400); oiTabsUi(); oiLayDim(); };
+  oiLayout = [...c.layout]; oiIcons = { ...OI_DEF.icons, ...c.icons };
+  oiLayUi();
+  oiSrcUi();
+  oiTabsUi();
+  oiPoll();
+}
+// ---------- Layout editor: chips in the order they're sent; drag to move (pointer events, so it also works from VR) ----------
+let oiLayout = [], oiIcons = {};
+const OI_EMOJI = ["🎵", "🎶", "🎧", "🎤", "📻", "💿", "🕒", "⏰", "⌚", "🌙", "☀️", "❤️", "💓", "💗", "💖", "🫀", "💜", "🖤",
+  "✨", "⭐", "🌸", "🍀", "🔥", "💬", "😴", "🎮", "🐱", "🌈"];
+function oiLayUi() {
+  $("oiLay").innerHTML = oiLayout.map((it, i) => {
+    if (it === "br") return `<span class="oi-chip br" data-i="${i}">${icon("corner-down-left")}${t("oi_br")}<button class="oi-x" title="${t("oi_remove")}" onclick="oiDel(${i})">${icon("x")}</button></span><span class="oi-break"></span>`;
+    if (it.startsWith("text:") || it.startsWith("sup:")) {
+      const kind = it.slice(0, it.indexOf(":") + 1), val = it.slice(kind.length);
+      return `<span class="oi-chip text" data-i="${i}">${icon("pencil")}<input value="${escA(val)}" maxlength="60" spellcheck="false"
+        placeholder="${escA(t("oi_textPh"))}" oninput="oiLayout[${i}]='${kind}'+this.value;this.size=Math.max(this.value.length,8);oiSaveSoon()" size="${Math.max(val.length, 8)}">
+        <button class="oi-supt ${kind === "sup:" ? "on" : ""}" title="${escA(t("oi_sup"))}" onclick="oiSupToggle(${i})">ᵃᵇ</button>
+        <button class="oi-x" title="${t("oi_remove")}" onclick="oiDel(${i})">${icon("x")}</button></span>`;
+    }
+    if (it.startsWith("sep:")) return `<span class="oi-chip sep" data-i="${i}"><input value="${escA(it.slice(4))}" maxlength="20" spellcheck="false"
+      oninput="oiLayout[${i}]='sep:'+this.value;this.size=Math.max(this.value.length,2);oiSaveSoon()" size="${Math.max(it.length - 4, 2)}">
+      <button class="oi-x" title="${t("oi_remove")}" onclick="oiDel(${i})">${icon("x")}</button></span>`;
+    return `<span class="oi-chip item" data-i="${i}" data-k="${it}"><button class="oi-emo" title="${t("oi_layoutHint")}" onclick="oiEmoji('${it}',this)">${oiIcons[it] || icon("plus")}</button>${t("oi_" + it)}</span>`;
+  }).join("");
+  oiLayDim();
+}
+function oiLayDim() {  // Parts that are switched off look faded
+  $("oiLay")?.querySelectorAll(".oi-chip.item").forEach(c => c.classList.toggle("off", !$("oi_" + c.dataset.k)?.checked));
+}
+let oiSaveTimer = 0;
+function oiSaveSoon() { clearTimeout(oiSaveTimer); oiSaveTimer = setTimeout(oiSave, 400); }
+function oiAdd(it) {
+  oiLayout.push(it); oiLayUi(); oiSave();
+  if (it === "text:") [...$("oiLay").querySelectorAll(".oi-chip.text input")].pop()?.focus();  // Ready to type
+}
+function oiDel(i) { oiLayout.splice(i, 1); oiLayUi(); oiSave(); }
+function oiSupToggle(i) {
+  const it = oiLayout[i];
+  oiLayout[i] = it.startsWith("sup:") ? "text:" + it.slice(4) : "sup:" + it.slice(5);
+  oiLayUi(); oiSave();
+}
+function oiLayoutReset() { oiLayout = [...OI_DEF.layout]; oiIcons = { ...OI_DEF.icons }; oiLayUi(); oiSave(); }
+document.addEventListener("pointerdown", e => {
+  const chip = e.target.closest?.("#oiLay .oi-chip");
+  if (!chip || e.button !== 0 || e.target.closest("input, button")) return;
+  e.preventDefault();
+  chip.classList.add("drag");
+  const lay = $("oiLay");
+  // Listen on the whole page, not the chip: moving the chip in the page drops pointer capture, and the release
+  // could then land on another element and leave the drag hanging
+  const move = ev => {  // Move the chip in front of / behind the chip under the pointer
+    if (ev.pointerId !== e.pointerId) return;
+    const over = document.elementFromPoint(ev.clientX, ev.clientY)?.closest(".oi-chip");
+    if (!over || over === chip || !lay.contains(over)) return;
+    const r = over.getBoundingClientRect();
+    const target = ev.clientX > r.left + r.width / 2 ? (over.nextElementSibling?.classList.contains("oi-break") ? over.nextElementSibling : over).nextSibling : over;
+    if (target !== chip) lay.insertBefore(chip, target);
+  };
+  const up = ev => {
+    if (ev.pointerId !== e.pointerId) return;
+    document.removeEventListener("pointermove", move);
+    document.removeEventListener("pointerup", up);
+    document.removeEventListener("pointercancel", up);
+    chip.classList.remove("drag");
+    const order = [...lay.querySelectorAll(".oi-chip")].map(c => oiLayout[+c.dataset.i]);
+    const changed = order.join("\n") !== oiLayout.join("\n");
+    oiLayout = order;
+    oiLayUi();
+    if (changed) oiSave();
+  };
+  document.addEventListener("pointermove", move);
+  document.addEventListener("pointerup", up);
+  document.addEventListener("pointercancel", up);
+});
+function oiEmoji(k, anchor) {
+  $("oiEmoPop")?.remove();
+  const pop = document.createElement("div");
+  pop.id = "oiEmoPop";
+  pop.className = "oi-emo-pop";
+  pop.innerHTML = `<div class="grid">${OI_EMOJI.map(e => `<button data-e="${e}">${e}</button>`).join("")}<button data-e="" class="none">${t("oi_noEmoji")}</button></div>
+    <input class="field" placeholder="${escA(t("oi_customEmoji"))}" maxlength="8" value="${escA(oiIcons[k] || "")}">`;
+  const pick = e => { oiIcons[k] = e; pop.remove(); oiLayUi(); oiSave(); };
+  pop.querySelectorAll("button").forEach(b => b.onclick = () => pick(b.dataset.e));
+  const inp = pop.querySelector("input");
+  inp.onkeydown = ev => { if (ev.key === "Enter") pick(inp.value.trim()); if (ev.key === "Escape") pop.remove(); };
+  inp.onchange = () => pick(inp.value.trim());
+  document.body.appendChild(pop);
+  const r = anchor.getBoundingClientRect();
+  pop.style.left = Math.min(r.left, innerWidth - pop.offsetWidth - 8) + "px";
+  pop.style.top = (r.bottom + pop.offsetHeight + 8 > innerHeight ? r.top - pop.offsetHeight - 6 : r.bottom + 6) + "px";
+  setTimeout(() => document.addEventListener("pointerdown", function off(ev) {
+    if (!pop.contains(ev.target)) { pop.remove(); document.removeEventListener("pointerdown", off); }
+  }), 0);
+}
+// One section at a time; each tab shows a dot when that part is switched on
+const OI_TABS = { overall: "sliders-horizontal", status: "sparkles", media: "music", clock: "clock", heart: "heart" };
+let oiTab = "overall";
+function oiTabsUi() {
+  $("oiTabs").innerHTML = Object.entries(OI_TABS).map(([k, ic]) => `<button class="${oiTab === k ? "on" : ""}" onclick="oiTab='${k}';oiTabsUi()">${icon(ic)}${t("oi_" + k)}
+    <i class="oi-dot ${$(k === "overall" ? "oiOn" : "oi_" + k)?.checked ? "on" : ""}"></i></button>`).join("");
+  $("v_osc").querySelectorAll(".oi-sec").forEach(d => d.hidden = d.dataset.tab !== oiTab);
+}
+function oiSave() {
+  const num = (id, d) => { const n = parseInt(fv(id), 10); return Number.isFinite(n) ? n : d; };
+  S.chatInfo = { on: fv("oiOn"), status: fv("oi_status"), statuses: (fv("oiStatuses") || "").split("\n").map(s => s.trim()).filter(Boolean),
+    statusEvery: num("oiEvery", OI_DEF.statusEvery), media: fv("oi_media"), mediaFmt: fv("oiMediaFmt") || OI_DEF.mediaFmt,
+    clock: fv("oi_clock"), clock24: fv("oiClock24"), clockTz: fv("oiClockTz"), clockTzSup: fv("oiClockTzSup"), clockDate: fv("oiClockDate"),
+    mediaTime: fv("oiMediaTime"), mediaDur: fv("oiMediaDur"), mediaBar: fv("oiMediaBar"), mediaBarStyle: fv("oiBarStyle") || "line",
+    mediaBarLen: num("oiBarLen", OI_DEF.mediaBarLen), heart: fv("oi_heart"), heartFmt: fv("oiHeartFmt") || OI_DEF.heartFmt,
+    hrSuffixOn: fv("oiHrSuffixOn"), hrSuffix: fv("oiHrSuffix") ?? "bpm", hrSuffixSup: fv("oiHrSuffixSup"),
+    hrSource: fv("oiSource") || "ble", bleAddr: fv("oiBleAddr") || "", bleName: fv("oiBleName") || "",
+    pulsoid: fv("oiToken") || "", hrParams: fv("oiParams"), interval: num("oiInterval", OI_DEF.interval),
+    layout: [...oiLayout], icons: { ...oiIcons } };
+  save();
+  api("info_set", S.chatInfo);
+  oiPoll();
+}
+let oiTimer = 0;
+async function oiPoll() {
+  clearTimeout(oiTimer);
+  if (view !== "osc") return;
+  const s = await api("info_state");
+  if (s && $("oiPrev")) {
+    const prev = $("oiPrev");
+    prev.textContent = s.text || t("oi_previewEmpty");
+    prev.classList.toggle("empty", !s.text);
+    $("oiNote").textContent = !oiCfg().on ? "" : s.paused ? t("oi_paused", s.paused) : chatInGame() ? "" : t("ch_notInGame");
+    $("oiMedia").textContent = s.media ? `${s.media.artist ? s.media.artist + " - " : ""}${s.media.title} (${s.media.pos} / ${s.media.dur})` : t("oi_nothing");
+    $("oiHr").textContent = t(s.hr === "off" && oiCfg().hrSource === "ble" ? "oi_hr_offBle" : "oi_hr_" + s.hr, s.bpm ?? "—");
+    $("oiHr").style.color = s.hr === "live" ? "var(--green)" : s.hr === "badToken" || s.hr === "error" ? "var(--red)" : s.hr === "searching" ? "var(--orange)" : "";
+    oiLoginUi(s);
+    oiBleUi(s);
+  }
+  oiTimer = setTimeout(oiPoll, 1000);
+}
+// Heart-rate source: Bluetooth device (free) or Pulsoid — only that source's rows are shown
+function oiSrcUi() {
+  const src = $("oiSource").value;
+  $("oiSrc").innerHTML = ["ble", "pulsoid"].map(k => `<button class="${src === k ? "on" : ""}" onclick="oiSetSrc('${k}')">${t(k === "ble" ? "oi_srcBle" : "oi_srcPulsoid")}</button>`).join("");
+  $("v_osc").querySelector(".oi-ble").hidden = src !== "ble";
+  $("v_osc").querySelector(".oi-pulsoid").hidden = src !== "pulsoid";
+}
+function oiSetSrc(k) { $("oiSource").value = k; oiSrcUi(); oiSave(); }
+let oiBleKey = "";
+function oiBleUi(s) {
+  const b = s.ble || { found: [] }, cur = $("oiBleAddr").value;
+  const key = JSON.stringify([b.scanning, b.found.map(d => d.addr + d.name), cur, S.lang]);
+  if (key === oiBleKey || !$("oiBle")) return;  // Redraw only when something changed, so clicks aren't lost
+  oiBleKey = key;
+  $("oiBle").innerHTML = `<span class="hint-inline">${cur ? esc($("oiBleName").value || cur) : t("oi_noDevice")}</span><span class="grow"></span>`
+    + (b.scanning ? `<button class="btn sm" disabled>${icon("search")}${t("oi_scanning")}</button>` : btn(t("oi_findDevices"), "oiBleScan()", cur ? "sm" : "primary sm", "search"));
+  $("oiBleList").innerHTML = b.found.map(d => `<div class="oi-dev">${icon("heart")}<span class="nm">${esc(d.name || d.addr)}</span>
+      <span class="hint-inline">${d.rssi} dBm</span><span class="grow"></span>${d.addr === cur ? `<span class="badge">${t("oi_using")}</span>`
+      : btn(t("oi_use"), `oiUseBle('${esc(d.addr)}','${esc(d.name).replace(/'/g, "")}')`, "primary sm")}</div>`).join("")
+    || (oiScanned && !b.scanning ? `<div class="oi-dev hint-inline">${t("oi_noneFound")}</div>` : "");
+}
+let oiScanned = false;
+function oiBleScan() { oiScanned = true; api("info_ble_scan"); setTimeout(oiPoll, 300); }
+function oiUseBle(addr, name) {
+  $("oiBleAddr").value = addr; $("oiBleName").value = name;
+  if (!$("oi_heart").checked) $("oi_heart").checked = true;
+  oiSave();
+}
+// Pulsoid sign-in: Python runs the device flow; when it hands back a token it's saved like a pasted one
+let oiLoginKey = "";
+function oiLoginUi(s) {
+  const lg = s.login || {}, has = !!oiCfg().pulsoid;
+  if (lg.state === "done" && lg.token) {
+    $("oiToken").value = lg.token;
+    api("pulsoid_login_cancel");
+    oiSave();
+    toast(t("oi_signedIn"));
+    return;
+  }
+  const key = [s.canLogin, lg.state, has, S.lang].join();
+  if (key === oiLoginKey || !$("oiLogin")) return;  // Redraw only when something changed, so clicks aren't lost
+  oiLoginKey = key;
+  const signIn = btn(t("oi_signIn"), "oiLogin()", "primary sm", "heart");
+  const note = (k, col = "var(--text2)") => `<span class="hint-inline" style="color:${col}">${t(k)}</span>`;
+  $("oiLogin").innerHTML = !s.canLogin ? `<button class="btn primary sm" disabled>${icon("heart")}${t("oi_signIn")}</button>${note("oi_noClient")}`
+    : lg.state === "waiting" ? `${note("oi_waiting", "var(--orange)")}${lg.url ? btn(t("oi_reopen"), `api('open_url','${esc(lg.url)}')`, "sm", "external-link") : ""}
+        ${btn(t("cancel"), "api('pulsoid_login_cancel')", "sm")}`
+    : has ? `${note("oi_signedIn", "var(--green)")}${btn(t("oi_signOut"), "$('oiToken').value='';oiSave()", "sm", "log-out")}`
+    : signIn + (["denied", "expired", "error"].includes(lg.state) ? note("oi_login_" + lg.state, "var(--red)") : "");
+}
+async function oiLogin() {
+  if (!$("oi_heart").checked) { $("oi_heart").checked = true; oiSave(); }
+  const r = await api("pulsoid_login");
+  if (r?.error) toast(t("oi_login_error"));
+  oiPoll();
+}
+VIEW_RENDER.osc = () => renderOsc();
+// Hand the saved settings to Python once the app has started, so sending works without opening this page
+(function oiStart() { if (!ready) return setTimeout(oiStart, 300); api("info_set", oiCfg()); })();
+document.head.insertAdjacentHTML("beforeend", `<style>
+.oi-card { padding: 4px 14px; }
+.oi-tabs { margin: 14px 0 2px; }
+.oi-top { padding: 12px 14px 4px; }
+.oi-top .oi-prev { margin-top: 0; }
+.oi-sec[data-tab="overall"] .card { margin-top: 8px; }
+.oi-supt { border: none; border-radius: 6px; background: none; color: var(--text3); font-size: 13px; padding: 2px 5px; cursor: pointer; }
+.oi-supt:hover { background: var(--hover); }
+.oi-supt.on { background: var(--accent); color: #fff; }
+.oi-lay-head { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; font-size: 12.5px; flex-wrap: wrap; }
+.oi-lay-head .grow { flex: 1; }
+.oi-lay { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px; margin-bottom: 12px; border-radius: 12px;
+          border: 1px dashed var(--sep); min-height: 40px; }
+.oi-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px 0 6px; border-radius: 10px; background: var(--card);
+           border: 1px solid var(--sep); font-size: 12.5px; cursor: grab; touch-action: none; user-select: none; }
+.oi-chip.drag { cursor: grabbing; opacity: .6; box-shadow: var(--shadow); }
+.oi-chip.off { opacity: .45; }
+.oi-chip svg { width: 13px; height: 13px; }
+.oi-chip.br, .oi-chip.sep { background: var(--track); padding: 0 4px 0 8px; color: var(--text2); }
+.oi-chip.text { padding: 0 4px 0 8px; color: var(--text2); border-style: dashed; }
+.oi-chip.text input { border: none; background: none; color: var(--text); font: 13px var(--font); padding: 0; outline: none; min-width: 6ch; }
+.oi-chip.text input::placeholder { color: var(--text3); }
+.oi-chip.sep input { border: none; background: none; color: var(--text); font: 600 13px var(--mono); text-align: center; padding: 0; outline: none; min-width: 1.5ch; }
+.oi-break { flex-basis: 100%; height: 0; }
+.oi-emo { width: 24px; height: 24px; border: none; border-radius: 7px; background: var(--track); font-size: 15px; line-height: 1; padding: 0;
+          display: grid; place-items: center; cursor: pointer; color: var(--text2); }
+.oi-emo:hover { background: var(--hover); }
+.oi-x { border: none; background: none; color: var(--text3); padding: 2px; display: grid; place-items: center; cursor: pointer; border-radius: 6px; }
+.oi-x:hover { color: var(--red); background: var(--hover); }
+.oi-emo-pop { position: fixed; z-index: 50; padding: 10px; border-radius: 14px; width: 264px; background: var(--sheet); backdrop-filter: blur(30px) saturate(180%);
+               border: 1px solid var(--sep); box-shadow: var(--shadow), 0 10px 30px rgba(0,0,0,.25); }
+.oi-emo-pop .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; }
+.oi-emo-pop .grid button { height: 32px; border: none; border-radius: 8px; background: none; font-size: 18px; cursor: pointer; padding: 0; min-width: 0; }
+.oi-emo-pop .grid button:hover { background: var(--hover); }
+.oi-emo-pop .grid .none { grid-column: span 7; font-size: 12px; color: var(--text2); background: var(--track); }
+.oi-tabs .segmented button { display: inline-flex; align-items: center; gap: 6px; padding-left: 12px; padding-right: 12px; }
+.oi-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); opacity: .5; }
+.oi-dot.on { background: var(--green); opacity: 1; }
+.oi-sec .sec-head:first-child { margin-top: 8px; }
+.oi-prev { margin: 4px 0 10px; padding: 12px 14px; border-radius: 12px; background: var(--track); text-align: center; white-space: pre-wrap;
+           font-size: 14px; line-height: 1.5; min-height: 22px; }
+.oi-prev.empty { color: var(--text3); font-size: 12.5px; }
+.oi-note { font-size: 11.5px; color: var(--orange); text-align: center; margin: -4px 0 8px; }
+.oi-note:empty { display: none; }
+.oi-token { display: flex; gap: 8px; align-items: center; }
+.oi-token .field { flex: 1; min-width: 0; }
+.oi-token .grow { flex: 1; }
+.oi-src { width: fit-content; }
+.oi-dev { display: flex; align-items: center; gap: 8px; padding: 6px 2px 6px 166px; font-size: 12.5px; }
+.oi-dev svg { width: 14px; height: 14px; color: var(--red); flex-shrink: 0; }
+.oi-dev .nm { font-weight: 600; }
 </style>`);
 
 // ======================= On-screen keyboard (Thai / English) with big keys for VR (v4.11) =======================
