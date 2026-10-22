@@ -7,4 +7,6 @@ python -m PyInstaller --onefile --windowed --name VRCNook --icon app.ico --versi
   --add-data "vrclog_ui.html;." --add-data "vrclog_icons.json;." --add-data "vrclog_more.js;." `
   --add-data "kb_float.html;." --add-data "kb_layouts.js;." --add-data "i18n_extra.js;." `
   --clean --noconfirm vrclog_mac.py
+python verify_exe.py dist\VRCNook.exe  # Every packed file must unpack, or the exe fails at startup
+if ($LASTEXITCODE -ne 0) { throw "dist\VRCNook.exe is broken - build again" }
 Get-FileHash dist\VRCNook.exe -Algorithm SHA256
