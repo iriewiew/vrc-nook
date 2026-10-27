@@ -32,7 +32,7 @@ from vrclog import KINDS, Room, parse_line
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w", encoding="utf-8")
 
-VERSION = "0.7.0"
+VERSION = "0.7.1"
 log = logging.getLogger("vrclog")
 UPLOAD_FIELDS = ("animationStyle", "maskTag", "frames", "framesOverTime", "loopStyle")
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
@@ -165,7 +165,27 @@ class Api:
             os.startfile(url)
 
     def copy(self, text):
-        subprocess.run("clip", input=text.encode("utf-16"), creationflags=subprocess.CREATE_NO_WINDOW)
+        # utf-16-le: plain "utf-16" starts with a byte-order mark, which clip.exe would keep as an invisible first character
+        subprocess.run("clip", input=str(text).encode("utf-16-le"), creationflags=subprocess.CREATE_NO_WINDOW)
+
+    def paste_text(self):
+        """Text on the clipboard, for the text box right-click menu"""
+        u, k = ctypes.windll.user32, ctypes.windll.kernel32
+        u.GetClipboardData.restype = k.GlobalLock.restype = ctypes.c_void_p
+        k.GlobalLock.argtypes = k.GlobalUnlock.argtypes = (ctypes.c_void_p,)
+        if not u.OpenClipboard(None):
+            return ""
+        try:
+            h = u.GetClipboardData(13)  # CF_UNICODETEXT
+            p = k.GlobalLock(h) if h else None
+            if not p:
+                return ""
+            try:
+                return ctypes.wstring_at(p).lstrip("\ufeff")
+            finally:
+                k.GlobalUnlock(h)
+        finally:
+            u.CloseClipboard()
 
     def set_on_top(self, on):
         self._window.on_top = bool(on)
@@ -319,6 +339,16 @@ class Api:
         if not path:
             return {"ok": False}
         Path(path if isinstance(path, str) else path[0]).write_bytes(data)
+        return {"ok": True}
+
+    def save_text(self, filename, text):
+        """Save text made in the page (e.g. an exported group log) where the user picks"""
+        name_ = re.sub(r"[^\w.-]+", "_", filename or "export.txt")
+        path = self._window.create_file_dialog(webview.FileDialog.SAVE, save_filename=name_)
+        if not path:
+            return {"ok": False}
+        # CSV gets a BOM so Excel reads Thai / Japanese names correctly
+        Path(path if isinstance(path, str) else path[0]).write_text(str(text), encoding="utf-8-sig" if name_.lower().endswith(".csv") else "utf-8")
         return {"ok": True}
 
     def verify_login_place(self, link):
@@ -807,6 +837,7 @@ class Pump:
         self.lock = threading.Lock()
         self.started = False
         self.path = None
+        self.avatars = {}  # Player name -> the avatar the log last named for them, in this room
 
     def start(self):
         if self.started:
@@ -832,12 +863,35 @@ class Pump:
                 continue
             with self.lock:
                 self.room.update(ev)
+                changed = self._avatar_changed(ev)
                 parts = list(ev.parts)
                 if ev.kind == "item":  # The log only has the user ID — send the player's name instead
                     parts = [self.room.players.get(ev.user_id, ev.user_id)]
                 self.pending.append({"t": ev.time, "k": ev.kind, "v": ev.value, "u": ev.user_id,
                                      "p": parts, "c": len(self.room.players)})
                 self.to_store.append(ev)
+            if changed:
+                self.api._social.feed_avatar(*changed)
+
+    def _avatar_changed(self, ev):
+        """The log names every player's avatar as it loads; a second, different one for the same player means they switched.
+        Returns (user ID, name, avatar) when that happened just now (not while catching up on the log) — VRChat's friend
+        updates no longer say when an avatar changes, so this is how friends in the same room get an avatar entry in the feed"""
+        if ev.kind in ("world", "left"):
+            self.avatars.clear()
+        if ev.kind != "avatar" or len(ev.parts) < 2:
+            return None
+        name, avatar = ev.parts[0].strip(), ev.parts[1].strip()
+        prev, self.avatars[name] = self.avatars.get(name), avatar
+        if not prev or prev == avatar:
+            return None
+        try:
+            if time.time() - time.mktime(time.strptime(ev.time, "%Y.%m.%d %H:%M:%S")) > 120:
+                return None
+        except ValueError:
+            return None
+        uid = next((u for u, n in self.room.players.items() if n == name), None)
+        return (uid, name, avatar) if uid else None
 
     def _flush(self):
         sent_once = False
@@ -894,7 +948,46 @@ def _apply_log_dir(path):
     log.info("log folder: %s", vrclog.LOG_DIR)
 
 
+SHOW_EVENT = r"Local\VRCNook.show"  # Exists while a copy runs; setting it brings that copy's window back
+
+
+def _single_instance():
+    """One copy at a time. Returns the event the running copy waits on (None if Windows wouldn't make one — then just run);
+    False = another copy is already running — it has been
+    asked to show its window (unless this launch is the hidden autostart one), so this one should just exit.
+    After an update the new copy starts while the old one is still closing, so it waits for the old one to go first"""
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateEventW.restype = ctypes.c_void_p
+    k32.SetEvent.argtypes = k32.CloseHandle.argtypes = (ctypes.c_void_p,)
+    deadline = time.time() + (20 if "--updated" in sys.argv else 0)
+    while True:
+        ev = k32.CreateEventW(None, False, False, SHOW_EVENT)
+        if ctypes.get_last_error() != 183:  # ERROR_ALREADY_EXISTS
+            return ev
+        if time.time() >= deadline:
+            if "--tray" not in sys.argv:
+                k32.SetEvent(ev)
+            k32.CloseHandle(ev)
+            return False
+        k32.CloseHandle(ev)
+        time.sleep(0.5)
+
+
+def _wait_for_show(ev, show):
+    """Another launch (taskbar, Start menu, desktop shortcut) asked for the window — show this copy's instead"""
+    k32 = ctypes.WinDLL("kernel32")
+    k32.WaitForSingleObject.argtypes = (ctypes.c_void_p, ctypes.c_uint32)
+    while k32.WaitForSingleObject(ev, 0xFFFFFFFF) == 0:
+        try:
+            show()
+        except Exception as e:
+            log.warning("show from second launch failed: %s", e)
+
+
 def main():
+    ev = _single_instance()
+    if ev is False:
+        return
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     updater.cleanup()
     tray.autostart_migrate()
@@ -931,6 +1024,8 @@ def main():
                 js("onAuth", api._auth_status())
         threading.Thread(target=resume, daemon=True).start()
 
+    if ev:
+        threading.Thread(target=_wait_for_show, args=(ev, api.show_window), daemon=True).start()
     window.events.shown += lambda: round_corners(window)
     window.events.loaded += on_loaded
     webview.start()

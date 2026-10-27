@@ -386,6 +386,7 @@ class Cache:
         self.sent = set()
         self.lock = threading.Lock()
         self._dirty = False
+        self.on_fetched = None  # (id, old info, object from the API) after each full load — e.g. to spot a changed bio
 
     def _stale(self, key):
         entry = self.index.get(key, {})
@@ -461,7 +462,10 @@ class Cache:
 
     def _fetch_info(self, key):
         obj = self.fetch_info(key)
+        old = dict(self.index.get(key, {}).get("info", {}))
         self._update(key, obj)
+        if self.on_fetched:
+            self.on_fetched(key, old, obj)
         self.save()
         self.sent.discard(key)
         self.want([key], network=False)

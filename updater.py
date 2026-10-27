@@ -123,5 +123,5 @@ def apply(new):
         os.replace(old, exe)
         raise
     env = {**os.environ, "PYINSTALLER_RESET_ENVIRONMENT": "1"}  # Make the new one extract its own files instead of reusing the old one's
-    subprocess.Popen([str(exe)], env=env, close_fds=True,
+    subprocess.Popen([str(exe), "--updated"], env=env, close_fds=True,  # --updated: wait for this copy to close before starting
                      creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)

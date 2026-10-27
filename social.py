@@ -12,7 +12,6 @@ PIPELINE = "wss://pipeline.vrchat.cloud/?authToken="
 FRIEND_FIELDS = ("displayName", "status", "statusDescription", "location", "last_platform", "bio", "iconFrame",
                  "currentAvatarThumbnailImageUrl", "currentAvatarImageUrl", "userIcon", "iconUrl", "profilePicOverride",
                  "last_login", "last_activity", "last_mobile")
-AVATAR_KEYS = ("currentAvatarThumbnailImageUrl", "currentAvatarImageUrl")
 
 
 def world_of(location):
@@ -33,12 +32,16 @@ class Social:
         self.ws = None
         self.gen = 0  # Bumped on every login/logout so old threads stop
         self.online = False
+        self._avatar_fed = {}   # uid -> when an avatar entry was last added (the game log and the friend-list check can both see one switch)
+        self._bio_asked = {}    # uid -> when their profile was last reloaded to look for a bio change
+        users.on_fetched = self._fetched
 
     # ---------- Start / stop ----------
     def start(self):
         self.gen += 1
         threading.Thread(target=self._initial_load, args=(self.gen,), daemon=True).start()
         threading.Thread(target=self._pipeline, args=(self.gen,), daemon=True).start()
+        threading.Thread(target=self._avatar_watch, args=(self.gen,), daemon=True).start()
 
     def stop(self):
         self.gen += 1
@@ -87,11 +90,62 @@ class Social:
     def _check_names(self, users):
         """Compare the name with the stored one — if it changed, record name history and add a feed entry"""
         for u in users:
-            old = self.users.index.get(u.get("id"), {}).get("info", {}).get("displayName")
-            new = u.get("displayName")
+            info = self.users.index.get(u.get("id"), {}).get("info", {})
+            old, new = info.get("displayName"), u.get("displayName")
             if old and new and old != new:
                 self.store.add_name_change(u["id"], old, new)
                 self._feed("name", u["id"], new, old=old, new=new)
+
+    # ---------- Avatar and bio: VRChat's live friend updates carry neither any more ----------
+    AVATAR_EVERY, BIO_EVERY = 300, 600
+
+    def feed_avatar(self, uid, name, avatar):
+        """A friend in the same room switched avatar (seen in the game log, which also names the avatar)"""
+        with self.lock:
+            friend = uid in self.friends
+        if friend:
+            self._avatar_fed[uid] = time.time()
+            self._feed("avatar", uid, name, avatar=avatar)
+
+    def _avatar_watch(self, gen):
+        """Every few minutes, one look at the online friends (one request per 100) — the avatar picture each one wears now"""
+        while True:
+            time.sleep(self.AVATAR_EVERY)
+            if gen != self.gen:
+                return
+            try:
+                online = self.client.get_friends(False)
+            except vrc_api.ApiError:
+                continue
+            fed = []
+            with self.lock:
+                for u in online:
+                    cur = self.friends.get(u.get("id"))
+                    new = u.get("currentAvatarImageUrl")
+                    if not cur or not new:
+                        continue
+                    old, cur["currentAvatarImageUrl"] = cur.get("currentAvatarImageUrl"), new
+                    if u.get("currentAvatarThumbnailImageUrl"):
+                        cur["currentAvatarThumbnailImageUrl"] = u["currentAvatarThumbnailImageUrl"]
+                    if old and old != new and time.time() - self._avatar_fed.get(u["id"], 0) > self.AVATAR_EVERY * 2:
+                        fed.append((u["id"], cur.get("displayName") or u.get("displayName", "")))
+            for uid, name in fed:
+                self._avatar_fed[uid] = time.time()
+                self._feed("avatar", uid, name)
+
+    def _maybe_bio(self, uid, user, old):
+        """A friend update where nothing we can see changed may be a new bio — reload that profile (not too often) to find out"""
+        if not old or any(user.get(k) != old.get(k) for k in ("displayName", "status", "statusDescription") if k in user):
+            return
+        if time.time() - self._bio_asked.get(uid, 0) < self.BIO_EVERY:
+            return
+        self._bio_asked[uid] = time.time()
+        self.users.f.enqueue((self.users, "info", uid, None), front=False)
+
+    def _fetched(self, uid, old, obj):
+        """A profile was loaded: compare its bio with the one stored before (only for friends, and only when one was stored)"""
+        if uid in self.friends and isinstance(old.get("bio"), str) and isinstance(obj.get("bio"), str)                 and old["bio"].strip() != obj["bio"].strip():
+            self._feed("bio", uid, obj.get("displayName") or old.get("displayName", ""), bio=obj["bio"])
 
     def _entry(self, u, state):
         e = {k: u.get(k, "") for k in FRIEND_FIELDS}
@@ -230,10 +284,8 @@ class Social:
                 if (user.get("status"), user.get("statusDescription")) != (old.get("status"), old.get("statusDescription")) \
                         and "status" in user:
                     self._feed("status", uid, name, status=user.get("status"), desc=user.get("statusDescription", ""))
-                if any(k in user and user[k] and user[k] != old.get(k) for k in AVATAR_KEYS):
-                    self._feed("avatar", uid, name)
-                if "bio" in user and user["bio"] != old.get("bio", user["bio"]):
-                    self._feed("bio", uid, name, bio=user["bio"])
+                if type_ == "friend-update":
+                    self._maybe_bio(uid, user, old)
             if world_of(snapshot["location"]):
                 self.worlds.want([world_of(snapshot["location"])])
             self.js("onFriend", snapshot)

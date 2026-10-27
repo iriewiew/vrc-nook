@@ -47,7 +47,7 @@ DEFAULTS = {
     "pcSep": " | ", "pcPerLine": 2, "pcLabels": {"cpu": "CPU", "gpu": "GPU", "ram": "RAM", "vram": "VRAM", "fps": "FPS"},
     "pcCpuName": False, "pcGpuName": False, "pcRamType": False, "pcIcon": False, "pcLblSup": False, "pcUnitSup": False,
     "pcIcons": {"cpu": "🧠", "gpu": "🎮", "ram": "💾", "vram": "🖼️", "fps": "⏱️"},
-    "devToy": False, "intiface": "ws://127.0.0.1:12345", "intifaceRelay": 12346,
+    "devToy": False, "devToyBatt": True, "intiface": "ws://127.0.0.1:12345", "intifaceRelay": 12346,
 }
 ITEMS = ("status", "media", "clock", "heart", "devices", "pc")
 PC_ITEMS = ("cpu", "gpu", "ram", "vram", "fps")  # In the order they're shown
@@ -321,7 +321,7 @@ class ChatInfo:
             self.vr.fps_wanted = c["pc"] and c["pcFps"] and watching
             self.vr.wanted = (c["devices"] and watching) or self.vr.fps_wanted
             self.pc.wanted = c["pc"] and watching
-            self.toys.url, self.toys.relay_port = c["intiface"], c["intifaceRelay"]
+            self.toys.url, self.toys.relay_port, self.toys.battery = c["intiface"], c["intifaceRelay"], c["devToyBatt"]
             self.toys.wanted = c["devices"] and c["devToy"] and (c["on"] or now < self._watch_until)
             if c["heart"] and self.bpm and now - self._hr_at > 15:  # No reading for a while = sensor off
                 self.bpm = None
@@ -835,11 +835,13 @@ class _Intiface:
     ws://127.0.0.1:<relay port> instead of Intiface, everything it sends goes on to Intiface unchanged, and VRC Nook slips in
     its own battery reads (with Ids far above anything the app uses) and keeps those replies to itself.
     Only lists what Intiface already has connected — scanning is left to Intiface / the other app."""
-    BATTERY_EVERY, RETRY = 30, 10
+    BATTERY_EVERY, RETRY = 60, 10
+    FIRST_READ, READ_TIMEOUT, MAX_MISSES = 5, 15, 2   # Some devices hang Intiface when asked for their battery too eagerly
     OWN_ID = 4_000_000_000     # Our message Ids start here (Buttplug Ids are u32; apps count up from 1)
 
     def __init__(self):
         self.wanted, self.url, self.relay_port = False, DEFAULTS["intiface"], DEFAULTS["intifaceRelay"]
+        self.battery = True    # Ask Intiface for battery levels at all
         self.state = "off"     # off / noIntiface / ok / error
         self.relay = "off"     # off / waiting / app (an app is connected through us) / portBusy
         self.app = ""          # Name the connected app gave Intiface
@@ -911,10 +913,11 @@ class _Intiface:
             await self._send(up, "RequestDeviceList")
             up_rx = asyncio.ensure_future(up.recv())
             app_rx = asyncio.ensure_future(app[0].recv()) if app else None
-            next_battery, next_ping = 0.0, 0.0
+            next_ping = 0.0
             try:
                 while self.wanted and self.url == url and (app or not self._pending):
-                    done, _ = await asyncio.wait({t for t in (up_rx, app_rx) if t}, timeout=1, return_when=asyncio.FIRST_COMPLETED)
+                    done, _ = await asyncio.wait({t for t in (up_rx, app_rx) if t}, timeout=min(1, ping / 4) if ping and not app else 1,
+                                                 return_when=asyncio.FIRST_COMPLETED)
                     if up_rx in done:
                         msgs = self._parse(up_rx.result())
                         for m in msgs:
@@ -936,11 +939,7 @@ class _Intiface:
                     if ping and not app and now >= next_ping:  # A connected app pings for itself
                         await self._send(up, "Ping")
                         next_ping = now + ping / 2
-                    if now >= next_battery:
-                        await self._read_batteries(up)
-                        next_battery = now + self.BATTERY_EVERY
-                    else:
-                        await self._read_batteries(up, only_new=True)  # A device just showed up — don't wait for the next round
+                    await self._read_batteries(up, now)
                     self._publish()
             finally:
                 for t in (up_rx, app_rx):
@@ -978,16 +977,30 @@ class _Intiface:
     async def _send(self, up, kind, **fields):
         self._id = self._id + 1 if self._id >= self.OWN_ID else self.OWN_ID
         await up.send(json.dumps([{kind: {"Id": self._id, **fields}}]))
+        return self._id
 
-    async def _read_batteries(self, up, only_new=False):
-        for i, d in list(self._found.items()):
-            if d["feature"] is None or (only_new and d["asked"]):
+    async def _read_batteries(self, up, now):
+        """Gently: a few seconds after a device shows up, one read at a time, never a second one while the first is unanswered,
+        and none at all for a device that refused or didn't answer — a stuck read can freeze Intiface Central"""
+        if not self.battery:
+            return
+        for i, d in sorted(self._found.items()):
+            if d["feature"] is None or d["misses"] >= self.MAX_MISSES:
                 continue
-            d["asked"] = True
-            if self._ver >= 4:
-                await self._send(up, "InputCmd", DeviceIndex=i, FeatureIndex=d["feature"], Type="Battery", Command="Read")
-            else:
-                await self._send(up, "SensorReadCmd", DeviceIndex=i, SensorIndex=d["feature"], SensorType="Battery")
+            if d["wait"]:
+                if now - d["wait"][1] < self.READ_TIMEOUT:
+                    return  # Still waiting for it — ask nothing else meanwhile
+                d["wait"] = None
+                d["misses"] += 1
+                log.info("intiface: no battery reply from %s (%d)", d["name"], d["misses"])
+                continue
+            if now >= d["next"]:
+                if self._ver >= 4:
+                    sent = await self._send(up, "InputCmd", DeviceIndex=i, FeatureIndex=d["feature"], Type="Battery", Command="Read")
+                else:
+                    sent = await self._send(up, "SensorReadCmd", DeviceIndex=i, SensorIndex=d["feature"], SensorType="Battery")
+                d["wait"], d["next"] = (sent, now), now + self.BATTERY_EVERY
+                return
 
     def _ours(self, m):
         body = next(iter(m.values()), None)
@@ -1003,7 +1016,12 @@ class _Intiface:
 
     # ---------- Device list and battery replies (protocol 3 and 4) ----------
     def _handle(self, m):
-        if "DeviceList" in m:
+        if "Error" in m and self._ours(m):  # Our battery read was refused — don't ask that device again
+            for d in self._found.values():
+                if d["wait"] and d["wait"][0] == m["Error"].get("Id"):
+                    d["wait"], d["misses"] = None, self.MAX_MISSES
+                    log.info("intiface: battery read refused by %s: %s", d["name"], m["Error"].get("ErrorMessage"))
+        elif "DeviceList" in m:
             devs = m["DeviceList"].get("Devices", [])
             if isinstance(devs, dict):  # Protocol 4: always the whole list (no DeviceAdded / DeviceRemoved)
                 old, self._found = self._found, {}
@@ -1051,6 +1069,7 @@ class _Intiface:
     def _level(self, i, value):
         d = self._found.get(i)
         if d and isinstance(value, (int, float)):
+            d["wait"], d["misses"] = None, 0
             d["level"] = min(max(round(value * 100 / (d["range"] or 100)), 0), 100)
 
     def _add(self, dev, old=None):
@@ -1090,7 +1109,9 @@ class _Intiface:
         prev = (old if old is not None else self._found).get(i)
         same = prev and prev["name"] == name
         self._found[i] = {"name": name, "feature": feature, "range": top, "level": prev["level"] if same else None,
-                          "asked": bool(prev and prev["asked"]), "outs": outs, "motors": prev["motors"] if same else {}}
+                          "outs": outs, "motors": prev["motors"] if same else {},
+                          **({k: prev[k] for k in ("wait", "misses", "next")} if same else
+                             {"wait": None, "misses": 0, "next": time.monotonic() + self.FIRST_READ})}
 
     def _publish(self):
         """Short label "📳" (numbered when there are several) for when the user hides the device's name"""

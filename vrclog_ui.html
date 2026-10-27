@@ -332,6 +332,24 @@ input[type=range]::-webkit-slider-thumb { appearance: none; width: 20px; height:
 .pcard { max-height: calc(100vh / var(--z, 1) - 40px); overflow-y: auto; }
 
 /* ---------- Feed / Notifications / History ---------- */
+.ffbar { position: relative; display: flex; justify-content: flex-end; padding: 0 4px 8px; z-index: 4; }
+.ffbtn { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 99px; padding: 4px 10px; background: var(--track);
+  color: var(--text); font: 600 12px var(--font); cursor: pointer; }
+.ffbtn:hover { background: var(--hover); }
+.ffbtn svg { width: 14px; height: 14px; }
+.ffbtn .v { font-weight: 400; color: var(--text2); }
+.ffmenu { position: absolute; top: calc(100% - 2px); right: 4px; min-width: 230px; padding: 6px; border-radius: 14px; display: none;
+  background: var(--sheet); backdrop-filter: blur(40px) saturate(180%); border: 1px solid var(--stroke); box-shadow: var(--shadow); }
+.ffbar.open .ffmenu { display: block; }
+.ffrow { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px; font-size: 12.5px; cursor: pointer; }
+.ffrow:hover { background: var(--hover); }
+.ffrow .tile { width: 20px; height: 20px; border-radius: 6px; }
+.ffrow .tile svg { width: 13px; height: 13px; }
+.ffrow .l { flex: 1; }
+.ffrow .n { color: var(--text2); font-variant-numeric: tabular-nums; }
+.ffrow .ck { width: 16px; height: 16px; display: grid; place-items: center; color: var(--accent); }
+.ffrow .ck svg { width: 14px; height: 14px; stroke-width: 3; }
+.ffrow.all { border-bottom: 1px solid var(--sep); border-radius: 8px 8px 0 0; margin-bottom: 4px; padding-left: 36px; }
 .frow { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 10px; }
 .frow:hover { background: var(--hover); }
 .frow .time { font: 11.5px var(--mono); color: var(--text3); flex-shrink: 0; width: 92px; }
@@ -768,7 +786,7 @@ Object.assign(I18N.th, {
   memo: "โน้ต (เก็บในเครื่องนี้)", memoPh: "จดอะไรเกี่ยวกับคนนี้…", mins: m => `${m} นาที`, hours: (h, m) => `${h} ชม. ${m} นาที`, now: "ตอนนี้",
   friendsCount: (a, b) => `ออนไลน์ ${a} / ทั้งหมด ${b}`, notifCount: n => `${n} รายการ`, visits: n => `${n} โลก`,
   feedFilter: "แสดงใน Feed", ft_online: "ออนไลน์", ft_offline: "ออฟไลน์", ft_location: "ย้ายโลก", ft_status: "เปลี่ยนสถานะ",
-  ft_avatar: "เปลี่ยนอวตาร", ft_bio: "แก้ไข bio", ft_friendAdd: "เพื่อนใหม่", ft_friendRemove: "ลบเพื่อน",
+  ft_avatar: "เปลี่ยนอวตาร", ft_bio: "แก้ไข bio", ft_friendAdd: "เพื่อนใหม่", ft_friendRemove: "ลบเพื่อน", ff_filter: "ตัวกรอง",
   ff_online: w => `ออนไลน์ — ${w}`, ff_offline: "ออฟไลน์", ff_location: w => `ไปที่ ${w}`, ff_status: d => `สถานะ: ${d}`,
   ff_avatar: "เปลี่ยนอวตาร", ff_bio: "แก้ไข bio", ff_friendAdd: "เป็นเพื่อนกันแล้ว", ff_friendRemove: "ไม่ได้เป็นเพื่อนแล้ว",
   noFeed: "ยังไม่มีความเคลื่อนไหว — Feed จะบันทึกเมื่อเพื่อนออนไลน์/ย้ายโลก ระหว่างที่เปิดโปรแกรมไว้",
@@ -803,7 +821,7 @@ Object.assign(I18N.en, {
   memo: "Note (stored on this PC)", memoPh: "Write a note about this person…", mins: m => `${m} min`, hours: (h, m) => `${h}h ${m}m`, now: "now",
   friendsCount: (a, b) => `${a} online / ${b} total`, notifCount: n => `${n} items`, visits: n => `${n} worlds`,
   feedFilter: "Show in Feed", ft_online: "Online", ft_offline: "Offline", ft_location: "Location changes", ft_status: "Status changes",
-  ft_avatar: "Avatar changes", ft_bio: "Bio edits", ft_friendAdd: "New friends", ft_friendRemove: "Unfriended",
+  ft_avatar: "Avatar changes", ft_bio: "Bio edits", ft_friendAdd: "New friends", ft_friendRemove: "Unfriended", ff_filter: "Filter",
   ff_online: w => `came online — ${w}`, ff_offline: "went offline", ff_location: w => `went to ${w}`, ff_status: d => `status: ${d}`,
   ff_avatar: "changed avatar", ff_bio: "edited bio", ff_friendAdd: "is now your friend", ff_friendRemove: "is no longer your friend",
   noFeed: "Nothing yet — the feed records friend activity while the app is open",
@@ -838,7 +856,7 @@ Object.assign(I18N.ja, {
   memo: "メモ (このPCに保存)", memoPh: "この人についてメモ…", mins: m => `${m} 分`, hours: (h, m) => `${h} 時間 ${m} 分`, now: "現在",
   friendsCount: (a, b) => `オンライン ${a} / 全 ${b}`, notifCount: n => `${n} 件`, visits: n => `${n} ワールド`,
   feedFilter: "フィードに表示", ft_online: "オンライン", ft_offline: "オフライン", ft_location: "ワールド移動", ft_status: "ステータス変更",
-  ft_avatar: "アバター変更", ft_bio: "自己紹介の編集", ft_friendAdd: "新しいフレンド", ft_friendRemove: "フレンド解除",
+  ft_avatar: "アバター変更", ft_bio: "自己紹介の編集", ft_friendAdd: "新しいフレンド", ft_friendRemove: "フレンド解除", ff_filter: "フィルター",
   ff_online: w => `オンライン — ${w}`, ff_offline: "オフライン", ff_location: w => `${w} へ移動`, ff_status: d => `ステータス: ${d}`,
   ff_avatar: "アバターを変更", ff_bio: "自己紹介を編集", ff_friendAdd: "フレンドになりました", ff_friendRemove: "フレンドではなくなりました",
   noFeed: "まだありません — アプリを開いている間、フレンドの動きを記録します",
@@ -1681,23 +1699,61 @@ function feedText(e) {
     case "online": return t("ff_online", locLabel(d.location));
     case "location": return t("ff_location", locLabel(d.location));
     case "name": return t("ff_name", d.old || "?", d.new || e.name);
+    case "avatar": return t("ff_avatar") + (d.avatar ? ` — ${d.avatar}` : "");
     case "status": return t("ff_status", d.desc || L().st?.[(d.status || "").toLowerCase()] || d.status || "");
     default: return t("ff_" + e.type);
   }
 }
 
+// "Filter" dropdown above the feed: tick any kinds of event, each with how many there are. Same choice as the Feed filter in settings
+let feedMenuOpen = false;
+function feedBarHtml(found) {
+  const n = {};
+  for (const e of found) n[e.type] = (n[e.type] || 0) + 1;
+  const on = FEED_TYPES.filter(k => feedOn[k]);
+  const all = on.length === FEED_TYPES.length;
+  const val = all ? t("all") : on.length === 1 ? t("ft_" + on[0]) : `${on.length}/${FEED_TYPES.length}`;
+  const ck = c => `<span class="ck">${c ? icon("check") : ""}</span>`;
+  return `<div class="ffbar ${feedMenuOpen ? "open" : ""}"><button class="ffbtn" onclick="feedMenuOpen=!feedMenuOpen;this.parentElement.classList.toggle('open',feedMenuOpen)">
+      ${icon("funnel")}${esc(t("ff_filter"))}<span class="v">${esc(val)}</span>${icon("chevron-down")}</button>
+    <div class="ffmenu"><div class="ffrow all" onclick="feedShow()"><span class="l">${esc(t("all"))}</span><span class="n">${found.length}</span>${ck(all)}</div>${FEED_TYPES.map(k => {
+      const [ic, col] = FEED_STYLE[k];
+      return `<div class="ffrow" onclick="feedShow('${k}')"><span class="tile" style="--c:var(--${col})">${icon(ic)}</span><span class="l">${esc(t("ft_" + k))}</span>
+        <span class="n">${n[k] || 0}</span>${ck(!all && feedOn[k])}</div>`;
+    }).join("")}</div></div>`;
+}
+// Only the ticked kinds show; nothing ticked = everything ("All"). So the first tick picks just that kind, and unticking the last one shows all again
+function feedShow(k) {
+  const all = FEED_TYPES.every(x => feedOn[x]);
+  if (!k || (feedOn[k] && !all && FEED_TYPES.every(x => x === k || !feedOn[x]))) FEED_TYPES.forEach(x => feedOn[x] = true);
+  else if (all) FEED_TYPES.forEach(x => feedOn[x] = x === k);
+  else feedOn[k] = !feedOn[k];
+  S.feedEnabled = feedOn;
+  save();
+  if (PAGES.feed) PAGES.feed.p = 0;
+  renderView();
+}
+document.addEventListener("click", e => {  // Clicking anywhere else closes the menu
+  if (feedMenuOpen && !e.target.closest(".ffbar")) { feedMenuOpen = false; document.querySelector(".ffbar")?.classList.remove("open"); }
+});
+
 let feedWorldsAsked = false;
 function renderFeed() {
   const el = $("v_feed");
-  const list = feed.filter(e => feedOn[e.type] && (!query || (e.name || "").toLowerCase().includes(query) || feedText(e).toLowerCase().includes(query)));
-  if (!list.length) return emptyState(el, "activity", AUTH.loggedIn || feed.length ? t("noFeed") : t("needLogin"));
+  const found = feed.filter(e => !query || (e.name || "").toLowerCase().includes(query) || feedText(e).toLowerCase().includes(query));
+  const list = found.filter(e => feedOn[e.type]);
+  if (!feed.length) return emptyState(el, "activity", AUTH.loggedIn ? t("noFeed") : t("needLogin"));
+  if (!list.length) {
+    emptyState(el, "activity", t("noFeed"));
+    return el.insertAdjacentHTML("afterbegin", feedBarHtml(found));
+  }
   if (!feedWorldsAsked) {  // Request world names for the latest feed entries (slowly, within the rate limit)
     feedWorldsAsked = true;
     const wids = [...new Set(feed.slice(-200).map(e => parseLoc(e.d?.location).wid).filter(Boolean))].slice(-30);
     api("worlds", wids);
   }
   const scroll = el.scrollTop;
-  el.innerHTML = "";
+  el.innerHTML = feedBarHtml(found);
   const frag = document.createDocumentFragment();
   const pg = paged("feed", list.slice().reverse(), "feed");
   for (const e of pg.items) {

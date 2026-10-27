@@ -942,7 +942,8 @@ tx({
   g_invited: ["ส่งคำเชิญแล้ว", "Invite sent", "招待を送りました"], g_noAdmin: ["ไม่มีสิทธิ์จัดการส่วนนี้", "No permission for this", "この操作の権限がありません"],
   g_cancelled: ["ยกเลิกคำขอแล้ว", "Request canceled", "申請を取り消しました"],
 });
-const GX = { tab: "info", admin: "requests", gallery: null, memberQ: "", memberOff: 0, memberRole: "", reqBlocked: false, auditType: "", auditOff: 0 };
+const GX = { tab: "info", admin: "requests", gallery: null, memberQ: "", memberOff: 0, memberRole: "", reqBlocked: false, auditType: "", auditOff: 0,
+  memberN: 50, auditN: 50, auditQ: "", auditUser: "", auditBy: "targetIds", sel: [], selRoles: [], note: "", selInput: "" };
 openGroup = async function (g) {
   profileOpen = null; worldOpen = null; avatarOpen = null;
   groupOpen = { ...g };
@@ -964,10 +965,10 @@ const gPerms = () => groupOpen?.myMember?.permissions || [];
 const gCan = (...p) => gPerms().includes("*") || p.some(x => gPerms().includes(x));
 // Sections of the Manage tab and the permission each one needs
 const G_ADMIN = [["requests", "user-plus", "group-members-manage"], ["invites", "send", "group-invites-manage"], ["bans", "ban", "group-bans-manage"],
-  ["roles", "user-cog", "group-roles-manage"], ["audit", "scroll-text", "group-audit-view"], ["edit", "pencil", "group-data-manage"]];
+  ["bulk", "users", ["group-members-manage", "group-members-remove", "group-bans-manage", "group-roles-assign"]], ["roles", "user-cog", "group-roles-manage"], ["audit", "scroll-text", "group-audit-view"], ["edit", "pencil", "group-data-manage"]];
 // "Can manage" = at least one Manage-tab section is available (same rule as the tab itself)
-const G_MANAGE_PERMS = G_ADMIN.map(x => x[2]);
-const gAdminTabs = () => G_ADMIN.filter(([, , perm]) => gCan(perm));
+const G_MANAGE_PERMS = G_ADMIN.flatMap(x => x[2]);
+const gAdminTabs = () => G_ADMIN.filter(([, , perm]) => gCan(...[perm].flat()));
 const gIsAdmin = () => gAdminTabs().length > 0;
 function gTab(tab) { GX.tab = tab; buildGroup(); gLoad(); }
 function gAdminTab(tab) { GX.admin = tab; buildGroup(); gLoad(); }
@@ -980,8 +981,8 @@ function gLoad(force) {
   else if (tab === "posts") loadOp("g_posts", "getGroupPosts", { groupId: gid, n: 30 }, force);
   else if (tab === "instances") loadOp("g_inst", "getGroupInstances", { groupId: gid }, force);
   else if (tab === "members") GX.memberQ
-    ? loadOp("g_mem", "searchGroupMembers", { groupId: gid, query: GX.memberQ, n: 50 }, true)
-    : loadOp("g_mem", "getGroupMembers", { groupId: gid, n: 50, offset: GX.memberOff, sort: "joinedAt:desc", ...(GX.memberRole ? { roleId: GX.memberRole } : {}) }, force);
+    ? loadOp("g_mem", "searchGroupMembers", { groupId: gid, query: GX.memberQ, n: GX.memberN, offset: GX.memberOff }, true)
+    : loadOp("g_mem", "getGroupMembers", { groupId: gid, n: GX.memberN, offset: GX.memberOff, sort: "joinedAt:desc", ...(GX.memberRole ? { roleId: GX.memberRole } : {}) }, force);
   else if (tab === "gallery" && GX.gallery) loadOp("g_gal_" + GX.gallery, "getGroupGalleryImages", { groupId: gid, groupGalleryId: GX.gallery, n: 60 }, force);
   else if (tab === "events") loadOp("g_evt", "getGroupCalendarEvents", { groupId: gid, n: 30 }, force);
   else if (tab === "admin") {
@@ -991,7 +992,7 @@ function gLoad(force) {
     else if (a === "bans") loadOp("g_bans", "getGroupBans", { groupId: gid, n: 100 }, force);
     else if (a === "audit") {
       loadOp("g_auditTypes", "getGroupAuditLogEntryTypes", { groupId: gid });
-      loadOp("g_audit", "getGroupAuditLogs", { groupId: gid, n: 50, offset: GX.auditOff, ...(GX.auditType ? { eventTypes: GX.auditType } : {}) }, force);
+      loadOp("g_audit", "getGroupAuditLogs", { groupId: gid, ...gAuditQuery(), n: GX.auditN, offset: GX.auditOff }, force);
     }
     else if (a === "roles") loadOp("g_perms", "getGroupPermissions", { groupId: gid });
   }
@@ -1075,7 +1076,7 @@ function gBody() {
     const c = CACHE.g_mem, roles = g.roles || [];
     const canKick = gCan("group-members-remove"), canBan = gCan("group-bans-manage"), canRole = gCan("group-roles-assign");
     return `<div class="toolbar"><input class="field grow" id="gmq" placeholder="${t("searchPh")}" value="${escA(GX.memberQ)}"
-        onkeydown="if(event.key==='Enter'){GX.memberQ=this.value.trim();GX.memberOff=0;gLoad(true)}">
+        onkeydown="if(event.key==='Enter'){GX.memberQ=this.value.trim();GX.memberOff=0;buildGroup();gLoad(true)}">
         ${roles.length > 1 && !GX.memberQ ? `<select class="field" style="width:auto" onchange="GX.memberRole=this.value;GX.memberOff=0;buildGroup();gLoad(true)">
           <option value="">${t("g_allRoles")}</option>${roles.map(r => `<option value="${escA(r.id)}" ${GX.memberRole === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select>` : ""}</div>
       ${stateHtml(c) || c.data.map(m => lrow({ uid: m.userId, name: m.user?.displayName || m.userId,
@@ -1084,7 +1085,7 @@ function gBody() {
         acts: (canRole && roles.length ? `<button class="mini-btn" title="${t("g_roles")}" onclick="gRolesDialog('${esc(m.userId)}')">${icon("user-cog")}</button>` : "")
           + (canKick && m.userId !== AUTH.id ? `<button class="mini-btn" title="${t("g_kick")}" onclick="confirmBtn(this,()=>gDo('kickGroupMember',{userId:'${esc(m.userId)}'},'done','g_mem'))">${icon("door-open")}</button>` : "")
           + (canBan && m.userId !== AUTH.id ? `<button class="mini-btn" title="${t("g_ban")}" onclick="confirmBtn(this,()=>gDo('banGroupMember',{userId:'${esc(m.userId)}'},'done','g_mem'))">${icon("ban")}</button>` : "") })).join("")}
-      ${!GX.memberQ && c?.data?.length === 50 ? `<div class="form-actions">${GX.memberOff ? btn("‹", "GX.memberOff-=50;gLoad(true)", "sm") : ""}${btn("›", "GX.memberOff+=50;gLoad(true)", "sm")}</div>` : ""}`;
+      ${gMemberPager(c?.data?.length || 0, !GX.memberQ && !GX.memberRole ? g.memberCount : null)}`;
   }
   if (tab === "gallery") {
     const gals = g.galleries || [], canManage = gCan("group-galleries-manage");
@@ -1117,7 +1118,7 @@ function gAdminBody() {
   const g = groupOpen, allowed = gAdminTabs();
   if (!allowed.some(x => x[0] === GX.admin)) GX.admin = allowed[0]?.[0];
   const a = GX.admin;
-  const TITLE = { requests: "g_requests", invites: "g_invites", bans: "g_bans", roles: "g_roles", audit: "g_audit", edit: "g_edit" };
+  const TITLE = { requests: "g_requests", invites: "g_invites", bans: "g_bans", bulk: "g_bulk", roles: "g_roles", audit: "g_audit", edit: "g_edit" };
   let inner = "", head = "";
   if (a === "requests") {
     const c = CACHE.g_req;
@@ -1147,13 +1148,9 @@ function gAdminBody() {
           : `<button class="mini-btn" title="${t("del")}" onclick="confirmBtn(this,()=>gDo('deleteGroupRole',{groupRoleId:'${esc(r.id)}'},'deleted',null,true))">${icon("trash-2")}</button>`) })
         .replace('<span class="lthumb" ></span>', "")).join("");
   } else if (a === "audit") {
-    const c = CACHE.g_audit, list = c?.data?.results, types = got("g_auditTypes") || [];
-    const more = c?.data?.hasNext ?? list?.length === 50;
-    head = types.length ? `<select class="field sm" onchange="GX.auditType=this.value;GX.auditOff=0;buildGroup();gLoad(true)">
-        <option value="">${t("g_allTypes")}</option>${types.map(x => `<option value="${escA(x)}" ${GX.auditType === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>` : "";
-    inner = (stateHtml(c && { ...c, data: list }) || list.map(l => `<div class="lrow"><div class="info"><div class="nm">${esc(l.description || l.eventType)}</div>
-      <div class="sub">${esc(l.actorDisplayName || "")} · ${fmtIso(l.created_at)} · ${esc(l.eventType)}</div></div></div>`).join(""))
-      + (GX.auditOff || more ? `<div class="form-actions">${GX.auditOff ? btn("‹", "GX.auditOff-=50;gLoad(true)", "sm") : ""}${more ? btn("›", "GX.auditOff+=50;gLoad(true)", "sm") : ""}</div>` : "");
+    [head, inner] = gAuditHtml();
+  } else if (a === "bulk") {
+    inner = gBulkHtml();
   } else if (a === "edit") {
     const ic = GX.newIcon?.url || g.iconUrl, bn = GX.newBanner?.url || g.bannerUrl;
     inner = `${fRow(t("name"), fInput("geName", g.name))}
@@ -3006,6 +3003,8 @@ tx({
   oi_relay_off: ["ปิดอยู่", "Off", "オフ"], oi_relay_waiting: [p => `รอแอปต่อที่พอร์ต ${p}`, p => `Waiting for an app on port ${p}`, p => `ポート ${p} でアプリを待っています`],
   oi_relay_app: [n => `${n || "แอป"} ต่อผ่าน VRC Nook อยู่`, n => `${n || "An app"} is connected through VRC Nook`, n => `${n || "アプリ"} が VRC Nook 経由で接続中`],
   oi_relay_portBusy: [p => `พอร์ต ${p} ถูกโปรแกรมอื่นใช้อยู่ — เปลี่ยนเลขพอร์ต`, p => `Port ${p} is used by another program — pick another`, p => `ポート ${p} は他のプログラムが使用中 — 別の番号に`],
+  oi_toyBatt: ["อ่านแบตจาก Intiface", "Read battery from Intiface", "Intiface からバッテリーを読む"],
+  oi_toyBattHint: ["ถ้า Intiface Central ค้างหลังเปิด ให้ปิดอันนี้ (ยังเห็นชื่ออุปกรณ์และ % แรงสั่น)", "If Intiface Central freezes after turning this on, switch this off (names and vibration % still show)", "Intiface Central が固まる場合はオフに（名前と振動 % は表示されます）"],
   oi_toyAddr: ["ที่อยู่เซิร์ฟเวอร์ Intiface", "Intiface server address", "Intiface サーバーのアドレス"],
   oi_toyAddrHint: ["ค่าเริ่มต้น ws://127.0.0.1:12345", "Default ws://127.0.0.1:12345", "既定 ws://127.0.0.1:12345"],
   oi_toy_off: ["ปิดอยู่", "Off", "オフ"], oi_toy_noIntiface: ["รอเซิร์ฟเวอร์ Intiface…", "Waiting for the Intiface server…", "Intiface サーバーを待っています…"],
@@ -3057,7 +3056,7 @@ const OI_DEF = { on: false, status: true, statuses: [], statusEvery: 60, media: 
   pcLabels: { cpu: "CPU", gpu: "GPU", ram: "RAM", vram: "VRAM", fps: "FPS" },
   pcCpuName: false, pcGpuName: false, pcRamType: false, pcIcon: false, pcLblSup: false, pcUnitSup: false,
   pcIcons: { cpu: "🧠", gpu: "🎮", ram: "💾", vram: "🖼️", fps: "⏱️" },
-  devToy: false, intiface: "ws://127.0.0.1:12345", intifaceRelay: 12346,
+  devToy: false, devToyBatt: true, intiface: "ws://127.0.0.1:12345", intifaceRelay: 12346,
   mediaTime: false, mediaDur: false, mediaBar: false, mediaBarStyle: "line", mediaBarLen: 10, clockTz: false, clockTzSup: false, clockDate: false,
   heart: false, heartFmt: "{bpm}", hrSuffixOn: false, hrSuffix: "bpm", hrSuffixSup: false, hrParams: true, hrSource: "ble", bleAddr: "", bleName: "", pulsoid: "", interval: 3 };
 const oiCfg = () => {
@@ -3111,6 +3110,7 @@ function renderOsc() {
     ${sec("devices", "battery-medium", c.devices, fRow("SteamVR", `<span class="hint-inline" id="oiVr"></span>`, t("oi_devHint"))
       + fRow(t("oi_devHmd"), fCheck("oiDevHmd", c.devHmd)) + fRow(t("oi_devCtrl"), fCheck("oiDevCtrl", c.devCtrl)) + fRow(t("oi_devTrk"), fCheck("oiDevTrk", c.devTrk))
       + fRow("Intiface Central", `<div class="oi-token">${fCheck("oiDevToy", c.devToy)}<span class="hint-inline" id="oiToy"></span></div>`, t("oi_toyHint"))
+      + fRow(t("oi_toyBatt"), fCheck("oiDevToyBatt", c.devToyBatt), t("oi_toyBattHint"))
       + fRow(t("oi_toyAddr"), fInput("oiIntiface", c.intiface, 'spellcheck="false" maxlength="100"'), t("oi_toyAddrHint"))
       + fRow(t("oi_relay"), `<div class="oi-token">${fInput("oiRelay", c.intifaceRelay, 'type="number" min="0" max="65535"')}<span class="hint-inline" id="oiRelaySt"></span></div>`,
         `<span id="oiRelayHint">${t("oi_relayHint", c.intifaceRelay || 12346)}</span>`)
@@ -3252,7 +3252,7 @@ function oiSave() {
     hrSuffixOn: fv("oiHrSuffixOn"), hrSuffix: fv("oiHrSuffix") ?? "bpm", hrSuffixSup: fv("oiHrSuffixSup"),
     devices: fv("oi_devices"), devTrkGroup: fv("oiDevTrkGroup"), devStat: fv("oiDevStat") || "lowest",
     devHmd: fv("oiDevHmd"), devCtrl: fv("oiDevCtrl"), devTrk: fv("oiDevTrk"), devCharging: fv("oiDevCharging"),
-    devToy: fv("oiDevToy"), intiface: (fv("oiIntiface") || "").trim() || OI_DEF.intiface, intifaceRelay: num("oiRelay", OI_DEF.intifaceRelay),
+    devToy: fv("oiDevToy"), devToyBatt: fv("oiDevToyBatt"), intiface: (fv("oiIntiface") || "").trim() || OI_DEF.intiface, intifaceRelay: num("oiRelay", OI_DEF.intifaceRelay),
     devLow: num("oiDevLow", OI_DEF.devLow), devHidden: [...oiHidden()], devOff: [...oiOff()],
     devVibe: fv("oiDevVibe"), devVibeIcon: (fv("oiDevVibeIcon") ?? OI_DEF.devVibeIcon).slice(0, 8),
     devBattIcon: fv("oiDevBattIcon"), devBattSym: (fv("oiDevBattSym") ?? OI_DEF.devBattSym).slice(0, 8), devKindIcon: fv("oiDevKindIcon"),
@@ -4719,3 +4719,382 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .cr-out.warn { color: var(--red); }
 @media (max-width: 760px) { .cr-body { grid-template-columns: 1fr; } }
 </style>`);
+
+// ======================= Group log: search, page size, export / Bulk actions by user ID with a manager note =======================
+// Filters sent to VRChat: the chosen type, and a user (as the one acting or the one acted on) when the search is a usr_ ID
+function gAuditQuery() {
+  return { ...(GX.auditType ? { eventTypes: GX.auditType } : {}), ...(GX.auditUser ? { [GX.auditBy]: GX.auditUser } : {}) };
+}
+// Text search runs over what's loaded (VRChat can't search log text); it looks at the description, who did it, the type and the IDs
+const gAuditMatch = l => !GX.auditQ || [l.description, l.actorDisplayName, l.eventType, l.actorId, l.targetId]
+  .some(v => (v || "").toLowerCase().includes(GX.auditQ.toLowerCase()));
+function gAuditSearch(v) {
+  v = (v || "").trim();
+  const id = v.match(/usr_[\w-]+/)?.[0];
+  Object.assign(GX, id ? { auditUser: id, auditQ: "" } : { auditQ: v });
+  GX.auditOff = 0;
+  buildGroup();
+  if (id) gLoad(true);
+}
+function gAuditUser(id, by) { Object.assign(GX, { auditUser: id || "", auditBy: by || GX.auditBy, auditQ: "", auditOff: 0 }); buildGroup(); gLoad(true); }
+function gAuditHtml() {
+  const c = CACHE.g_audit, all = c?.data?.results, types = got("g_auditTypes") || [];
+  const list = all?.filter(gAuditMatch);
+  const more = c?.data?.hasNext ?? all?.length === GX.auditN;
+  const head = (types.length ? `<select class="field sm" onchange="GX.auditType=this.value;GX.auditOff=0;buildGroup();gLoad(true)">
+      <option value="">${t("g_allTypes")}</option>${types.map(x => `<option value="${escA(x)}" ${GX.auditType === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select>` : "")
+    + `<select class="field sm" onchange="GX.auditN=+this.value;GX.auditOff=0;buildGroup();gLoad(true)">${[25, 50, 100].map(n =>
+      `<option value="${n}" ${GX.auditN === n ? "selected" : ""}>${t("pg_per", n)}</option>`).join("")}</select>`
+    + `<div class="mwrap"><button class="btn sm" onclick="event.stopPropagation();toggleMenu(this)">${icon("download")}${t("g_export")}</button>
+      <div class="menu"><button class="mi" onclick="closeMenus();gAuditExport('csv')">${icon("download")}<span>CSV</span></button>
+        <button class="mi" onclick="closeMenus();gAuditExport('json')">${icon("download")}<span>JSON</span></button></div></div>`;
+  const search = `<div class="toolbar"><input class="field grow" id="gaq" placeholder="${escA(t("g_auditPh"))}" value="${escA(GX.auditQ)}"
+      onkeydown="if(event.key==='Enter')gAuditSearch(this.value)" oninput="if(!this.value&&GX.auditQ)gAuditSearch('')">
+    ${GX.auditUser ? `<span class="gfilter">${icon("funnel")}<select class="field sm" onchange="gAuditUser(GX.auditUser,this.value)">
+        <option value="targetIds" ${GX.auditBy === "targetIds" ? "selected" : ""}>${t("g_byTarget")}</option>
+        <option value="actorIds" ${GX.auditBy === "actorIds" ? "selected" : ""}>${t("g_byActor")}</option></select>
+      <code>${esc(GX.auditUser)}</code><button class="mini-btn" title="${t("clearSearch")}" onclick="gAuditUser('')">${icon("x")}</button></span>` : ""}</div>
+    ${GX.auditQ && all ? `<div class="pcard-note">${t("g_matchN", list.length, all.length)}</div>` : ""}`;
+  const rows = stateHtml(c && { ...c, data: list }) || list.map(l => {
+    const tgt = /^usr_/.test(l.targetId || "") ? l.targetId : "";
+    return `<div class="lrow"><div class="info"><div class="nm">${esc(l.description || l.eventType)}</div>
+      <div class="sub">${esc(l.actorDisplayName || "")} · ${fmtIso(l.created_at)} · ${esc(l.eventType)}</div></div>
+      ${tgt ? `<div class="acts"><button class="mini-btn" title="${t("g_filterUser")}" onclick="gAuditUser('${esc(tgt)}','targetIds')">${icon("funnel")}</button>
+        <button class="mini-btn" title="${t("g_addSel")}" onclick="gSelAdd(['${esc(tgt)}'])">${icon("user-plus")}</button></div>` : ""}</div>`;
+  }).join("");
+  const total = c?.data?.totalCount;
+  const pager = GX.auditOff || more ? `<div class="form-actions">${GX.auditOff ? btn("‹", "GX.auditOff=Math.max(0,GX.auditOff-GX.auditN);gLoad(true)", "sm") : ""}
+    <span class="pcard-note" style="margin:0">${GX.auditOff + 1}–${GX.auditOff + (all?.length || 0)}${total ? " / " + Number(total).toLocaleString() : ""}</span>
+    ${more ? btn("›", "GX.auditOff+=GX.auditN;gLoad(true)", "sm") : ""}</div>` : "";
+  return [head, search + rows + pager];
+}
+// Every entry that matches the current filters (type, user, text), up to 5000, as a CSV or JSON file
+async function gAuditExport(fmt) {
+  const gid = groupOpen?.id, out = [], MAX = 5000;
+  if (!gid) return;
+  for (let off = 0; off < MAX; off += 100) {
+    toast(t("g_exporting", out.length));
+    const r = await vrc("getGroupAuditLogs", { groupId: gid, ...gAuditQuery(), n: 100, offset: off });
+    if ("error" in r) { apiError(r); if (!out.length) return; break; }
+    const page = r.ok?.results || [];
+    out.push(...page);
+    if (!(r.ok?.hasNext ?? page.length === 100)) break;
+    await new Promise(res => setTimeout(res, 400));  // Stay well inside VRChat's rate limit
+  }
+  const rows = out.filter(gAuditMatch);
+  const cols = ["created_at", "eventType", "actorDisplayName", "actorId", "targetId", "description", "data"];
+  const cell = v => { const s = typeof v === "object" && v ? JSON.stringify(v) : String(v ?? ""); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const text = fmt === "csv" ? [cols.join(","), ...rows.map(l => cols.map(k => cell(l[k])).join(","))].join("\r\n") : JSON.stringify(rows, null, 2);
+  const name = `${(groupOpen.shortCode || "group")}_audit_${new Date().toISOString().slice(0, 10)}.${fmt}`;
+  const r = await api("save_text", name, text);
+  if (r?.ok) toast(t("g_exported", rows.length));
+}
+
+// ---------- Bulk actions: a list of users (pasted IDs, the user search, or the log), then roles / note / kick / ban / unban for all of them ----------
+async function gSelAdd(ids) {
+  const fresh = [...new Set(ids)].filter(id => /^usr_[\w-]+$/.test(id) && !GX.sel.some(s => s.id === id));
+  if (!fresh.length) return;
+  GX.sel.push(...fresh.map(id => ({ id, name: id, loading: true })));
+  toast(t("g_added", fresh.length));
+  gBulkRefresh();
+  for (const id of fresh) { await gSelLoad(id); await new Promise(res => setTimeout(res, 250)); }
+}
+// Member info for one selected user: name, roles and manager note (or "not a member", then just the name)
+async function gSelLoad(id) {
+  const s = GX.sel.find(x => x.id === id);
+  if (!s || !groupOpen) return;
+  const r = await vrc("getGroupMember", { groupId: groupOpen.id, userId: id });
+  const m = r.ok && typeof r.ok === "object" && r.ok.membershipStatus === "member" ? r.ok : null;
+  Object.assign(s, m ? { member: true, roles: m.roleIds || [], note: m.managerNotes || "" } : { member: false, roles: [], note: "" });
+  // The member record has no name — take it from the profiles already loaded, or ask for the profile
+  let name = m?.user?.displayName || PROFILES[id]?.displayName;
+  if (!name) name = (await vrc("getUser", { userId: id })).ok?.displayName;
+  s.name = name || s.name;
+  s.loading = false;
+  if (GX.sel.length === 1) GX.note = s.note;
+  gBulkRefresh();
+}
+function gSelRemove(id) { GX.sel = GX.sel.filter(s => s.id !== id); gBulkRefresh(); }
+function gBulkRefresh() {  // Redraw only this section, so text being typed elsewhere on the card stays
+  const box = document.querySelector(".gadm-main .gbulk");
+  if (!box) return;
+  const focus = document.activeElement?.id;
+  box.outerHTML = gBulkHtml();
+  fillSlots(document.querySelector(".gadm-main"));
+  if (focus && $(focus)) $(focus).focus();
+}
+function gBulkHtml() {
+  const roles = (groupOpen.roles || []).filter(r => !r.defaultRole);
+  const canRole = gCan("group-roles-assign") && roles.length, canKick = gCan("group-members-remove"), canBan = gCan("group-bans-manage"),
+    canNote = gCan("group-members-manage");
+  const n = GX.sel.length, none = n ? "" : "disabled";
+  const roleName = id => (groupOpen.roles || []).find(r => r.id === id)?.name || "";
+  const act = (label, ic, op, extra = "", danger) => `<button class="btn sm ${danger ? "danger" : ""}" ${none || extra}
+    onclick="${danger ? `confirmBtn(this,()=>gBulkRun('${op}'))` : `gBulkRun('${op}')`}">${icon(ic)}${label}</button>`;
+  return `<div class="gbulk">
+    <div class="lbl">${t("g_userIds")}</div>
+    <div class="toolbar"><input class="field grow" id="gselIn" placeholder="${escA(t("g_userIdsPh"))}" value="${escA(GX.selInput)}"
+        oninput="GX.selInput=this.value" onkeydown="if(event.key==='Enter')gSelPaste()">
+      ${btn(t("g_addIds"), "gSelPaste()", "sm", "user-plus")}${btn(t("g_pickUser"), "gUserPicker('pick')", "sm", "search")}</div>
+    <div class="lbl">${t("g_selected", n)}${n ? `<button class="mini-btn" title="${t("g_clearSel")}" onclick="GX.sel=[];GX.note='';gBulkRefresh()">${icon("trash-2")}</button>` : ""}</div>
+    ${n ? GX.sel.map(s => lrow({ uid: s.id, name: s.name, onclick: `showProfile('${esc(s.id)}')`,
+        sub: s.loading ? t("loading") : `${s.member ? (s.roles || []).map(r => esc(roleName(r))).filter(Boolean).join(", ") || t("g_member") : t("g_notMember")}${s.note ? ` · ${icon("notebook-pen")}${esc(s.note.slice(0, 60))}` : ""}`,
+        acts: `<button class="mini-btn" title="${t("remove")}" onclick="gSelRemove('${esc(s.id)}')">${icon("x")}</button>` })).join("")
+      : `<div class="empty-state" style="height:60px">${t("g_noneSel")}</div>`}
+    ${canNote ? `<div class="lbl">${t("g_note")}</div><textarea class="field" id="gnote" rows="3" maxlength="1000" placeholder="${escA(t("g_notePh"))}"
+        oninput="GX.note=this.value">${esc(GX.note)}</textarea>${n > 1 ? `<div class="pcard-note">${t("g_noteMulti")}</div>` : ""}` : ""}
+    ${canRole ? `<div class="lbl">${t("g_selRoles")}</div><div class="langpick">${roles.map(r =>
+        `<button type="button" class="chip lang ${GX.selRoles.includes(r.id) ? "on" : ""}" onclick="gSelRole('${esc(r.id)}')">${esc(r.name)}</button>`).join("")}</div>` : ""}
+    <div class="lbl">${t("g_actions")}</div>
+    <div class="form-actions" style="justify-content:flex-start;flex-wrap:wrap">
+      ${canRole ? act(t("g_addRoles"), "user-plus", "addRoles", GX.selRoles.length ? "" : "disabled") + act(t("g_removeRoles"), "user-minus", "removeRoles", GX.selRoles.length ? "" : "disabled") : ""}
+      ${canNote ? act(t("g_saveNote"), "notebook-pen", "note") : ""}
+      ${canKick ? act(t("g_kick"), "door-open", "kick", "", true) : ""}
+      ${canBan ? act(t("g_ban"), "ban", "ban", "", true) + act(t("g_unban"), "user-check", "unban") : ""}</div></div>`;
+}
+function gSelPaste() {
+  const ids = GX.selInput.match(/usr_[\w-]+/g) || [];
+  if (!ids.length) return toast(t("g_noIds"));
+  GX.selInput = "";
+  if ($("gselIn")) $("gselIn").value = "";
+  gSelAdd(ids);
+}
+function gSelRole(id) { GX.selRoles = GX.selRoles.includes(id) ? GX.selRoles.filter(x => x !== id) : [...GX.selRoles, id]; gBulkRefresh(); }
+// One action for every selected user, one at a time; then a count of what worked and fresh info for each (never on yourself, except a note)
+async function gBulkRun(kind) {
+  const gid = groupOpen?.id, users = GX.sel.filter(s => s.id !== AUTH.id || kind === "note");
+  if (!gid || !users.length) return;
+  const calls = [];
+  for (const s of users) {
+    if (kind === "addRoles" || kind === "removeRoles")
+      for (const rid of GX.selRoles) calls.push([kind === "addRoles" ? "addGroupMemberRole" : "removeGroupMemberRole", { userId: s.id, groupRoleId: rid }]);
+    else if (kind === "note") calls.push(["updateGroupMember", { userId: s.id, managerNotes: GX.note }]);
+    else calls.push([{ kick: "kickGroupMember", ban: "banGroupMember", unban: "unbanGroupMember" }[kind], { userId: s.id }]);
+  }
+  let ok = 0, fail = 0;
+  for (const [op, p] of calls) {
+    const r = await vrc(op, { groupId: gid, ...p });
+    "error" in r ? fail++ : ok++;
+    await new Promise(res => setTimeout(res, 300));
+  }
+  toast(t("g_bulkDone", ok, fail));
+  ["g_mem", "g_bans", "g_audit"].forEach(k => delete CACHE[k]);
+  users.forEach(s => s.loading = true);
+  gBulkRefresh();
+  for (const s of users) { await gSelLoad(s.id); await new Promise(res => setTimeout(res, 250)); }
+}
+// Members tab: page buttons, "page X of Y" (when the total is known: all members, no search or role filter) and how many per page
+function gMemberPager(shown, total) {
+  const n = GX.memberN, page = Math.floor(GX.memberOff / n) + 1, pages = total ? Math.max(1, Math.ceil(total / n)) : null;
+  const more = shown === n && (!pages || page < pages);
+  if (!GX.memberOff && !more && shown < 25) return "";
+  const go = d => `GX.memberOff=Math.max(0,GX.memberOff+(${d})*GX.memberN);gLoad(true);$('gBody').scrollIntoView({block:'start'})`;
+  return `<div class="form-actions gmp-pager">
+    <button class="btn sm" ${GX.memberOff ? "" : "disabled"} onclick="${go(-1)}">${icon("chevron-left")}</button>
+    <span class="pcard-note" style="margin:0">${pages ? t("g_pageOf", page, pages) : page}</span>
+    <button class="btn sm" ${more ? "" : "disabled"} onclick="${go(1)}">${icon("chevron-right")}</button>
+    <select class="field sm" style="width:auto" onchange="GX.memberN=+this.value;GX.memberOff=0;gLoad(true)">${[25, 50, 100].map(x =>
+      `<option value="${x}" ${x === n ? "selected" : ""}>${t("pg_per", x)}</option>`).join("")}</select></div>`;
+}
+// Ban / "Select user": the group's members as a list, filtered as you type and split into pages; "All users" searches VRChat
+// for people who aren't members (they can be banned too). Only the list redraws, so typing isn't interrupted
+{
+  const pickerBase = gUserPicker;
+  gUserPicker = function (mode) {
+    if (mode !== "ban" && mode !== "pick") return pickerBase(mode);
+    const N = 25;
+    const st = { scope: "members", q: "", off: 0, res: null, busy: false, err: false, seq: 0, timer: 0 };
+    const load = async () => {
+      const seq = ++st.seq, gid = groupOpen?.id;
+      if (!gid) return;
+      st.busy = true; draw();
+      const id = st.q.match(/usr_[\w-]+/)?.[0];
+      let r;
+      if (id) r = { ok: [{ userId: id, user: { displayName: PROFILES[id]?.displayName || id } }] };
+      else if (st.scope === "all") r = st.q ? await vrc("searchUsers", { search: st.q, n: N, offset: st.off }) : { ok: [] };
+      else r = st.q ? await vrc("searchGroupMembers", { groupId: gid, query: st.q, n: N, offset: st.off })
+        : await vrc("getGroupMembers", { groupId: gid, n: N, offset: st.off, sort: "joinedAt:desc" });
+      if (seq !== st.seq) return;  // A newer search started meanwhile
+      st.busy = false; st.err = "error" in r;
+      const list = Array.isArray(r.ok) ? r.ok : r.ok?.results || [];
+      // Members come as {userId, user, roleIds}; VRChat users as {id, displayName}
+      st.res = list.map(x => x.userId ? { id: x.userId, name: x.user?.displayName || x.userId, roles: x.roleIds || [], joined: x.joinedAt }
+        : { id: x.id, name: x.displayName || x.id });
+      draw();
+    };
+    const roleNames = ids => (ids || []).map(r => (groupOpen.roles || []).find(x => x.id === r && !x.defaultRole)?.name).filter(Boolean).join(", ");
+    const row = u => lrow({ uid: u.id, name: u.name, onclick: `showProfile('${esc(u.id)}')`,
+      sub: [roleNames(u.roles), u.joined ? t("g_joined", fmtIso(u.joined, true)) : ""].filter(Boolean).join(" · "),
+      acts: u.id === AUTH.id ? "" : mode === "ban"
+        ? `<button class="btn sm danger" onclick="confirmBtn(this,()=>gDo('banGroupMember',{userId:'${esc(u.id)}'},'done','g_bans'))">${icon("ban")}${t("g_ban")}</button>`
+        : GX.sel.some(s => s.id === u.id) ? `<span class="pcard-note" style="margin:0">${icon("check")}</span>`
+        : btn(t("g_addIds"), `gSelAdd(['${esc(u.id)}']).then(()=>_gmpDraw())`, "primary sm", "user-plus") });
+    const draw = () => {
+      const box = $("gmpList");
+      if (!box) return;
+      const total = st.scope === "members" && !st.q ? groupOpen.memberCount : null;
+      const pages = total ? Math.max(1, Math.ceil(total / N)) : null, page = Math.floor(st.off / N) + 1;
+      const more = st.res?.length === N && (!pages || page < pages);
+      box.innerHTML = (st.busy && !st.res ? `<div class="empty-state" style="height:80px">${t("loading")}</div>`
+        : st.scope === "all" && !st.q ? `<div class="empty-state" style="height:80px">${t("g_allUsersHint")}</div>`
+        : st.err ? `<div class="empty-state" style="height:80px">${t("errGeneric")}</div>`
+        : !st.res?.length ? `<div class="empty-state" style="height:80px">${t("noResults")}</div>`
+        : `<div class="gmp-rows ${st.busy ? "busy" : ""}">${st.res.map(row).join("")}</div>`)
+        + (st.off || more ? `<div class="form-actions gmp-pager">
+            <button class="btn sm" ${st.off ? "" : "disabled"} onclick="_gmpPage(-1)">${icon("chevron-left")}</button>
+            <span class="pcard-note" style="margin:0">${pages ? t("g_pageOf", page, pages) : page}</span>
+            <button class="btn sm" ${more ? "" : "disabled"} onclick="_gmpPage(1)">${icon("chevron-right")}</button></div>` : "");
+      fillSlots(box);
+    };
+    window._gmpDraw = draw;
+    window._gmpPage = d => { st.off = Math.max(0, st.off + d * N); load(); };
+    window._gmpScope = s => { st.scope = s; st.off = 0; st.res = null;
+      document.querySelectorAll(".gmp-scope button").forEach(b => b.classList.toggle("on", b.dataset.s === s)); load(); };
+    window._gmpType = v => { st.q = v.trim(); st.off = 0; clearTimeout(st.timer); st.timer = setTimeout(load, 350); };
+    openX(t(mode === "ban" ? "g_banUser" : "g_pickUser"), () => `<div class="toolbar" style="margin-bottom:8px">
+        <input class="field grow" id="gupq" placeholder="${t("g_userPh")}" autocomplete="off" oninput="_gmpType(this.value)">
+        <div class="segmented sm gmp-scope"><button data-s="members" class="on" onclick="_gmpScope('members')">${t("g_members")}</button>
+          <button data-s="all" onclick="_gmpScope('all')">${t("g_allUsers")}</button></div></div>
+      <div id="gmpList"></div>`,
+    () => { $("gupq").focus(); });
+    load();
+  };
+}
+document.head.insertAdjacentHTML("beforeend", `<style>
+.gmp-rows { max-height: min(52vh, 460px); overflow-y: auto; }
+.gmp-rows.busy { opacity: .55; }
+.gmp-pager { justify-content: center; align-items: center; gap: 10px; }
+.gmp-pager .btn svg { width: 14px; height: 14px; }
+</style>`);
+tx({
+  g_allUsers: ["ผู้ใช้ทั้งหมด", "All users", "全ユーザー"],
+  g_allUsersHint: ["พิมพ์ชื่อเพื่อค้นหาผู้ใช้ทุกคนใน VRChat (รวมคนที่ไม่ได้อยู่ในกลุ่ม)", "Type a name to search everyone on VRChat (including people outside the group)", "名前を入力して VRChat の全ユーザーを検索（グループ外の人も）"],
+  g_pageOf: [(p, n) => `หน้า ${p} / ${n}`, (p, n) => `Page ${p} of ${n}`, (p, n) => `${p} / ${n} ページ`],
+});
+Object.assign(UPD_I18N.ko, { g_allUsers: "모든 사용자", g_allUsersHint: "이름을 입력해 VRChat 전체 사용자 검색 (그룹 밖 사람 포함)", g_pageOf: (p, n) => `${p} / ${n} 페이지` });
+Object.assign(UPD_I18N.ru, { g_allUsers: "Все пользователи", g_allUsersHint: "Введите имя для поиска по всем в VRChat (включая тех, кто не в группе)", g_pageOf: (p, n) => `Стр. ${p} из ${n}` });
+Object.assign(UPD_I18N.vi, { g_allUsers: "Mọi người dùng", g_allUsersHint: "Nhập tên để tìm mọi người trên VRChat (kể cả người ngoài nhóm)", g_pageOf: (p, n) => `Trang ${p} / ${n}` });
+Object.assign(UPD_I18N.zh, { g_allUsers: "所有用户", g_allUsersHint: "输入名称搜索 VRChat 上的所有人（包括群组外的人）", g_pageOf: (p, n) => `第 ${p} / ${n} 页` });
+document.head.insertAdjacentHTML("beforeend", `<style>
+.gfilter { display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px 2px 8px; border-radius: 99px; background: var(--track); font-size: 12px; }
+.gfilter > svg { width: 13px; height: 13px; color: var(--accent); }
+.gfilter .field.sm { width: auto; padding: 2px 6px; }
+.gfilter code { font-family: var(--mono); font-size: 11px; color: var(--text2); max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gbulk .lbl { display: flex; align-items: center; gap: 6px; margin: 14px 0 6px; font-size: 12px; font-weight: 600; color: var(--text2); }
+.gbulk .lbl:first-child { margin-top: 0; }
+.gbulk .sub svg { width: 11px; height: 11px; vertical-align: -1px; margin-right: 2px; }
+.gbulk textarea { width: 100%; resize: vertical; }
+</style>`);
+tx({
+  g_bulk: ["จัดการหลายคน", "Bulk actions", "一括操作"],
+  g_auditPh: ["ค้นหาใน log (ชื่อ คำอธิบาย ประเภท) หรือใส่ usr_… เพื่อค้นจาก VRChat", "Search the log (name, description, type), or usr_… to search VRChat", "ログを検索（名前・説明・種類）、または usr_… で VRChat を検索"],
+  g_byTarget: ["ผู้ถูกกระทำ", "Target", "対象"], g_byActor: ["ผู้กระทำ", "Actor", "実行者"],
+  g_filterUser: ["ดู log ของผู้ใช้นี้", "Show this user's log", "このユーザーのログ"], g_addSel: ["เพิ่มในจัดการหลายคน", "Add to bulk actions", "一括操作に追加"],
+  g_added: [n => `เพิ่มในจัดการหลายคน ${n} คน`, n => `Added ${n} to bulk actions`, n => `一括操作に ${n} 人追加`],
+  g_matchN: [(n, m) => `ตรง ${n} จาก ${m} รายการที่โหลดมา`, (n, m) => `${n} of ${m} loaded entries match`, (n, m) => `読み込んだ ${m} 件中 ${n} 件が一致`],
+  g_export: ["ส่งออก", "Export", "エクスポート"],
+  g_exporting: [n => `กำลังโหลด log… ${n}`, n => `Loading the log… ${n}`, n => `ログを読み込み中… ${n}`],
+  g_exported: [n => `ส่งออกแล้ว ${n} รายการ`, n => `Exported ${n} entries`, n => `${n} 件をエクスポートしました`],
+  g_userIds: ["User ID", "User ID", "ユーザー ID"],
+  g_userIdsPh: ["วาง usr_… ได้หลายอัน (ลิงก์หรือข้อความที่มี ID ก็ได้)", "Paste one or more usr_… (links or any text with IDs work too)", "usr_… を複数貼り付け（リンクや ID を含む文章でも可）"],
+  g_addIds: ["เพิ่ม", "Add", "追加"], g_pickUser: ["เลือกผู้ใช้", "Select user", "ユーザーを選択"],
+  g_noIds: ["ไม่พบ usr_… ในข้อความ", "No usr_… found in that text", "usr_… が見つかりません"],
+  g_selected: [n => `ผู้ใช้ที่เลือก (${n})`, n => `Selected users (${n})`, n => `選択したユーザー (${n})`],
+  g_clearSel: ["ล้างรายการ", "Clear list", "リストをクリア"], g_noneSel: ["ยังไม่ได้เลือกผู้ใช้", "No users selected", "ユーザーが選択されていません"],
+  g_member: ["สมาชิก", "Member", "メンバー"], g_notMember: ["ไม่ได้เป็นสมาชิก", "Not a member", "メンバーではありません"],
+  g_note: ["โน้ตผู้ดูแล", "Manager note", "管理メモ"], g_notePh: ["เห็นเฉพาะผู้ดูแลกลุ่ม", "Only group managers can see this", "グループ管理者のみ表示されます"],
+  g_noteMulti: ["บันทึกโน้ตนี้ให้ทุกคนที่เลือก (แทนที่โน้ตเดิม)", "Saves this note for everyone selected (replacing their note)", "選択した全員にこのメモを保存します（既存のメモは置き換え）"],
+  g_selRoles: ["บทบาท", "Roles", "ロール"], g_actions: ["การดำเนินการ", "Actions", "操作"],
+  g_addRoles: ["เพิ่มบทบาท", "Add roles", "ロールを追加"], g_removeRoles: ["ลบบทบาท", "Remove roles", "ロールを削除"], g_saveNote: ["บันทึกโน้ต", "Save note", "メモを保存"],
+  g_bulkDone: [(ok, f) => `สำเร็จ ${ok}${f ? ` · ไม่สำเร็จ ${f}` : ""}`, (ok, f) => `Done ${ok}${f ? ` · failed ${f}` : ""}`, (ok, f) => `成功 ${ok}${f ? ` · 失敗 ${f}` : ""}`],
+});
+Object.assign(UPD_I18N.ko, { g_bulk: "일괄 작업", g_auditPh: "로그 검색(이름, 설명, 유형) 또는 usr_… 로 VRChat 검색", g_byTarget: "대상", g_byActor: "실행자",
+  g_filterUser: "이 사용자의 로그", g_addSel: "일괄 작업에 추가", g_added: n => `일괄 작업에 ${n}명 추가`, g_matchN: (n, m) => `불러온 ${m}개 중 ${n}개 일치`,
+  g_export: "내보내기", g_exporting: n => `로그 불러오는 중… ${n}`, g_exported: n => `${n}개 내보냄`, g_userIds: "사용자 ID",
+  g_userIdsPh: "usr_… 를 여러 개 붙여넣기 (링크나 ID가 든 글도 가능)", g_addIds: "추가", g_pickUser: "사용자 선택", g_noIds: "usr_… 를 찾지 못했습니다",
+  g_selected: n => `선택한 사용자 (${n})`, g_clearSel: "목록 지우기", g_noneSel: "선택한 사용자가 없습니다", g_member: "멤버", g_notMember: "멤버 아님",
+  g_note: "관리자 메모", g_notePh: "그룹 관리자만 볼 수 있습니다", g_noteMulti: "선택한 모두에게 이 메모를 저장합니다 (기존 메모 대체)",
+  g_selRoles: "역할", g_actions: "작업", g_addRoles: "역할 추가", g_removeRoles: "역할 제거", g_saveNote: "메모 저장",
+  g_bulkDone: (ok, f) => `성공 ${ok}${f ? ` · 실패 ${f}` : ""}` });
+Object.assign(UPD_I18N.ru, { g_bulk: "Массовые действия", g_auditPh: "Поиск по журналу (имя, описание, тип) или usr_… для поиска в VRChat", g_byTarget: "Цель", g_byActor: "Кто сделал",
+  g_filterUser: "Журнал этого пользователя", g_addSel: "Добавить в массовые действия", g_added: n => `Добавлено: ${n}`, g_matchN: (n, m) => `Совпадает ${n} из ${m} загруженных`,
+  g_export: "Экспорт", g_exporting: n => `Загрузка журнала… ${n}`, g_exported: n => `Экспортировано: ${n}`, g_userIds: "ID пользователей",
+  g_userIdsPh: "Вставьте один или несколько usr_… (подойдут ссылки и любой текст с ID)", g_addIds: "Добавить", g_pickUser: "Выбрать пользователя", g_noIds: "usr_… не найдено",
+  g_selected: n => `Выбрано (${n})`, g_clearSel: "Очистить список", g_noneSel: "Никто не выбран", g_member: "Участник", g_notMember: "Не участник",
+  g_note: "Заметка модератора", g_notePh: "Видна только менеджерам группы", g_noteMulti: "Сохранит эту заметку всем выбранным (заменит прежнюю)",
+  g_selRoles: "Роли", g_actions: "Действия", g_addRoles: "Добавить роли", g_removeRoles: "Убрать роли", g_saveNote: "Сохранить заметку",
+  g_bulkDone: (ok, f) => `Готово ${ok}${f ? ` · ошибок ${f}` : ""}` });
+Object.assign(UPD_I18N.vi, { g_bulk: "Thao tác hàng loạt", g_auditPh: "Tìm trong nhật ký (tên, mô tả, loại) hoặc usr_… để tìm trên VRChat", g_byTarget: "Đối tượng", g_byActor: "Người thực hiện",
+  g_filterUser: "Nhật ký của người này", g_addSel: "Thêm vào thao tác hàng loạt", g_added: n => `Đã thêm ${n} người`, g_matchN: (n, m) => `${n} / ${m} mục đã tải khớp`,
+  g_export: "Xuất", g_exporting: n => `Đang tải nhật ký… ${n}`, g_exported: n => `Đã xuất ${n} mục`, g_userIds: "User ID",
+  g_userIdsPh: "Dán một hoặc nhiều usr_… (liên kết hay văn bản có ID đều được)", g_addIds: "Thêm", g_pickUser: "Chọn người dùng", g_noIds: "Không tìm thấy usr_…",
+  g_selected: n => `Đã chọn (${n})`, g_clearSel: "Xóa danh sách", g_noneSel: "Chưa chọn ai", g_member: "Thành viên", g_notMember: "Không phải thành viên",
+  g_note: "Ghi chú quản lý", g_notePh: "Chỉ quản lý nhóm thấy được", g_noteMulti: "Lưu ghi chú này cho mọi người đã chọn (thay ghi chú cũ)",
+  g_selRoles: "Vai trò", g_actions: "Thao tác", g_addRoles: "Thêm vai trò", g_removeRoles: "Gỡ vai trò", g_saveNote: "Lưu ghi chú",
+  g_bulkDone: (ok, f) => `Thành công ${ok}${f ? ` · thất bại ${f}` : ""}` });
+Object.assign(UPD_I18N.zh, { g_bulk: "批量操作", g_auditPh: "搜索日志（名称、描述、类型），或输入 usr_… 在 VRChat 中搜索", g_byTarget: "对象", g_byActor: "执行者",
+  g_filterUser: "查看此用户的日志", g_addSel: "加入批量操作", g_added: n => `已加入 ${n} 人`, g_matchN: (n, m) => `已加载的 ${m} 条中有 ${n} 条匹配`,
+  g_export: "导出", g_exporting: n => `正在加载日志… ${n}`, g_exported: n => `已导出 ${n} 条`, g_userIds: "用户 ID",
+  g_userIdsPh: "粘贴一个或多个 usr_…（链接或含 ID 的文字也可以）", g_addIds: "添加", g_pickUser: "选择用户", g_noIds: "未找到 usr_…",
+  g_selected: n => `已选用户 (${n})`, g_clearSel: "清空列表", g_noneSel: "尚未选择用户", g_member: "成员", g_notMember: "不是成员",
+  g_note: "管理员备注", g_notePh: "仅群组管理员可见", g_noteMulti: "将此备注保存给所有已选用户（覆盖原备注）",
+  g_selRoles: "角色", g_actions: "操作", g_addRoles: "添加角色", g_removeRoles: "移除角色", g_saveNote: "保存备注",
+  g_bulkDone: (ok, f) => `成功 ${ok}${f ? ` · 失败 ${f}` : ""}` });
+
+// ======================= Right-click menu for text boxes (WebView2's own menu is off outside debug mode) =======================
+// Text boxes get undo / cut / copy / paste / delete / select all; selected text elsewhere on the page gets copy
+const CM_FIELD = 'textarea, [contenteditable=""], [contenteditable="true"], input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=button]):not([type=submit]):not([type=hidden])';
+function cmSelected(el) {
+  if (!el) return String(getSelection());
+  if (el.isContentEditable) return String(getSelection());
+  try { return el.value.slice(el.selectionStart, el.selectionEnd); } catch { return ""; }  // number inputs have no selection
+}
+async function cmDo(act) {
+  const el = window._cmEl;
+  closeMenus();
+  if (act === "copy") return api("copy", window._cmText);
+  if (!el) return;
+  el.focus();
+  if (act === "cut") { api("copy", cmSelected(el)); document.execCommand("delete"); }
+  else if (act === "paste") { const text = await api("paste_text"); if (text) { el.focus(); document.execCommand("insertText", false, text); } }
+  else if (act === "selectAll") el.select ? el.select() : document.execCommand("selectAll");
+  else document.execCommand(act);  // undo / redo / delete — through the browser so Ctrl+Z still works afterwards
+}
+document.addEventListener("contextmenu", e => {
+  const el = e.target.closest?.(CM_FIELD);
+  const text = cmSelected(el);
+  if (!el && !text.trim()) return;  // Nothing to offer here
+  e.preventDefault();
+  closeMenus();
+  const ro = el && (el.readOnly || el.disabled), has = !!text, empty = el && !el.isContentEditable && !el.value;
+  window._cmEl = el; window._cmText = text;
+  const item = (act, ic, key, keys, off) => `<button class="mi" ${off ? "disabled" : ""} onclick="cmDo('${act}')">${icon(ic)}<span>${t(key)}</span><kbd>${keys}</kbd></button>`;
+  const m = document.createElement("div");
+  m.className = "menu floating open mwrap cmenu";
+  m.innerHTML = el ? item("undo", "undo-2", "cm_undo", "Ctrl+Z", ro) + item("redo", "redo-2", "cm_redo", "Ctrl+Y", ro) + `<div class="msep"></div>`
+      + item("cut", "scissors", "cm_cut", "Ctrl+X", ro || !has) + item("copy", "copy", "cm_copy", "Ctrl+C", !has)
+      + item("paste", "clipboard-paste", "cm_paste", "Ctrl+V", ro) + item("delete", "trash-2", "cm_delete", "Del", ro || !has) + `<div class="msep"></div>`
+      + item("selectAll", "text-select", "cm_selectAll", "Ctrl+A", empty)
+    : item("copy", "copy", "cm_copy", "Ctrl+C", false);
+  m.onmousedown = ev => ev.preventDefault();  // Keep the text box's focus and selection
+  document.body.append(m);
+  const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--z")) || 1;
+  const W = innerWidth / z, H = innerHeight / z, x = e.clientX / z, y = e.clientY / z;
+  m.style.left = Math.max(8, Math.min(W - m.offsetWidth - 8, x)) + "px";
+  m.style.top = Math.max(8, y + m.offsetHeight > H - 8 ? y - m.offsetHeight : y) + "px";
+});
+addEventListener("keydown", e => { if (e.key === "Escape" && document.querySelector(".cmenu")) closeMenus(); }, true);
+document.head.insertAdjacentHTML("beforeend", `<style>
+.cmenu { min-width: 200px; }
+.cmenu .mi:disabled { opacity: .38; pointer-events: none; }
+.cmenu .mi kbd { margin-left: auto; padding-left: 16px; font: 11px var(--font); color: var(--text3); }
+.cmenu .msep { height: 1px; margin: 4px 6px; background: var(--sep); }
+</style>`);
+tx({
+  cm_undo: ["เลิกทำ", "Undo", "元に戻す"], cm_redo: ["ทำซ้ำ", "Redo", "やり直し"], cm_cut: ["ตัด", "Cut", "切り取り"], cm_copy: ["คัดลอก", "Copy", "コピー"],
+  cm_paste: ["วาง", "Paste", "貼り付け"], cm_delete: ["ลบ", "Delete", "削除"], cm_selectAll: ["เลือกทั้งหมด", "Select all", "すべて選択"],
+});
+Object.assign(UPD_I18N.ko, { cm_undo: "실행 취소", cm_redo: "다시 실행", cm_cut: "잘라내기", cm_copy: "복사", cm_paste: "붙여넣기", cm_delete: "삭제", cm_selectAll: "모두 선택" });
+Object.assign(UPD_I18N.ru, { cm_undo: "Отменить", cm_redo: "Повторить", cm_cut: "Вырезать", cm_copy: "Копировать", cm_paste: "Вставить", cm_delete: "Удалить", cm_selectAll: "Выделить всё" });
+Object.assign(UPD_I18N.vi, { cm_undo: "Hoàn tác", cm_redo: "Làm lại", cm_cut: "Cắt", cm_copy: "Sao chép", cm_paste: "Dán", cm_delete: "Xóa", cm_selectAll: "Chọn tất cả" });
+Object.assign(UPD_I18N.zh, { cm_undo: "撤销", cm_redo: "重做", cm_cut: "剪切", cm_copy: "复制", cm_paste: "粘贴", cm_delete: "删除", cm_selectAll: "全选" });
