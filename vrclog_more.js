@@ -188,9 +188,9 @@ select.field option { background: var(--sheet); color: var(--text); }
 .btn svg { width: 13px; height: 13px; }
 .btn.sm { padding: 3px 11px; font-size: 11.5px; }
 .btn:disabled { opacity: .5; }
-.segmented.scroll-x { overflow-x: auto; scrollbar-width: none; max-width: 100%; }
-.segmented.scroll-x::-webkit-scrollbar { display: none; }
-.segmented.scroll-x button { flex: 0 0 auto; }
+/* Tabs that don't fit wrap onto another row: a hidden sideways scroll left them unreachable with a mouse wheel */
+.segmented.scroll-x { flex-wrap: wrap; max-width: 100%; }
+.segmented.scroll-x button { flex: 1 0 auto; }
 .lrow { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--sep); min-width: 0; }
 .lrow + .lrow { margin-top: 6px; }
 .lrow[onclick] { cursor: pointer; }
@@ -3579,15 +3579,16 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .oi-lay { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px; margin-bottom: 12px; border-radius: 12px;
           border: 1px dashed var(--sep); min-height: 40px; }
 .oi-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px 0 6px; border-radius: 10px; background: var(--card);
-           border: 1px solid var(--sep); font-size: 12.5px; cursor: grab; touch-action: none; user-select: none; }
+           border: 1px solid var(--sep); font-size: 12.5px; cursor: grab; touch-action: none; user-select: none; max-width: 100%; box-sizing: border-box; }
+.oi-chip > * { flex-shrink: 0; }  /* A long text chip shrinks its box instead of running past the edge (and hiding its × button) */
 .oi-chip.drag { cursor: grabbing; opacity: .6; box-shadow: var(--shadow); }
 .oi-chip.off { opacity: .45; }
 .oi-chip svg { width: 13px; height: 13px; }
 .oi-chip.br, .oi-chip.sep { background: var(--track); padding: 0 4px 0 8px; color: var(--text2); }
 .oi-chip.text { padding: 0 4px 0 8px; color: var(--text2); border-style: dashed; }
-.oi-chip.text input { border: none; background: none; color: var(--text); font: 13px var(--font); padding: 0; outline: none; min-width: 6ch; }
+.oi-chip.text input { border: none; background: none; color: var(--text); font: 13px var(--font); padding: 0; outline: none; min-width: 6ch; flex: 0 1 auto; text-overflow: ellipsis; }
 .oi-chip.text input::placeholder { color: var(--text3); }
-.oi-chip.sep input { border: none; background: none; color: var(--text); font: 600 13px var(--mono); text-align: center; padding: 0; outline: none; min-width: 1.5ch; }
+.oi-chip.sep input { border: none; background: none; color: var(--text); font: 600 13px var(--mono); text-align: center; padding: 0; outline: none; min-width: 1.5ch; flex: 0 1 auto; }
 .oi-break { flex-basis: 100%; height: 0; }
 .oi-emo { width: 24px; height: 24px; border: none; border-radius: 7px; background: var(--track); font-size: 15px; line-height: 1; padding: 0;
           display: grid; place-items: center; cursor: pointer; color: var(--text2); }
