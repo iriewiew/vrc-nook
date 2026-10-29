@@ -715,6 +715,7 @@ async function closeInstance(loc) {
   if ((await vrcDo("closeInstance", { location: loc }, "w_closed")) !== undefined) { delete WX[loc]; loadWorldExtra(worldOpen, loc); }
 }
 function createInstanceDialog(wid) {
+  CI.sel = new Set(); CI.q = "";
   if (!GRP.mine && !GRP.loading) loadGroups().then(() => X && buildX());
   loadOp("ci_cats", "getInstanceCategories");
   openX(t("w_newInstance"), () => {
@@ -728,13 +729,88 @@ function createInstanceDialog(wid) {
       </div>
       ${fRow(t("w_ageGate"), fCheck("ciAge", false))}
       ${fRow(t("ci_name"), fInput("ciName", "", `placeholder="${t("optional")}"`))}
-      <div class="form-actions">${btn(t("create"), `doCreateInstance('${wid}')`, "primary", "circle-plus")}</div>`;
+      ${fRow(t("ci_me"), fCheck("ciMe", S.ciMe !== false), t("ci_meHint"))}
+      <div class="ci-inv-head">${icon("send")}<span>${t("ci_invite")}</span><span class="grow"></span><span id="ciInvN" class="hint-inline"></span></div>
+      <div id="ciInv"></div>
+      <div class="form-actions" id="ciGo"></div>`;
   }, () => {
     const sync = () => { $("ciGroup").style.display = $("ciType").value === "group" ? "" : "none"; };
     $("ciType").onchange = sync;
     sync();
+    ciInvUi(wid);
   });
 }
+// ---------- Friends to invite once the instance is made ----------
+// Online friends first (favorites at the top), then the rest; tick as many as you like
+const CI = { sel: new Set(), q: "", wid: "" };
+function ciInvUi(wid, focus) {
+  const el = $("ciInv");
+  if (!el) return;
+  if (wid) CI.wid = wid;
+  const q = CI.q.trim().toLowerCase(), on = f => f.state === "online";
+  const list = Object.values(FRIENDS).filter(f => !q || (f.displayName || "").toLowerCase().includes(q))
+    .sort((a, b) => (+on(b) - +on(a)) || (+!!favRecord("friend", b.id) - +!!favRecord("friend", a.id)) || (a.displayName || "").localeCompare(b.displayName || ""))
+    .slice(0, 150);
+  const scroll = el.querySelector(".ci-list")?.scrollTop || 0;
+  const chips = [...CI.sel].map(uid => `<span class="ci-chip">${esc(FRIENDS[uid]?.displayName || PROFILES[uid]?.displayName || uid)}<button onclick="ciPick('${esc(uid)}')">${icon("x")}</button></span>`).join("");
+  el.innerHTML = `${chips ? `<div class="ci-chips">${chips}</div>` : ""}
+    <input class="field" id="ciInvQ" placeholder="${escA(t("ci_find"))}" value="${escA(CI.q)}">
+    <div class="ci-list">${list.map(f => lrow({ uid: f.id, name: (favRecord("friend", f.id) ? "★ " : "") + (f.displayName || PROFILES[f.id]?.displayName || f.id),
+      sub: esc(on(f) ? locLabel(f.location, f.state) : t("ci_offline")), onclick: `ciPick('${esc(f.id)}')`, cls: CI.sel.has(f.id) ? "on" : "",
+      acts: `<span class="ci-tick" onclick="ciPick('${esc(f.id)}')">${icon("check")}</span>` })).join("") || `<div class="hint-inline ci-none">${t("ci_noFriend")}</div>`}</div>`;
+  fillSlots(el);
+  el.querySelector(".ci-list").scrollTop = scroll;
+  const inp = $("ciInvQ");
+  inp.oninput = () => { CI.q = inp.value; ciInvUi(null, true); };
+  if (focus) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+  const n = CI.sel.size;
+  $("ciInvN").textContent = n ? t("ci_invPicked", n) : t("ci_invNone");
+  $("ciGo").innerHTML = btn(n ? t("ci_createInvite", n) : t("create"), `doCreateInstance('${CI.wid}')`, "primary", n ? "send" : "circle-plus");
+}
+function ciPick(uid) {
+  if (!CI.sel.delete(uid)) CI.sel.add(uid);
+  ciInvUi();
+}
+async function ciSendInvites(loc, uids) {
+  toast(t("ci_inviting", uids.length));
+  let ok = 0;
+  for (const [i, uid] of uids.entries()) {
+    if (i) await new Promise(r => setTimeout(r, 400));  // VRChat rate-limits invites
+    if ((await vrc("inviteUser", { userId: uid, instanceId: loc })).ok !== undefined) ok++;
+  }
+  toast(ok === uids.length ? t("ci_invited", ok) : t("ci_invitedSome", ok, uids.length));
+}
+document.head.insertAdjacentHTML("beforeend", `<style>
+.ci-inv-head { display: flex; align-items: center; gap: 8px; margin: 14px 2px 8px; font-weight: 600; font-size: 13px; }
+.ci-inv-head svg { width: 15px; height: 15px; color: var(--accent); }
+.ci-inv-head .grow { flex: 1; }
+.ci-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ci-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px; font-size: 12px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); }
+.ci-chip button { width: 18px; height: 18px; border: none; border-radius: 50%; background: none; color: var(--text2); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.ci-chip button:hover { background: var(--hover); color: var(--text); }
+.ci-chip svg { width: 12px; height: 12px; }
+#ciInvQ { margin-bottom: 8px; }
+.ci-list { max-height: 240px; overflow-y: auto; padding-right: 2px; }
+.ci-list .lrow { cursor: pointer; padding: 6px 10px; }
+.ci-list .lrow.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+.ci-tick { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--sep); display: grid; place-items: center; color: transparent; cursor: pointer; }
+.ci-tick svg { width: 14px; height: 14px; }
+.lrow.on .ci-tick { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ci-none { padding: 10px 4px; }
+</style>`);
+tx({
+  ci_invite: ["ชวนเพื่อน", "Invite friends", "フレンドを招待"],
+  ci_invNone: ["ติ๊กเพื่อนที่จะชวน แล้วจะส่งคำเชิญให้หลังสร้างห้อง", "Tick friends to invite once it's made", "作成後に招待するフレンドを選択"],
+  ci_invPicked: [n => `เลือกแล้ว ${n} คน`, n => `${n} picked`, n => `${n} 人を選択`],
+  ci_createInvite: [n => `สร้างแล้วชวน ${n} คน`, n => `Create and invite ${n}`, n => `作成して ${n} 人を招待`],
+  ci_me: ["เข้าห้องนี้เลย", "Go there now", "すぐに参加"],
+  ci_meHint: ["ส่งคำเชิญให้ตัวเองหลังสร้างห้อง กดรับในเกมเพื่อเข้า", "Sends you an invite once it's made — accept it in game", "作成後に自分へ招待を送ります（ゲーム内で承諾）"],
+  ci_find: ["ค้นหาเพื่อน", "Find a friend", "フレンドを検索"], ci_offline: ["ออฟไลน์", "Offline", "オフライン"], ci_noFriend: ["ไม่พบเพื่อน", "No friends found", "フレンドが見つかりません"],
+  ci_inviting: [n => `กำลังส่งคำเชิญให้ ${n} คน…`, n => `Inviting ${n}…`, n => `${n} 人を招待中…`],
+  ci_invited: [n => `ส่งคำเชิญให้ ${n} คนแล้ว`, n => `Invited ${n}`, n => `${n} 人を招待しました`],
+  ci_invitedSome: [(ok, n) => `ส่งคำเชิญได้ ${ok} จาก ${n} คน`, (ok, n) => `Invited ${ok} of ${n}`, (ok, n) => `${n} 人中 ${ok} 人を招待しました`],
+});
 async function doCreateInstance(wid) {
   const type = fv("ciType");
   const body = { worldId: wid, type: type === "private+" ? "private" : type, region: fv("ciRegion") };
@@ -743,12 +819,17 @@ async function doCreateInstance(wid) {
   else if (type !== "public") body.ownerId = AUTH.id;
   if (fv("ciAge")) body.ageGate = true;
   if (fv("ciName")) body.displayName = fv("ciName");
+  const me = fv("ciMe");
+  if (me !== (S.ciMe !== false)) { S.ciMe = me; save(); }  // Remembered for next time
   const r = await vrcDo("createInstance", body, "ci_created");
   if (!r) return;
+  const invite = [...CI.sel];
   closeX();
   const loc = r.location || `${wid}:${r.instanceId}`;
   WX[loc] = r;
   openWorld(wid, loc);
+  if (me) await doInvite(loc);  // An invite to yourself: accept it in game to go there
+  if (invite.length) ciSendInvites(loc, invite);
 }
 async function openStore(storeId) {
   loadOp("store_" + storeId, "getStore", { storeId, hydrateListings: true });
@@ -3049,14 +3130,19 @@ tx({
 NAV.osc = ["radio", "pink"];
 VIEWS.splice(VIEWS.indexOf("chat") + 1, 0, "osc");
 $("jump").insertAdjacentHTML("beforebegin", `<div class="view" id="v_osc"></div>`);
+// VR overlay has its own page: OSC builds its settings with the rest (one form, saved together) and they're moved there
+NAV.vr = ["glasses", "purple"];
+VIEWS.splice(VIEWS.indexOf("osc") + 1, 0, "vr");
+$("jump").insertAdjacentHTML("beforebegin", `<div class="view" id="v_vr"></div>`);
 const OI_DEF = { on: false, status: true, statuses: [], statusEvery: 60, media: true, mediaFmt: "{artist} - {title}", clock: true, clock24: true,
   layout: ["status", "br", "media", "br", "clock", "sep:   ", "heart"], icons: { status: "", media: "🎵", clock: "🕒", heart: "❤️", devices: "", pc: "" },
-  devices: false, devTrkGroup: false, devStat: "lowest", devHmd: true, devCtrl: true, devTrk: true, devCharging: true, devLow: 20, devHidden: [], devOff: [], devVibe: true, devVibeIcon: "〰️", devBattIcon: false, devBattSym: "🔋", devKindIcon: false, devKindSyms: { hmd: "🥽", ctrl: "🎮", trk: "📍", toy: "📳" },
+  devices: false, devTrkGroup: false, devPerLine: false, devStat: "lowest", devHmd: true, devCtrl: true, devTrk: true, devCharging: true, devLow: 20, devHidden: [], devOff: [], devNames: {}, devVibe: true, devVibeIcon: "〰️", devBattIcon: false, devBattSym: "🔋", devKindIcon: false, devKindSyms: { hmd: "🥽", ctrl: "🎮", trk: "📍", toy: "📳" },
   pc: false, pcCpu: true, pcGpu: true, pcTemp: true, pcRam: true, pcVram: true, pcFps: true, pcTotal: false, pcSep: " | ", pcPerLine: 2,
   pcLabels: { cpu: "CPU", gpu: "GPU", ram: "RAM", vram: "VRAM", fps: "FPS" },
   pcCpuName: false, pcGpuName: false, pcRamType: false, pcIcon: false, pcLblSup: false, pcUnitSup: false,
   pcIcons: { cpu: "🧠", gpu: "🎮", ram: "💾", vram: "🖼️", fps: "⏱️" },
   devToy: false, devToyBatt: true, intiface: "ws://127.0.0.1:12345", intifaceRelay: 12346,
+  vr: false, vrToast: true, vrFriends: "fav", vrInvites: true, vrJoins: true, vrWrist: true, vrHand: "left", vrBtn: 5, vrPanel: 26, vrKb: 32, vrDist: 20, vrX: 0, vrY: 0, vrPalm: false, vrGaze: true, vrInput: "both",
   mediaTime: false, mediaDur: false, mediaBar: false, mediaBarStyle: "line", mediaBarLen: 10, clockTz: false, clockTzSup: false, clockDate: false,
   heart: false, heartFmt: "{bpm}", hrSuffixOn: false, hrSuffix: "bpm", hrSuffixSup: false, hrParams: true, hrSource: "ble", bleAddr: "", bleName: "", pulsoid: "", interval: 3 };
 const oiCfg = () => {
@@ -3115,6 +3201,7 @@ function renderOsc() {
       + fRow(t("oi_relay"), `<div class="oi-token">${fInput("oiRelay", c.intifaceRelay, 'type="number" min="0" max="65535"')}<span class="hint-inline" id="oiRelaySt"></span></div>`,
         `<span id="oiRelayHint">${t("oi_relayHint", c.intifaceRelay || 12346)}</span>`)
       + fRow(t("oi_devTrkGroup"), fCheck("oiDevTrkGroup", "devTrkGroup" in (S.chatInfo || {}) ? c.devTrkGroup : c.devMode === "group"), t("oi_devTrkGroupHint"))
+      + fRow(t("oi_devPerLine"), fCheck("oiDevPerLine", c.devPerLine), t("oi_devPerLineHint"))
       + fRow(t("oi_devStat"), fSelect("oiDevStat", { lowest: t("oi_devLowest"), average: t("oi_devAverage") }, c.devStat))
       + fRow(t("oi_devCharging"), fCheck("oiDevCharging", c.devCharging))
       + fRow(t("oi_devBattIcon"), `<div class="oi-token">${fCheck("oiDevBattIcon", c.devBattIcon)}${oiSym("oiDevBattSym", c.devBattSym, OI_DEF.devBattSym)}${oiSymReset("oiDevBattSym")}</div>`)
@@ -3133,9 +3220,31 @@ function renderOsc() {
       + fRow(t("oi_pcUnitSup"), fCheck("oiPcUnitSup", c.pcUnitSup))
       + fRow(t("oi_pcTotal"), fCheck("oiPcTotal", c.pcTotal))
       + fRow(t("oi_pcSep"), fInput("oiPcSep", c.pcSep, 'maxlength="12" style="width:110px"'))
-      + fRow(t("oi_pcPerLine"), fInput("oiPcPerLine", c.pcPerLine, 'type="number" min="0" max="5"'), t("oi_pcPerLineHint")))}`;
+      + fRow(t("oi_pcPerLine"), fInput("oiPcPerLine", c.pcPerLine, 'type="number" min="0" max="5"'), t("oi_pcPerLineHint")))}
+    ${sec("vr", "glasses", c.vr, fRow("SteamVR", `<span class="hint-inline" id="oiOv"></span>`, t("vr_hint"))
+      + `<div class="oi-sub">${t("vr_toasts")}</div>`
+      + fRow(t("vr_toast"), `<div class="oi-token">${fCheck("oiVrToast", c.vrToast)}${btn(t("vr_test"), "vrTest()", "sm", "bell")}</div>`, t("vr_toastHint"))
+      + fRow(t("vr_friends"), fSelect("oiVrFriends", { off: t("vr_fr_off"), fav: t("vr_fr_fav"), all: t("vr_fr_all") }, c.vrFriends))
+      + fRow(t("vr_invites"), fCheck("oiVrInvites", c.vrInvites), t("vr_invitesHint"))
+      + fRow(t("vr_joins"), fCheck("oiVrJoins", c.vrJoins), t("vr_joinsHint"))
+      + `<div class="oi-sub">${t("vr_wristSec")}</div>`
+      + fRow(t("vr_wrist"), fCheck("oiVrWrist", c.vrWrist), t("vr_wristHint"))
+      + fRow(t("vr_hand"), fSelect("oiVrHand", { left: t("vr_left"), right: t("vr_right") }, c.vrHand))
+      + fRow(t("vr_size"), fInput("oiVrBtn", c.vrBtn, 'type="number" min="3" max="12"'), t("vr_sizeHint"))
+      + fRow(t("vr_panel"), fInput("oiVrPanel", c.vrPanel, 'type="number" min="15" max="40"'), t("vr_panelHint"))
+      + fRow(t("vr_kbSize"), fInput("oiVrKb", c.vrKb ?? OI_DEF.vrKb, 'type="number" min="20" max="60"'), t("vr_kbSizeHint"))
+      + fRow(t("vr_palm"), fSelect("oiVrShow", { look: t("vr_show_look"), palm: t("vr_show_palm") }, c.vrPalm ? "palm" : "look"), t("vr_palmHint"))
+      + fRow(t("vr_posX"), fInput("oiVrX", c.vrX ?? 0, 'type="number" min="-20" max="20" step="0.5"'), t("vr_posXHint"))
+      + fRow(t("vr_posY"), fInput("oiVrY", c.vrY ?? 0, 'type="number" min="-20" max="20" step="0.5"'), t("vr_posYHint"))
+      + fRow(t("vr_posZ"), fInput("oiVrDist", c.vrDist, 'type="number" min="-10" max="40" step="0.5"'), t("vr_distHint"))
+      + fRow(t("vr_input"), fSelect("oiVrInput", { both: t("vr_in_both"), poke: t("vr_in_poke"), laser: t("vr_in_laser") }, c.vrInput), t("vr_inputHint"))
+      + fRow(t("vr_gaze"), fCheck("oiVrGaze", c.vrGaze), t("vr_gazeHint")))}`;
   let timer = 0;
   el.oninput = el.onchange = () => { clearTimeout(timer); timer = setTimeout(oiSave, 400); oiTabsUi(); oiLayDim(); };
+  const vr = el.querySelector('.oi-sec[data-tab="vr"]');  // To its own page
+  vr.hidden = false;
+  $("v_vr").replaceChildren(vr);
+  $("v_vr").oninput = $("v_vr").onchange = el.oninput;
   oiLayout = [...c.layout]; oiIcons = { ...OI_DEF.icons, ...c.icons };
   for (const k of ["status", "media", "clock", "heart", "devices", "pc"])  // A part that's new in this version goes on its own line at the end
     if (!oiLayout.includes(k)) oiLayout.push(...(oiLayout.length ? ["br", k] : [k]));
@@ -3244,6 +3353,7 @@ function oiTabsUi() {
 }
 function oiSave() {
   const num = (id, d) => { const n = parseInt(fv(id), 10); return Number.isFinite(n) ? n : d; };
+  const dec = (id, d) => { const n = parseFloat(fv(id)); return Number.isFinite(n) ? Math.round(n * 10) / 10 : d; };
   S.chatInfo = { on: fv("oiOn"), status: fv("oi_status"), statuses: (fv("oiStatuses") || "").split("\n").map(s => s.trim()).filter(Boolean),
     statusEvery: num("oiEvery", OI_DEF.statusEvery), media: fv("oi_media"), mediaFmt: fv("oiMediaFmt") || OI_DEF.mediaFmt,
     clock: fv("oi_clock"), clock24: fv("oiClock24"), clockTz: fv("oiClockTz"), clockTzSup: fv("oiClockTzSup"), clockDate: fv("oiClockDate"),
@@ -3253,12 +3363,15 @@ function oiSave() {
     devices: fv("oi_devices"), devTrkGroup: fv("oiDevTrkGroup"), devStat: fv("oiDevStat") || "lowest",
     devHmd: fv("oiDevHmd"), devCtrl: fv("oiDevCtrl"), devTrk: fv("oiDevTrk"), devCharging: fv("oiDevCharging"),
     devToy: fv("oiDevToy"), devToyBatt: fv("oiDevToyBatt"), intiface: (fv("oiIntiface") || "").trim() || OI_DEF.intiface, intifaceRelay: num("oiRelay", OI_DEF.intifaceRelay),
-    devLow: num("oiDevLow", OI_DEF.devLow), devHidden: [...oiHidden()], devOff: [...oiOff()],
+    devLow: num("oiDevLow", OI_DEF.devLow), devPerLine: fv("oiDevPerLine"), devHidden: [...oiHidden()], devOff: [...oiOff()], devNames: oiNames(),
     devVibe: fv("oiDevVibe"), devVibeIcon: (fv("oiDevVibeIcon") ?? OI_DEF.devVibeIcon).slice(0, 8),
     devBattIcon: fv("oiDevBattIcon"), devBattSym: (fv("oiDevBattSym") ?? OI_DEF.devBattSym).slice(0, 8), devKindIcon: fv("oiDevKindIcon"),
     devKindSyms: Object.fromEntries(Object.keys(OI_KIND).map(k => [k, (fv("oiSym_" + k) || OI_KIND[k]).slice(0, 8)])),
     pc: fv("oi_pc"), ...Object.fromEntries(PC_ITEMS.map(k => ["pc" + oiCap(k), fv("oiPc" + oiCap(k))])), pcTemp: fv("oiPcTemp"), pcTotal: fv("oiPcTotal"),
-    pcSep: $("oiPcSep")?.value ?? OI_DEF.pcSep,  // Untrimmed: the spaces around "|" matter pcPerLine: num("oiPcPerLine", OI_DEF.pcPerLine),
+    pcSep: $("oiPcSep")?.value ?? OI_DEF.pcSep,  // Untrimmed: the spaces around "|" matter
+    pcPerLine: num("oiPcPerLine", OI_DEF.pcPerLine),
+    vr: fv("oi_vr"), vrToast: fv("oiVrToast"), vrFriends: fv("oiVrFriends") || "fav", vrInvites: fv("oiVrInvites"), vrJoins: fv("oiVrJoins"),
+    vrWrist: fv("oiVrWrist"), vrHand: fv("oiVrHand") || "left", vrBtn: num("oiVrBtn", OI_DEF.vrBtn), vrPanel: num("oiVrPanel", OI_DEF.vrPanel), vrKb: num("oiVrKb", OI_DEF.vrKb), vrPalm: fv("oiVrShow") === "palm", vrDist: dec("oiVrDist", OI_DEF.vrDist), vrX: dec("oiVrX", 0), vrY: dec("oiVrY", 0), vrGaze: fv("oiVrGaze"), vrInput: fv("oiVrInput") || "both",
     pcLabels: Object.fromEntries(PC_ITEMS.map(k => [k, (fv("oiPcLbl_" + k) ?? OI_DEF.pcLabels[k]).slice(0, 12)])),
     pcIcons: Object.fromEntries(PC_ITEMS.map(k => [k, (fv("oiPcIco_" + k) || OI_DEF.pcIcons[k]).slice(0, 8)])),
     ...Object.fromEntries(Object.values(PC_NAMES).map(n => [n, fv("oi" + oiCap(n))])),
@@ -3273,7 +3386,7 @@ function oiSave() {
 let oiTimer = 0;
 async function oiPoll() {
   clearTimeout(oiTimer);
-  if (view !== "osc") return;
+  if (view !== "osc" && view !== "vr") return;
   const s = await api("info_state");
   if (s && $("oiPrev")) {
     const prev = $("oiPrev");
@@ -3287,6 +3400,7 @@ async function oiPoll() {
     oiVrUi(s.vr || { state: "off", devices: [] }, s.toys || { state: "off", devices: [] });
     oiBleUi(s);
     oiPcUi(s.pc || {});
+    oiOvUi(s.overlay || {});
   }
   oiTimer = setTimeout(oiPoll, 1000);
 }
@@ -3327,7 +3441,8 @@ function oiVrUi(vr, toys) {
   if (key !== oiVrKey) {  // Rebuild rows only when devices come or go
     oiVrKey = key;
     $("oiVrList").innerHTML = devices.length ? devices.map(d => `<div class="oi-vr" data-serial="${escA(d.serial)}" data-label="${escA(d.label)}">
-        <label class="switch" title="${escA(t("oi_devShow"))}"><input type="checkbox" class="oi-show" ${oiOff().has(d.serial) ? "" : "checked"} onchange="oiShowToggle(this)"></label><span class="k">${esc(oiCfg().devKindSyms?.[d.kind] || OI_KIND[d.kind])}</span><span class="m"><b>${esc(d.model || d.label)}</b><small>${esc(d.serial.replace(/^intiface:/, "Intiface · "))}</small></span>
+        <label class="switch" title="${escA(t("oi_devShow"))}"><input type="checkbox" class="oi-show" ${oiOff().has(d.serial) ? "" : "checked"} onchange="oiShowToggle(this)"></label><span class="k">${esc(oiCfg().devKindSyms?.[d.kind] || OI_KIND[d.kind])}</span><span class="m"><input class="oi-name" value="${escA(oiCfg().devNames?.[d.serial] || "")}" placeholder="${escA(d.model || d.label)}" maxlength="32"
+          spellcheck="false" title="${escA(t("oi_devRename"))}"><small>${esc(d.serial.replace(/^intiface:/, "Intiface · "))}</small></span>
         <span class="b"></span><button class="mini-btn oi-hide" onclick="oiHideToggle(this)"></button></div>`).join("")
       : `<span class="hint-inline">${t("oi_devNone")}</span>`;
     oiHideUi();
@@ -3350,6 +3465,12 @@ function oiShowToggle(box) {
   box.closest(".oi-vr").classList.toggle("off", !box.checked);  // The page's change handler saves
 }
 const oiHidden = () => oiHiddenSet ??= new Set(oiCfg().devHidden || []);
+// Names you gave devices (serial -> name): the ones typed in the list, plus those of devices that aren't connected now
+function oiNames() {
+  const out = { ...(oiCfg().devNames || {}) };
+  $("oiVrList")?.querySelectorAll(".oi-vr").forEach(r => { const v = r.querySelector(".oi-name").value.trim().slice(0, 32); if (v) out[r.dataset.serial] = v; else delete out[r.dataset.serial]; });
+  return out;
+}
 function oiHideToggle(btn) {
   const serial = btn.closest(".oi-vr").dataset.serial, hidden = oiHidden();
   hidden.has(serial) ? hidden.delete(serial) : hidden.add(serial);
@@ -3421,7 +3542,7 @@ async function oiLogin() {
   if (r?.error) toast(t("oi_login_error"));
   oiPoll();
 }
-VIEW_RENDER.osc = () => renderOsc();
+VIEW_RENDER.osc = VIEW_RENDER.vr = () => renderOsc();
 // Hand the saved settings to Python once the app has started, so sending works without opening this page
 (function oiStart() { if (!ready) return setTimeout(oiStart, 300); api("info_set", oiCfg()); })();
 document.head.insertAdjacentHTML("beforeend", `<style>
@@ -3434,6 +3555,12 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .oi-vr .k { font-size: 17px; text-align: center; }
 .oi-vr .m { display: flex; flex-direction: column; min-width: 0; }
 .oi-vr .m b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oi-vr .m .oi-name { font: 600 12.5px var(--font); color: var(--text); background: none; border: 1px solid transparent; border-radius: 6px;
+                     padding: 1px 6px; margin-left: -7px; min-width: 0; text-overflow: ellipsis; }
+.oi-vr .m .oi-name::placeholder { color: var(--text); opacity: 1; }
+.oi-vr .m .oi-name:hover { border-color: var(--sep); }
+.oi-vr .m .oi-name:focus { outline: none; border-color: var(--accent); background: var(--field, rgba(127,127,127,.08)); }
+.oi-vr .m .oi-name:focus::placeholder { color: var(--text3); }
 .oi-vr .m small { font: 10.5px var(--mono); color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .oi-vr .b { font: 600 12.5px var(--mono); }
 .oi-vr .b.low { color: var(--red); }
@@ -5098,3 +5225,1070 @@ Object.assign(UPD_I18N.ko, { cm_undo: "실행 취소", cm_redo: "다시 실행",
 Object.assign(UPD_I18N.ru, { cm_undo: "Отменить", cm_redo: "Повторить", cm_cut: "Вырезать", cm_copy: "Копировать", cm_paste: "Вставить", cm_delete: "Удалить", cm_selectAll: "Выделить всё" });
 Object.assign(UPD_I18N.vi, { cm_undo: "Hoàn tác", cm_redo: "Làm lại", cm_cut: "Cắt", cm_copy: "Sao chép", cm_paste: "Dán", cm_delete: "Xóa", cm_selectAll: "Chọn tất cả" });
 Object.assign(UPD_I18N.zh, { cm_undo: "撤销", cm_redo: "重做", cm_cut: "剪切", cm_copy: "复制", cm_paste: "粘贴", cm_delete: "删除", cm_selectAll: "全选" });
+
+// ======================= SteamVR overlay: the page draws notices and the wrist panel; vroverlay.py shows them =======================
+// Drawn here because the browser lays out Thai and colour emoji properly. Python asks for the wrist panel every couple of
+// seconds (vrWristTick); notices are drawn when something happens (a friend comes online, an invite, a friend joins your room)
+const vrOn = () => { const c = oiCfg(); return c.vr && c.vrToast ? c : null; };
+let VR_FONT = `"Segoe UI Variable Text", "Segoe UI", "Leelawadee UI", "Yu Gothic UI", "Malgun Gothic", "Microsoft YaHei UI", "Segoe UI Emoji", sans-serif`;
+// The app's look in VR: its font, light or dark, and glass tinted like its wallpaper. "Ink" is the text and icon colour on it
+const VRT = { ink: "255,255,255", dark: true, glass: ["rgba(118,136,196,0.72)", "rgba(66,80,138,0.72)"], edge: "rgba(255,255,255,0.32)" };
+const vrInk = a => `rgba(${VRT.ink},${a})`;
+function vrTheme() {
+  const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim(), d = dark();
+  const rgb = h => /^#[0-9a-f]{6}$/i.test(h) ? [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)) : [118, 136, 196];
+  const mix = (h, base, k, a) => `rgba(${rgb(h).map((c, i) => Math.round(c * (1 - k) + base[i] * k)).join(",")},${a})`;
+  VRT.dark = d; VRT.ink = d ? "255,255,255" : "28,28,30";
+  VRT.glass = d ? [mix(v("--wall-1"), [128, 136, 176], 0.55, 0.74), mix(v("--wall-2"), [56, 60, 88], 0.55, 0.74)]
+    : [mix(v("--wall-1"), [255, 255, 255], 0.62, 0.86), mix(v("--wall-2"), [238, 240, 246], 0.62, 0.86)];
+  VRT.edge = d ? "rgba(255,255,255,0.32)" : "rgba(255,255,255,0.85)";
+  const f = v("--font");
+  if (f && f !== VR_FONT) {  // A font from Google Fonts: draw again once it's loaded
+    VR_FONT = f;
+    Promise.all([400, 600, 700].map(w => document.fonts.load(`${w} 30px ${f}`, "กขAa"))).then(() => vrwDraw(), () => {});
+  }
+}
+function vrCanvas(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return [c, c.getContext("2d")]; }
+function vrRound(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+// Cut text to fit a width (by whole letters, so Thai vowels and tone marks stay with their letter)
+function vrFit(g, s, w) {
+  s = String(s || "");
+  if (g.measureText(s).width <= w) return s;
+  const parts = [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(s)].map(x => x.segment);
+  while (parts.length && g.measureText(parts.join("") + "…").width > w) parts.pop();
+  return parts.join("") + "…";
+}
+// Wrap text into lines (at word breaks where the language has them; Thai words are found by the browser)
+function vrWrap(g, s, w, max) {
+  const out = [];
+  for (const para of String(s || "").split("\n")) {
+    let line = "";
+    for (const { segment } of new Intl.Segmenter(undefined, { granularity: "word" }).segment(para)) {
+      if (g.measureText(line + segment).width > w && line) { out.push(line.trimEnd()); line = segment.trimStart(); }
+      else line += segment;
+    }
+    out.push(line);
+  }
+  return out.length > max ? [...out.slice(0, max - 1), vrFit(g, out.slice(max - 1).join(" "), w)] : out;
+}
+const vrImg = src => new Promise(res => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; setTimeout(() => res(null), 800); });
+const vrColor = name => getComputedStyle(document.documentElement).getPropertyValue("--" + name).trim() || "#0a84ff";
+
+// A notice: picture (profile picture, or an icon on a coloured tile), a title and one line under it
+async function vrToast(title, body, { uid, ic = "bell", color = "blue" } = {}) {
+  const W = 840, H = 180, P = 26, A = H - P * 2;
+  const [cv, g] = vrCanvas(W, H);
+  vrTheme();
+  g.fillStyle = VRT.dark ? "rgba(28,28,32,0.94)" : "rgba(246,246,250,0.96)"; vrRound(g, 0, 0, W, H, 44); g.fill();
+  g.strokeStyle = VRT.dark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.08)"; g.lineWidth = 3; vrRound(g, 1.5, 1.5, W - 3, H - 3, 42); g.stroke();
+  const pic = uid && await vrImg(PROFILES[uid]?.img);
+  g.save(); g.beginPath(); g.arc(P + A / 2, P + A / 2, A / 2, 0, Math.PI * 2); g.clip();
+  if (pic) g.drawImage(pic, P, P, A, A);
+  else {
+    g.fillStyle = vrColor(color); g.fillRect(P, P, A, A);
+    const svg = new Blob([`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[ic] || ""}</svg>`], { type: "image/svg+xml" });
+    const url = URL.createObjectURL(svg), im = await vrImg(url);
+    if (im) g.drawImage(im, P + A * 0.22, P + A * 0.22, A * 0.56, A * 0.56);
+    URL.revokeObjectURL(url);
+  }
+  g.restore();
+  const x = P * 2 + A, tw = W - x - P;
+  g.fillStyle = vrInk(1); g.font = `600 46px ${VR_FONT}`; g.textBaseline = "alphabetic";
+  g.fillText(vrFit(g, title, tw), x, P + 56);
+  g.fillStyle = vrInk(0.68); g.font = `36px ${VR_FONT}`;
+  g.fillText(vrFit(g, body, tw), x, P + 112);
+  api("vr_frame", "toast", cv.toDataURL("image/png"));
+}
+function vrTest() { vrToast("VRC Nook", t("vr_testBody"), { uid: AUTH.id, ic: "glasses" }); }
+
+// ---------- What makes a notice ----------
+const _onFeedVr = window.onFeed;
+window.onFeed = (list) => {
+  _onFeedVr(list);
+  const c = vrOn();
+  if (!c || c.vrFriends === "off") return;
+  for (const e of list)
+    if (e.type === "online" && (c.vrFriends === "all" || favRecord("friend", e.u)))
+      vrToast(e.name, t("ff_online", locLabel(e.d?.location)), { uid: e.u, ic: "user-check", color: "green" });
+};
+const _onNewNotifVr = window.onNewNotif;
+window.onNewNotif = (n) => {
+  _onNewNotifVr(n);
+  if (vrOn()?.vrInvites) vrToast(n.name || "VRChat", t("n_" + n.type, n.worldName || ""), { uid: n.from, ic: n.type === "friendRequest" ? "user-plus" : "send", color: "purple" });
+};
+const _onPipelineVr = window.onPipelineEvent;
+window.onPipelineEvent = (ev) => {
+  _onPipelineVr(ev);
+  if (ev.type === "notification-v2" && vrOn()?.vrInvites) vrToast(ev.content?.title || "VRChat", ev.content?.message || "", { ic: "bell", color: "orange" });
+};
+// A friend joins the room you're in. Not while you're arriving yourself (everyone already there "joins"), and not for old
+// log lines read again when the app starts
+let vrArrivedAt = 0;
+const vrLogTime = s => { const m = (s || "").match(/^(\d{4})\.(\d\d)\.(\d\d) (\d\d):(\d\d):(\d\d)/); return m ? new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime() : 0; };
+const _onBatchVr = window.onBatch;
+window.onBatch = (b) => {
+  _onBatchVr(b);
+  const c = vrOn();
+  for (const e of b.events || []) {
+    const at = vrLogTime(e.t);
+    if (e.k === "world" || e.k === "instance") vrArrivedAt = at;
+    if (!c?.vrJoins || e.k !== "join" || !e.u || e.u === AUTH.id || !FRIENDS[e.u]) continue;
+    if (Date.now() - at > 60000 || at - vrArrivedAt < 20000) continue;
+    vrToast(e.v || FRIENDS[e.u].displayName, t("vr_joined"), { uid: e.u, ic: "log-in", color: "teal" });
+  }
+};
+function oiOvUi(o) {
+  const el = $("oiOv");
+  if (!el) return;
+  const on = oiCfg().vr;
+  el.textContent = !on ? t("oi_toy_off") : o.error ? t("vr_err", o.error) : t("vr_st_" + (o.vr || "off"));
+  el.style.color = on && o.vr === "ok" && !o.error ? "var(--green)" : on && (o.error || o.vr === "error") ? "var(--red)" : "";
+}
+document.head.insertAdjacentHTML("beforeend", `<style>
+.oi-sub { margin: 14px 4px 4px; font-size: 11.5px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; }
+.oi-sub:first-of-type { margin-top: 8px; }
+</style>`);
+tx({
+  oi_vr: ["VR overlay", "VR overlay", "VR オーバーレイ"],
+  vr_hint: ["แสดงในแว่นผ่าน SteamVR (ไม่ขึ้นถ้าเล่นแบบไม่ผ่าน SteamVR เช่น Virtual Desktop + VDXR)", "Shows in your headset through SteamVR (not when you play without SteamVR, e.g. Virtual Desktop with VDXR)", "SteamVR 経由でヘッドセットに表示（Virtual Desktop + VDXR など SteamVR なしでは表示されません）"],
+  vr_st_off: ["ยังไม่เริ่ม", "Starting…", "開始中…"], vr_st_noSteamVR: ["รอ SteamVR…", "Waiting for SteamVR…", "SteamVR を待っています…"],
+  vr_st_ok: ["ทำงานอยู่ในแว่น", "Showing in your headset", "ヘッドセットに表示中"], vr_st_error: ["ต่อ SteamVR ไม่ได้", "Can't reach SteamVR", "SteamVR に接続できません"],
+  vr_err: [e => `แสดง overlay ไม่ได้: ${e}`, e => `Can't show the overlay: ${e}`, e => `オーバーレイを表示できません: ${e}`],
+  vr_toasts: ["การแจ้งเตือนในแว่น", "Notices in your headset", "ヘッドセット内の通知"],
+  vr_toast: ["แสดงการแจ้งเตือน", "Show notices", "通知を表示"], vr_toastHint: ["ลอยขึ้นตรงหน้าแป๊บหนึ่งแล้วหายไป", "Float in front of you for a few seconds", "目の前に数秒表示されます"],
+  vr_test: ["ทดลอง", "Test", "テスト"], vr_testBody: ["การแจ้งเตือนจะขึ้นตรงนี้", "Notices show up here", "通知はここに表示されます"],
+  vr_friends: ["เพื่อนออนไลน์", "Friends coming online", "フレンドのオンライン"],
+  vr_fr_off: ["ไม่แจ้ง", "Off", "オフ"], vr_fr_fav: ["เฉพาะเพื่อนในรายการโปรด", "Favorite friends only", "お気に入りのみ"], vr_fr_all: ["เพื่อนทุกคน", "All friends", "すべてのフレンド"],
+  vr_invites: ["คำเชิญและคำขอ", "Invites and requests", "招待とリクエスト"], vr_invitesHint: ["คำเชิญเข้าห้อง ขอให้เชิญ คำขอเป็นเพื่อน และแจ้งเตือนจากกลุ่ม", "Invites, invite requests, friend requests and group notices", "招待、リクエスト、フレンド申請、グループ通知"],
+  vr_joins: ["เพื่อนเข้าห้องเดียวกัน", "Friends joining your room", "フレンドが同じルームに参加"], vr_joinsHint: ["ไม่แจ้งตอนเราเพิ่งเข้าห้อง (ทุกคนในห้องจะนับว่าเข้ามาใหม่)", "Not while you're arriving yourself", "自分の入室直後は通知しません"],
+  vr_joined: ["เข้ามาในห้องนี้", "joined your room", "がルームに参加しました"],
+  vr_wristSec: ["เมนูที่ข้อมือ", "Wrist menu", "手首メニュー"],
+  vr_wrist: ["แสดงปุ่มที่ข้อมือ", "Show the wrist button", "手首ボタンを表示"], vr_wristHint: ["ปุ่ม VRC Nook กลมๆ ที่หันมาหาคุณเสมอ จิ้มด้วยปลาย controller อีกข้าง หรือชี้เลเซอร์แล้วกด trigger เพื่อเปิดเมนู: คีย์บอร์ด เพื่อน แจ้งเตือน ห้องนี้ Chatbox และข้อมูล", "A round VRC Nook button that always turns to face you: poke it with the tip of your other controller, or point the laser and pull the trigger, to open the menu — keyboard, friends, notifications, this room, Chatbox and info", "いつもこちらを向く丸い VRC Nook ボタン。もう片方のコントローラーの先でつつくか、レーザーで指してトリガーを引くとメニューが開きます：キーボード、フレンド、通知、このルーム、Chatbox、情報"],
+  vr_hand: ["มือ", "Hand", "手"], vr_left: ["ซ้าย", "Left", "左"], vr_right: ["ขวา", "Right", "右"],
+  vr_size: ["ขนาดปุ่ม (ซม.)", "Button size (cm)", "ボタンの大きさ (cm)"], vr_sizeHint: ["3–12 ซม. เมนูที่กางออกจะกว้างประมาณ 3.4 เท่า", "3–12 cm; the open menu is about 3.4 times as wide", "3–12 cm。開いたメニューは約 3.4 倍の幅"],
+  vr_dist: ["ระยะจากมือ (ซม.)", "Distance from hand (cm)", "手からの距離 (cm)"],
+  vr_distHint: ["ถอยไปทางข้อศอก ถ้าแผงซ้อนกับ controller ให้เพิ่มค่า", "Back towards the elbow — raise it if the panel overlaps the controller", "ひじ側へずらします。コントローラーと重なるなら大きく"],
+  vr_gaze: ["แสดงเฉพาะตอนมองข้อมือ", "Only when you look at it", "見たときだけ表示"], vr_gazeHint: ["มองไปที่ข้อมือแล้วปุ่มจะค่อยๆ ขึ้น", "Look towards your wrist and it fades in", "手首のほうを見るとフェードイン"],
+  vr_people: [n => `${n} คนในห้อง`, n => `${n} in the room`, n => `ルームに ${n} 人`],
+});
+Object.assign(UPD_I18N.ko, { oi_vr: "VR 오버레이", vr_hint: "SteamVR를 통해 헤드셋에 표시 (Virtual Desktop + VDXR 등 SteamVR 없이 플레이하면 표시되지 않음)",
+  vr_st_off: "시작 중…", vr_st_noSteamVR: "SteamVR 기다리는 중…", vr_st_ok: "헤드셋에 표시 중", vr_st_error: "SteamVR에 연결할 수 없음", vr_err: e => `오버레이를 표시할 수 없음: ${e}`,
+  vr_toasts: "헤드셋 알림", vr_toast: "알림 표시", vr_toastHint: "눈앞에 몇 초간 떠 있습니다", vr_test: "테스트", vr_testBody: "알림은 여기에 표시됩니다",
+  vr_friends: "친구 접속", vr_fr_off: "끄기", vr_fr_fav: "즐겨찾기 친구만", vr_fr_all: "모든 친구", vr_invites: "초대와 요청", vr_invitesHint: "초대, 초대 요청, 친구 요청, 그룹 알림",
+  vr_joins: "친구가 같은 방에 입장", vr_joinsHint: "내가 막 입장했을 때는 알리지 않음", vr_joined: "님이 방에 들어왔습니다", vr_wristSec: "손목 메뉴", vr_wrist: "손목 버튼 표시",
+  vr_wristHint: "항상 나를 향하는 둥근 VRC Nook 버튼: 다른 컨트롤러 끝으로 누르거나 레이저로 가리키고 트리거를 당기면 메뉴가 열립니다 — 키보드, 친구, 알림, 이 방, Chatbox, 정보", vr_hand: "손", vr_left: "왼쪽", vr_right: "오른쪽", vr_size: "버튼 크기 (cm)", vr_sizeHint: "3–12 cm, 펼친 메뉴는 약 3.4배 너비", vr_dist: "손에서 거리 (cm)", vr_distHint: "팔꿈치 쪽으로 이동 — 컨트롤러와 겹치면 값을 키우세요", vr_gaze: "볼 때만 표시", vr_gazeHint: "손목 쪽을 보면 나타납니다", vr_people: n => `방에 ${n}명` });
+Object.assign(UPD_I18N.ru, { oi_vr: "VR-оверлей", vr_hint: "Показывается в шлеме через SteamVR (не работает без SteamVR, например Virtual Desktop с VDXR)",
+  vr_st_off: "Запуск…", vr_st_noSteamVR: "Ждём SteamVR…", vr_st_ok: "Показывается в шлеме", vr_st_error: "Нет связи со SteamVR", vr_err: e => `Не удаётся показать оверлей: ${e}`,
+  vr_toasts: "Уведомления в шлеме", vr_toast: "Показывать уведомления", vr_toastHint: "Появляются перед вами на несколько секунд", vr_test: "Проверить", vr_testBody: "Уведомления появятся здесь",
+  vr_friends: "Друзья в сети", vr_fr_off: "Выкл.", vr_fr_fav: "Только избранные", vr_fr_all: "Все друзья", vr_invites: "Приглашения и запросы", vr_invitesHint: "Приглашения, запросы приглашения, заявки в друзья и уведомления групп",
+  vr_joins: "Друг зашёл в вашу комнату", vr_joinsHint: "Не в момент, когда вы сами заходите", vr_joined: "зашёл в вашу комнату", vr_wristSec: "Меню на запястье", vr_wrist: "Показывать кнопку на запястье",
+  vr_wristHint: "Круглая кнопка VRC Nook, всегда повёрнутая к вам: коснитесь её кончиком другого контроллера или наведите лазер и нажмите курок, чтобы открыть меню — клавиатура, друзья, уведомления, комната, Chatbox и сведения", vr_hand: "Рука", vr_left: "Левая", vr_right: "Правая", vr_size: "Размер кнопки (см)", vr_sizeHint: "3–12 см; открытое меню примерно в 3,4 раза шире", vr_dist: "Расстояние от руки (см)", vr_distHint: "Сдвиг к локтю — увеличьте, если панель перекрывает контроллер", vr_gaze: "Только когда смотрите", vr_gazeHint: "Посмотрите на запястье — кнопка проявится", vr_people: n => `В комнате: ${n}` });
+Object.assign(UPD_I18N.vi, { oi_vr: "Lớp phủ VR", vr_hint: "Hiện trong kính qua SteamVR (không hiện khi chơi không qua SteamVR, ví dụ Virtual Desktop với VDXR)",
+  vr_st_off: "Đang bắt đầu…", vr_st_noSteamVR: "Đang chờ SteamVR…", vr_st_ok: "Đang hiện trong kính", vr_st_error: "Không kết nối được SteamVR", vr_err: e => `Không hiện được lớp phủ: ${e}`,
+  vr_toasts: "Thông báo trong kính", vr_toast: "Hiện thông báo", vr_toastHint: "Hiện trước mặt vài giây", vr_test: "Thử", vr_testBody: "Thông báo sẽ hiện ở đây",
+  vr_friends: "Bạn bè trực tuyến", vr_fr_off: "Tắt", vr_fr_fav: "Chỉ bạn yêu thích", vr_fr_all: "Tất cả bạn bè", vr_invites: "Lời mời và yêu cầu", vr_invitesHint: "Lời mời, yêu cầu mời, lời mời kết bạn và thông báo nhóm",
+  vr_joins: "Bạn bè vào phòng của bạn", vr_joinsHint: "Không báo lúc chính bạn vừa vào", vr_joined: "đã vào phòng của bạn", vr_wristSec: "Menu ở cổ tay", vr_wrist: "Hiện nút ở cổ tay",
+  vr_wristHint: "Nút tròn VRC Nook luôn quay về phía bạn: chạm bằng đầu tay cầm bên kia, hoặc chỉ tia laser rồi bóp cò, để mở menu — bàn phím, bạn bè, thông báo, phòng này, Chatbox và thông tin", vr_hand: "Tay", vr_left: "Trái", vr_right: "Phải", vr_size: "Cỡ nút (cm)", vr_sizeHint: "3–12 cm; menu mở ra rộng khoảng gấp 3,4 lần", vr_dist: "Khoảng cách từ tay (cm)", vr_distHint: "Lùi về phía khuỷu tay — tăng lên nếu bảng đè lên tay cầm", vr_gaze: "Chỉ hiện khi nhìn vào", vr_gazeHint: "Nhìn về phía cổ tay thì nút hiện dần", vr_people: n => `${n} người trong phòng` });
+Object.assign(UPD_I18N.zh, { oi_vr: "VR 叠加层", vr_hint: "通过 SteamVR 显示在头显中（不经 SteamVR 游玩时不显示，例如 Virtual Desktop + VDXR）",
+  vr_st_off: "正在启动…", vr_st_noSteamVR: "等待 SteamVR…", vr_st_ok: "正在头显中显示", vr_st_error: "无法连接 SteamVR", vr_err: e => `无法显示叠加层：${e}`,
+  vr_toasts: "头显内通知", vr_toast: "显示通知", vr_toastHint: "在眼前显示几秒", vr_test: "测试", vr_testBody: "通知会显示在这里",
+  vr_friends: "好友上线", vr_fr_off: "关闭", vr_fr_fav: "仅收藏的好友", vr_fr_all: "所有好友", vr_invites: "邀请和请求", vr_invitesHint: "邀请、请求邀请、好友请求和群组通知",
+  vr_joins: "好友进入你的房间", vr_joinsHint: "你自己刚进入时不提醒", vr_joined: "进入了你的房间", vr_wristSec: "手腕菜单", vr_wrist: "显示手腕按钮",
+  vr_wristHint: "始终朝向你的圆形 VRC Nook 按钮：用另一只手柄的尖端点一下，或用激光指着并扣下扳机，即可打开菜单——键盘、好友、通知、这个房间、Chatbox 和信息", vr_hand: "手", vr_left: "左手", vr_right: "右手", vr_size: "按钮大小 (cm)", vr_sizeHint: "3–12 cm；展开的菜单约为 3.4 倍宽", vr_dist: "离手距离 (cm)", vr_distHint: "向手肘方向移动——与手柄重叠时调大", vr_gaze: "仅在看时显示", vr_gazeHint: "看向手腕就会淡入", vr_people: n => `房间里 ${n} 人` });
+
+// ======================= Wrist menu: a round VRC Nook button on your wrist that opens a control center above it =======================
+// Poked with the other controller or pointed at with SteamVR's laser: vroverlay.py passes where it pressed (vrPoke: down /
+// move / up, in the picture's pixels). Open, the panel shows three glass cards like visionOS's Control Center — the time,
+// batteries, what's playing and notifications; quick switches and the pages (friends, this room, keyboard, settings); and
+// the world you're in. Python asks for fresh pictures every couple of seconds (vrWristTick) and skips ones that didn't change
+const VRW = { open: false, page: null, info: {}, at: 0, spots: [], down: null };
+const VRW_PX = 256;                  // Pixels across the wrist button
+const VRW_IDLE = 20000;              // The open control center closes after this long untouched (ms)
+const VRD = { W: 1000, H: 800, tab: "friends", scroll: {}, max: 0, hover: null, down: null, drag: null, spots: [], msg: "", msgAt: 0, sent: new Set(),
+  banned: new Set(), confirm: null };  // confirm: {uid, until} — a ban waits for a second press
+const VRH = { W: 1560, H: 720 };     // The control center's picture
+const VRD_ICONS = {};  // "name|color" -> Image (drawn white or coloured)
+function vrdIcon(name, color = vrInk(1)) {
+  const k = name + "|" + color;
+  if (VRD_ICONS[k] !== undefined) return VRD_ICONS[k];
+  VRD_ICONS[k] = null;
+  const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="96" height="96" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ""}</svg>`);
+  vrImg(url).then(im => { VRD_ICONS[k] = im; vrwLoaded(); });
+  return null;
+}
+const VRD_AV = {};  // picture URL -> Image
+function vrdPic(src) {
+  if (!src) return null;
+  if (VRD_AV[src] !== undefined) return VRD_AV[src];
+  VRD_AV[src] = null;
+  vrImg(src).then(im => { VRD_AV[src] = im; vrwLoaded(); });
+  return null;
+}
+const vrdAvatar = uid => vrdPic(PROFILES[uid]?.img);
+const VRW_LOGO = {};  // The app's logo, by colour
+function vrLogo(color = "#fff") {
+  if (VRW_LOGO[color] !== undefined) return VRW_LOGO[color];
+  VRW_LOGO[color] = null;
+  const svg = LOGO_SVG.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" ').replaceAll("currentColor", color);
+  vrImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg)).then(im => { VRW_LOGO[color] = im; vrwLoaded(); });
+  return null;
+}
+// Pictures finish loading one by one (a page of profile pictures): redraw once for all of them
+let vrwLoadT = 0;
+function vrwLoaded() { if (!vrwLoadT) vrwLoadT = setTimeout(() => { vrwLoadT = 0; vrwDraw(); }, 120); }
+function vrDisc(g, x, y, r) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); }
+function vrBadge(g, x, y, n, r = 34) {
+  g.fillStyle = "#ff453a"; vrDisc(g, x, y, r); g.fill();
+  g.fillStyle = "#fff"; g.font = `700 ${Math.round(r * 1.05)}px ${VR_FONT}`; g.textAlign = "center";
+  g.fillText(n > 9 ? "9+" : n, x, y + r * 0.38); g.textAlign = "left";
+}
+function vrdSay(msg) { VRD.msg = msg; VRD.msgAt = Date.now(); vrwDraw("panel"); setTimeout(() => vrwDraw("panel"), 3600); }
+
+// ---------- Icons drawn here (no emoji: they look different on every PC and some come out black) ----------
+// kind: hmd / ctrl / trk / toy, in a box of size s centred on x, y
+function vrGlyph(g, kind, x, y, s, color = vrInk(1)) {
+  g.save(); g.translate(x, y); g.strokeStyle = g.fillStyle = color; g.lineWidth = s * 0.09; g.lineCap = g.lineJoin = "round";
+  const u = s / 2;
+  if (kind === "hmd") {  // Headset: visor with a nose cut-out, and the strap
+    g.beginPath(); g.moveTo(-u * 0.95, -u * 0.45); g.lineTo(u * 0.95, -u * 0.45); g.quadraticCurveTo(u, -u * 0.45, u, -u * 0.3);
+    g.lineTo(u, u * 0.3); g.quadraticCurveTo(u, u * 0.45, u * 0.8, u * 0.45); g.lineTo(u * 0.25, u * 0.45); g.lineTo(u * 0.12, u * 0.15);
+    g.lineTo(-u * 0.12, u * 0.15); g.lineTo(-u * 0.25, u * 0.45); g.lineTo(-u * 0.8, u * 0.45); g.quadraticCurveTo(-u, u * 0.45, -u, u * 0.3);
+    g.lineTo(-u, -u * 0.3); g.quadraticCurveTo(-u, -u * 0.45, -u * 0.95, -u * 0.45); g.closePath(); g.stroke();
+  } else if (kind === "ctrl") {  // Controller: tracking ring on top of a grip
+    g.beginPath(); g.ellipse(0, -u * 0.38, u * 0.62, u * 0.5, 0, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.roundRect(-u * 0.24, -u * 0.05, u * 0.48, u * 1.0, u * 0.24); g.fill();
+  } else if (kind === "trk") {  // Tracker: a puck with three lights
+    vrDisc(g, 0, 0, u * 0.8); g.stroke();
+    for (let i = 0; i < 3; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 3; vrDisc(g, Math.cos(a) * u * 0.38, Math.sin(a) * u * 0.38, u * 0.13); g.fill(); }
+  } else if (kind === "toy") {  // Toy: a capsule shaking
+    g.beginPath(); g.roundRect(-u * 0.28, -u * 0.8, u * 0.56, u * 1.6, u * 0.28); g.fill();
+    for (const sx of [-1, 1]) { g.beginPath(); g.arc(0, 0, u * 0.62, sx > 0 ? -0.6 : Math.PI - 0.6, sx > 0 ? 0.6 : Math.PI + 0.6); g.stroke();
+      g.beginPath(); g.arc(0, 0, u * 0.9, sx > 0 ? -0.5 : Math.PI - 0.5, sx > 0 ? 0.5 : Math.PI + 0.5); g.stroke(); }
+  } else {  // Heart rate: a heart
+    g.beginPath(); g.moveTo(0, u * 0.75);
+    g.bezierCurveTo(-u * 1.1, 0, -u * 0.6, -u * 0.9, 0, -u * 0.35); g.bezierCurveTo(u * 0.6, -u * 0.9, u * 1.1, 0, 0, u * 0.75); g.fill();
+  }
+  g.restore();
+}
+// Battery: outline, how full, and a bolt while charging
+function vrBattery(g, x, y, w, h, pct, charging) {
+  const col = pct > 30 ? "#30d158" : pct > 15 ? "#ffd60a" : "#ff453a";
+  g.strokeStyle = vrInk(0.75); g.lineWidth = 2.5; vrRound(g, x, y, w, h, h * 0.3); g.stroke();
+  g.fillStyle = vrInk(0.75); vrRound(g, x + w + 2, y + h * 0.3, 4, h * 0.4, 2); g.fill();
+  g.fillStyle = col; vrRound(g, x + 4, y + 4, Math.max(3, (w - 8) * Math.min(1, pct / 100)), h - 8, h * 0.18); g.fill();
+  if (charging) {
+    g.fillStyle = vrInk(1); g.beginPath(); const cx = x + w / 2, cy = y + h / 2, k = h * 0.42;
+    g.moveTo(cx + k * 0.2, cy - k); g.lineTo(cx - k * 0.55, cy + k * 0.15); g.lineTo(cx - k * 0.02, cy + k * 0.15); g.lineTo(cx - k * 0.2, cy + k);
+    g.lineTo(cx + k * 0.55, cy - k * 0.15); g.lineTo(cx + k * 0.02, cy - k * 0.15); g.closePath(); g.fill();
+  }
+}
+// Media buttons: prev / play / pause / next
+function vrMediaGlyph(g, kind, x, y, s) {
+  g.save(); g.translate(x, y); g.fillStyle = vrInk(1); const u = s / 2;
+  const tri = (x0, dir) => { g.beginPath(); g.moveTo(x0, -u * 0.6); g.lineTo(x0 + dir * u * 0.9, 0); g.lineTo(x0, u * 0.6); g.closePath(); g.fill(); };
+  if (kind === "play") tri(-u * 0.35, 1);
+  else if (kind === "pause") { g.fillRect(-u * 0.5, -u * 0.6, u * 0.32, u * 1.2); g.fillRect(u * 0.18, -u * 0.6, u * 0.32, u * 1.2); }
+  else if (kind === "next") { tri(-u * 0.9, 1); tri(0, 1); }
+  else { tri(u * 0.9, -1); tri(0, -1); }
+  g.restore();
+}
+// A card of frosted glass (overlays can't blur what's behind them, so it's a soft see-through gradient with a bright edge)
+function vrGlass(g, x, y, w, h, r) {
+  const grad = g.createLinearGradient(0, y, 0, y + h);
+  grad.addColorStop(0, VRT.glass[0]); grad.addColorStop(1, VRT.glass[1]);
+  g.fillStyle = grad; vrRound(g, x, y, w, h, r); g.fill();
+  g.strokeStyle = VRT.edge; g.lineWidth = 2; vrRound(g, x + 1, y + 1, w - 2, h - 2, r - 1); g.stroke();
+}
+
+// ---------- From Python ----------
+// Time to redraw (clock, lists, batteries); info = devices with batteries and what's playing, and all = everything has to
+// be sent again (the overlays were just made or shown again)
+window.vrWristTick = (info = {}) => {
+  VRW.info = info;
+  if (VRW.open && Date.now() - VRW.at > VRW_IDLE && VRW.page !== "kb") { VRW.open = false; VRW.page = null; }
+  vrwDraw(info.all || VRW.page !== "kb" ? "all" : "ring");  // The keyboard only changes when it's poked
+};
+// The other controller pressed, moved while pressing, or let go — on the wrist button ("wrist") or the panel
+window.vrPoke = ({ o, t: kind, x, y, d }) => {
+  VRW.at = Date.now();
+  if (o === "wrist") {
+    if (kind !== "down") return;
+    VRW.open = !VRW.open;
+    vrwPage(null);
+    return;
+  }
+  if (kind === "scroll") {  // SteamVR's laser: the stick scrolls the list
+    if (VRW.page && VRD.tab === VRW.page) { VRD.scroll[VRD.tab] = Math.max(0, Math.min(VRD.max, (VRD.scroll[VRD.tab] || 0) - d * 160)); vrwDraw("panel"); }
+    return;
+  }
+  if (!VRW.page) return vrhPoke(kind, x, y);
+  if (VRW.page === "kb") return vrkPoke(kind, x, y);
+  vrdPoke(kind, x, y);
+};
+function vrwPage(k) {
+  if (VRW.page === "kb" && k !== "kb") vrkStop();
+  VRW.page = k;
+  VRW.down = VRD.hover = VRD.down = null;
+  vrwDraw();
+}
+// Redraw once after everything that changed in this go (pokes, pictures that finished loading): the button, the panel or
+// both — each picture takes a while to make, so only what changed
+let vrwQueued = null;
+function vrwDraw(what = "all") {
+  const was = vrwQueued;
+  vrwQueued = !was || was === what ? what : "all";
+  if (was) return;
+  queueMicrotask(() => {
+    const w = vrwQueued, c = oiCfg();
+    vrwQueued = null;
+    if (!c.vr || !c.vrWrist) return;
+    vrTheme();
+    if (w !== "panel") vrwRing(c);
+    if (w !== "ring") vrwPanel(c);
+  });
+}
+// The wrist button: the logo (and a count of notifications), or × while the control center is open
+function vrwRing(c) {
+  const N = VRW_PX, m = N / 2, r0 = m - 8, [cv, g] = vrCanvas(N, N);
+  const glass = (r) => {
+    const grad = g.createLinearGradient(0, m - r, 0, m + r);
+    grad.addColorStop(0, VRT.glass[0].replace(/[\d.]+\)$/, "0.96)")); grad.addColorStop(1, VRT.glass[1].replace(/[\d.]+\)$/, "0.96)"));
+    g.fillStyle = grad; vrDisc(g, m, m, r); g.fill();
+  };
+  if (VRW.open) {
+    glass(r0 * 0.8);
+    g.strokeStyle = VRT.edge; g.lineWidth = 4; vrDisc(g, m, m, r0 * 0.8 - 2); g.stroke();
+    const im = vrdIcon("x", vrInk(1)); if (im) g.drawImage(im, m - 50, m - 50, 100, 100);
+  } else {
+    glass(r0);
+    g.strokeStyle = vrColor("accent"); g.lineWidth = 12; vrDisc(g, m, m, r0 - 6); g.stroke();
+    const im = vrLogo(vrInk(1)); if (im) g.drawImage(im, m - 76, m - 82, 152, 152);
+    if (NOTIFS.length) vrBadge(g, m + r0 * 0.7, m - r0 * 0.7, NOTIFS.length);
+  }
+  api("vr_frame", "wrist", cv.toDataURL("image/png"), (c.vrBtn || OI_DEF.vrBtn) / 100);
+}
+function vrwPanel(c) {
+  const w = (c.vrPanel || OI_DEF.vrPanel) / 100, p = VRW.page;
+  if (!VRW.open) return api("vr_frame", "panel", "", 0);
+  const [cv, k] = !p ? [vrhDraw(c), 1.4] : p === "kb" ? [vrkDraw(), 0] : [vrdDraw(p), 1];
+  api("vr_frame", "panel", cv.toDataURL("image/png"), k ? w * k : (c.vrKb || OI_DEF.vrKb) / 100);
+}
+// Change an overlay or Chatbox setting from VR: saved like the OSC page does, and shown there if it's open
+const VR_SET_IDS = { on: "oiOn", vrToast: "oiVrToast", vrGaze: "oiVrGaze", vrInput: "oiVrInput", vrHand: "oiVrHand", vrBtn: "oiVrBtn", vrPanel: "oiVrPanel", vrDist: "oiVrDist", vrX: "oiVrX", vrY: "oiVrY", vrKb: "oiVrKb" };
+function vrSet(patch) {
+  const c = { ...oiCfg(), ...patch };
+  S.chatInfo = c; save(); api("info_set", c);
+  for (const [k, v] of Object.entries(patch)) {
+    const el = $(VR_SET_IDS[k]);
+    if (el) { if (el.type === "checkbox") el.checked = v; else el.value = v; }
+  }
+  if ("vrPalm" in patch && $("oiVrShow")) $("oiVrShow").value = patch.vrPalm ? "palm" : "look";
+  if ("on" in patch && $("oiOn")) oiTabsUi();
+  vrwDraw();
+}
+
+// ---------- The control center: three glass cards ----------
+function vrhDraw(c) {
+  const { W, H } = VRH, [cv, g] = vrCanvas(W, H), spots = [], info = VRW.info || {};
+  const spot = (id, x, y, w, h, fn) => spots.push({ id, x, y, w, h, fn });
+  const pressed = id => VRW.down === id;
+  const CW = 480, CH = 720, R = 56, X1 = 20, X2 = 540, X3 = 1060;
+  for (const x of [X1, X2, X3]) vrGlass(g, x, 0, CW, CH, R);
+  g.textBaseline = "alphabetic";
+
+  // 1 — the time, batteries, what's playing, notifications
+  const now = new Date(), cx1 = X1 + CW / 2;
+  g.fillStyle = vrInk(0.9); g.font = `600 30px ${VR_FONT}`; g.textAlign = "center";
+  g.fillText(now.toLocaleDateString(S.lang, { weekday: "short", day: "numeric", month: "short" }), cx1, 72);
+  g.fillStyle = vrInk(1); g.font = `600 128px ${VR_FONT}`;
+  g.fillText(now.toLocaleTimeString(S.lang, { hour: "2-digit", minute: "2-digit", hour12: !c.clock24 }), cx1, 196);
+  const devs = [...(info.bpm ? [{ kind: "heart", bpm: info.bpm }] : []), ...(info.devices || []).filter(d => d.battery != null)].slice(0, 6);
+  if (devs.length) {  // Up to three a row, centred; tapping them opens the devices page
+    const cw = 140, rows = Math.ceil(devs.length / 3);
+    devs.forEach((d, i) => {
+      const row = Math.floor(i / 3), n = Math.min(3, devs.length - row * 3), col = i % 3;
+      const x = cx1 - (n * cw) / 2 + col * cw + 10, y = 232 + row * 46;
+      g.textAlign = "left";
+      if (d.kind === "heart") {
+        vrGlyph(g, "heart", x + 16, y + 14, 30, "#ff453a");
+        g.fillStyle = vrInk(1); g.font = `700 24px ${VR_FONT}`; g.fillText(`${d.bpm}`, x + 40, y + 23);
+        const nw = g.measureText(`${d.bpm}`).width;
+        g.fillStyle = vrInk(0.6); g.font = `18px ${VR_FONT}`; g.fillText("bpm", x + 46 + nw, y + 23);
+        return;
+      }
+      vrGlyph(g, d.kind, x + 16, y + 14, 30, vrInk(0.9));
+      vrBattery(g, x + 38, y + 3, 44, 22, d.battery, d.charging);
+      g.fillStyle = vrInk(1); g.font = `600 22px ${VR_FONT}`; g.fillText(`${d.battery}`, x + 92, y + 22);
+    });
+    if (pressed("devs")) { g.fillStyle = vrInk(0.12); vrRound(g, X1 + 20, 222, CW - 40, rows * 46 + 6, 20); g.fill(); }
+    spot("devs", X1 + 20, 222, CW - 40, rows * 46 + 6, () => vrwPage("devices"));
+  } else { g.fillStyle = vrInk(0.55); g.font = `24px ${VR_FONT}`; g.fillText(t("vw_noBattery"), cx1, 256); }
+  g.textAlign = "left";
+  // What's playing, with buttons (Windows' media controls: works with Spotify, YouTube in a browser, ...)
+  const mx = X1 + 28, my = 336, mw = CW - 56, mh = 236, m = info.media;
+  g.fillStyle = vrInk(0.12); vrRound(g, mx, my, mw, mh, 36); g.fill();
+  g.fillStyle = vrInk(0.2); vrRound(g, mx + 24, my + 24, 76, 76, 16); g.fill();
+  const mi = vrdIcon("music"); if (mi) g.drawImage(mi, mx + 42, my + 42, 40, 40);
+  g.fillStyle = vrInk(1); g.font = `600 30px ${VR_FONT}`; g.fillText(vrFit(g, m?.title || t("vw_noMedia"), mw - 140), mx + 120, my + 58);
+  if (m?.artist) { g.fillStyle = vrInk(0.65); g.font = `24px ${VR_FONT}`; g.fillText(vrFit(g, m.artist, mw - 140), mx + 120, my + 92); }
+  if (m?.durS) {
+    g.fillStyle = vrInk(0.25); vrRound(g, mx + 24, my + 124, mw - 48, 8, 4); g.fill();
+    g.fillStyle = vrInk(1); vrRound(g, mx + 24, my + 124, Math.max(8, (mw - 48) * Math.min(1, m.posS / m.durS)), 8, 4); g.fill();
+  }
+  [["prev", -110], [m ? "pause" : "play", 0], ["next", 110]].forEach(([k, dx]) => {
+    const bx = mx + mw / 2 + dx, by = my + 186, id = "m:" + k;
+    if (pressed(id)) { g.fillStyle = vrInk(0.22); vrDisc(g, bx, by, 36); g.fill(); }
+    vrMediaGlyph(g, k, bx, by, k === "pause" || k === "play" ? 48 : 40);
+    spot(id, bx - 50, by - 40, 100, 80, () => api("media_ctl", k === "pause" || k === "play" ? "toggle" : k));
+  });
+  // Notifications
+  const ny = 600, nn = NOTIFS.length;
+  g.fillStyle = pressed("notifs") ? vrInk(0.24) : vrInk(0.12); vrRound(g, mx, ny, mw, 84, 42); g.fill();
+  const bi = vrdIcon("bell"); if (bi) g.drawImage(bi, mx + 28, ny + 24, 36, 36);
+  if (nn) vrBadge(g, mx + 62, ny + 24, nn, 14);
+  g.fillStyle = vrInk(1); g.font = `600 28px ${VR_FONT}`; g.fillText(vrFit(g, t("vw_notifCount", nn), mw - 150), mx + 84, ny + 52);
+  const ch = vrdIcon("chevron-right", vrInk(0.7)); if (ch) g.drawImage(ch, mx + mw - 58, ny + 24, 36, 36);
+  spot("notifs", mx, ny, mw, 84, () => vrwPage("notifs"));
+
+  // 2 — quick switches and the pages
+  const tg = [["on", "message-square", "Chatbox", c.on, () => vrSet({ on: !c.on })],
+    ["toast", c.vrToast ? "bell" : "bell-off", t("vw_notices"), c.vrToast, () => vrSet({ vrToast: !c.vrToast })],
+    ["gaze", c.vrPalm ? "hand" : "eye", t(c.vrPalm ? "vw_palm" : "vw_gaze"), c.vrGaze, () => vrSet({ vrGaze: !c.vrGaze })],
+    ["input", "hand", t("vw_in_" + (c.vrInput || "both")), true, () => vrSet({ vrInput: { both: "poke", poke: "laser", laser: "both" }[c.vrInput || "both"] })]];
+  tg.forEach(([k, ic, label, on, fn], i) => {
+    const bx = X2 + 72 + i * 112, by = 86, id = "t:" + k;
+    g.fillStyle = on ? vrColor("accent") : vrInk(0.2); vrDisc(g, bx, by, 46); g.fill();
+    if (pressed(id)) { g.fillStyle = vrInk(0.25); vrDisc(g, bx, by, 46); g.fill(); }
+    const im = vrdIcon(ic, on ? "#fff" : vrInk(1)); if (im) g.drawImage(im, bx - 22, by - 22, 44, 44);
+    g.fillStyle = vrInk(0.85); g.font = `20px ${VR_FONT}`; g.textAlign = "center"; g.fillText(vrFit(g, label, 108), bx, by + 76); g.textAlign = "left";
+    spot(id, bx - 54, by - 50, 108, 140, fn);
+  });
+  const lx = X2 + 28, ly = 196, lw = CW - 56, rh = 92;
+  g.fillStyle = vrInk(0.1); vrRound(g, lx, ly, lw, rh * 5, 36); g.fill();
+  const online = Object.values(FRIENDS).filter(f => f.state === "online").length, people = lastBatch?.players?.length || 0;
+  const ndev = (info.devices || []).length + (info.bpm ? 1 : 0);
+  [["friends", "users-round", t("vd_friends"), online || ""], ["room", "map-pin", t("vd_room"), people || ""], ["devices", "battery-medium", t("vw_devShort"), ndev || ""],
+    ["kb", "keyboard", t("vw_kb"), ""], ["settings", "settings", t("vw_settings"), ""]].forEach(([k, ic, label, val], i) => {
+    const y = ly + i * rh, id = "p:" + k;
+    if (pressed(id)) { g.fillStyle = vrInk(0.16); vrRound(g, lx + 8, y + 8, lw - 16, rh - 16, 28); g.fill(); }
+    if (i) { g.fillStyle = vrInk(0.12); g.fillRect(lx + 92, y, lw - 116, 2); }
+    const im = vrdIcon(ic); if (im) g.drawImage(im, lx + 32, y + rh / 2 - 20, 40, 40);
+    g.fillStyle = vrInk(1); g.font = `600 30px ${VR_FONT}`; g.fillText(vrFit(g, label, lw - 200), lx + 92, y + rh / 2 + 11);
+    if (val !== "") { g.fillStyle = vrInk(0.6); g.font = `26px ${VR_FONT}`; g.textAlign = "right"; g.fillText(val, lx + lw - 64, y + rh / 2 + 10); g.textAlign = "left"; }
+    const cr = vrdIcon("chevron-right", vrInk(0.55)); if (cr) g.drawImage(cr, lx + lw - 52, y + rh / 2 - 15, 30, 30);
+    spot(id, lx, y, lw, rh, () => vrwPage(k));
+  });
+  // What the Chatbox is sending, under the list
+  g.fillStyle = vrInk(0.6); g.font = `22px ${VR_FONT}`;
+  g.fillText(vrFit(g, c.on ? (info.chat || "").replace(/\n/g, "  ") || t("vd_chatOn") : t("vw_chatOff"), lw - 20), lx + 10, ly + rh * 5 + 44);
+
+  // 3 — the world you're in
+  const loc = myLoc(), L2 = parseLoc(loc), world = lastBatch?.world && lastBatch.world !== "-" ? lastBatch.world : "";
+  const pic = vrdPic(WORLDS[L2.wid]?.img);
+  g.save(); vrRound(g, X3, 0, CW, CH, R); g.clip();
+  if (pic) {  // The world's picture, filling the card, darker towards the bottom
+    const sc = Math.max(CW / pic.width, CH / pic.height), pw = pic.width * sc, ph = pic.height * sc;
+    g.globalAlpha = 0.85; g.drawImage(pic, X3 + (CW - pw) / 2, (CH - ph) / 2, pw, ph); g.globalAlpha = 1;
+    const sh = g.createLinearGradient(0, 0, 0, CH); sh.addColorStop(0, "rgba(20,24,48,0.35)"); sh.addColorStop(0.45, "rgba(20,24,48,0.6)"); sh.addColorStop(1, "rgba(20,24,48,0.8)");
+    g.fillStyle = sh; g.fillRect(X3, 0, CW, CH);
+  }
+  g.restore();
+  const ink0 = VRT.ink;
+  if (pic) VRT.ink = "255,255,255";
+  const cx3 = X3 + CW / 2;
+  g.fillStyle = vrInk(0.22); vrDisc(g, X3 + 70, 70, 40); g.fill();
+  const gi = vrdIcon("globe"); if (gi) g.drawImage(gi, X3 + 50, 50, 40, 40);
+  if (world) {
+    g.fillStyle = vrInk(0.22); vrRound(g, X3 + CW - 150, 44, 116, 52, 26); g.fill();
+    const ui = vrdIcon("users-round"); if (ui) g.drawImage(ui, X3 + CW - 136, 56, 28, 28);
+    g.fillStyle = vrInk(1); g.font = `600 26px ${VR_FONT}`; g.fillText(String(people), X3 + CW - 98, 80);
+  }
+  g.fillStyle = vrInk(1); g.font = `700 56px ${VR_FONT}`; g.textAlign = "center";
+  const lines = world ? vrWrap(g, world, CW - 70, 3) : [t("vd_notInWorld")];
+  if (!world) g.font = `600 36px ${VR_FONT}`;
+  lines.forEach((l, i) => g.fillText(l, cx3, 300 + (i - (lines.length - 1) / 2) * 64));
+  if (world && L2.wid) {
+    const owner = vrOwner(loc);
+    g.fillStyle = vrInk(0.8); g.font = `26px ${VR_FONT}`;
+    g.fillText(vrFit(g, [itypeLabel(L2), owner === AUTH.id ? t("vw_owner") : ""].filter(Boolean).join(" · "), CW - 60), cx3, 300 + lines.length * 32 + 30);
+  }
+  g.textAlign = "left";
+  g.fillStyle = pressed("room") ? vrInk(0.36) : vrInk(0.22); vrRound(g, X3 + 28, 600, CW - 56, 84, 42); g.fill();
+  const pi = vrdIcon("users-round"); if (pi) g.drawImage(pi, X3 + 56, 624, 36, 36);
+  g.fillStyle = vrInk(1); g.font = `600 28px ${VR_FONT}`; g.fillText(vrFit(g, t("vw_seePeople"), CW - 200), X3 + 108, 652);
+  spot("room", X3, 0, CW, CH, () => vrwPage("room"));
+  VRT.ink = ink0;
+  VRW.spots = spots;
+  return cv;
+}
+function vrhPoke(kind, x, y) {
+  const hit = VRW.spots.findLast(s => x >= s.x && x < s.x + s.w && y >= s.y && y < s.y + s.h);
+  if (kind === "down") { VRW.down = hit?.id || null; vrwDraw("panel"); }
+  else if (kind === "up") {
+    const was = VRW.down;
+    VRW.down = null;
+    if (hit && hit.id === was) hit.fn(); else vrwDraw("panel");
+  }
+}
+// Who owns an instance, from its location: ~friends(usr_…), ~hidden(usr_…), ~private(usr_…) or ~group(grp_…)
+function vrOwner(loc) { return (loc || "").match(/~(?:friends|hidden|private|group)\(((?:usr|grp)_[\w-]+)\)/)?.[1] || ""; }
+
+// ---------- Pages (friends, notifications, room, settings) ----------
+// Poke a button to press it; press and drag up or down to scroll the list
+function vrdPoke(kind, x, y) {
+  const hit = VRD.spots.findLast(s => x >= s.x && x < s.x + s.w && y >= s.y && y < s.y + s.h);
+  if (kind === "down") { VRD.down = VRD.hover = hit?.id || null; VRD.drag = { y, s: VRD.scroll[VRD.tab] || 0, moved: false }; }
+  else if (kind === "move" && VRD.drag) {
+    const dy = y - VRD.drag.y;
+    if (Math.abs(dy) > 30) VRD.drag.moved = true;
+    if (!VRD.drag.moved) return;
+    VRD.scroll[VRD.tab] = Math.max(0, Math.min(VRD.max, VRD.drag.s - dy));
+    VRD.down = VRD.hover = null;
+  } else if (kind === "up") {
+    if (!VRD.drag?.moved && hit && hit.id === VRD.down) hit.fn();
+    VRD.down = VRD.hover = VRD.drag = null;
+  }
+  vrwDraw("panel");
+}
+function vrdDraw(tab) {
+  VRD.tab = tab;
+  const { W, H } = VRD, [cv, g] = vrCanvas(W, H), spots = [];
+  const spot = (id, x, y, w, h, fn) => spots.push({ id, x, y, w, h, fn });
+  const hov = id => VRD.hover === id;
+  vrGlass(g, 0, 0, W, H, 48);
+  const X = 28, CW = W - X - 28, page = vrdPage(tab);
+  // ‹ back to the control center, the title, and how many
+  g.fillStyle = hov("back") ? vrInk(0.3) : vrInk(0.16); vrDisc(g, X + 30, 56, 38); g.fill();
+  const bi = vrdIcon("chevron-left"); if (bi) g.drawImage(bi, X + 8, 34, 44, 44);
+  spot("back", X - 20, 8, 110, 96, () => vrwPage(null));
+  g.fillStyle = vrInk(1); g.font = `700 40px ${VR_FONT}`; g.fillText(vrFit(g, page.title, CW - 400), X + 84, 72);
+  g.fillStyle = vrInk(0.7); g.font = `26px ${VR_FONT}`; g.textAlign = "right"; g.fillText(vrFit(g, page.sub || "", 280), W - 36, 68); g.textAlign = "left";
+  const top = 108, bottom = H - 24, RH = 104;
+  const total = page.rows.length * RH;
+  VRD.max = Math.max(0, total - (bottom - top));
+  const sc = Math.min(VRD.scroll[tab] || 0, VRD.max);
+  g.save(); g.beginPath(); g.rect(X - 8, top, CW + 16, bottom - top); g.clip();
+  if (!page.rows.length) { g.fillStyle = vrInk(0.45); g.font = `30px ${VR_FONT}`; g.textAlign = "center"; g.fillText(page.empty || "", X + CW / 2, top + 120); g.textAlign = "left"; }
+  page.rows.forEach((r, i) => {
+    const y = top + i * RH - sc;
+    if (y + RH < top || y > bottom) return;
+    if (r.id && hov(r.id)) { g.fillStyle = vrInk(0.1); vrRound(g, X - 8, y + 4, CW + 16, RH - 8, 22); g.fill(); }
+    let x = X + 8;
+    if (r.uid !== undefined || r.ic || r.glyph) {  // Picture: profile picture or an icon tile
+      const av = r.uid && vrdAvatar(r.uid);
+      g.save(); vrDisc(g, x + 36, y + RH / 2, 36); g.clip();
+      if (av) g.drawImage(av, x, y + RH / 2 - 36, 72, 72);
+      else {
+        g.fillStyle = vrColor(r.color || "gray"); g.fillRect(x, y + RH / 2 - 36, 72, 72);
+        if (r.glyph) vrGlyph(g, r.glyph, x + 36, y + RH / 2, 40, "#fff");
+        else { const im = vrdIcon(r.ic || "user-round", "#fff"); if (im) g.drawImage(im, x + 18, y + RH / 2 - 18, 36, 36); }
+      }
+      g.restore();
+      if (r.dot) { g.fillStyle = r.dot; vrDisc(g, x + 62, y + RH / 2 + 26, 11); g.fill(); g.strokeStyle = VRT.dark ? "#1c1c21" : "#fff"; g.lineWidth = 4; g.stroke(); }
+      x += 92;
+    }
+    // Buttons on the right, then the text in what's left
+    let bx = X + CW - 8;
+    for (const b of [...(r.buttons || [])].reverse()) {
+      if (b.sw !== undefined) {  // On/off switch
+        const sw = 100, sy = y + RH / 2 - 28, id = r.key + ":sw";
+        bx -= sw;
+        g.fillStyle = b.sw ? vrColor("green") : vrInk(0.2); vrRound(g, bx, sy, sw, 56, 28); g.fill();
+        g.fillStyle = "#fff"; vrDisc(g, b.sw ? bx + sw - 28 : bx + 28, sy + 28, 23); g.fill();
+        spot(id, bx - 10, sy - 14, sw + 20, 84, b.fn);
+        bx -= 14;
+        continue;
+      }
+      g.font = `600 26px ${VR_FONT}`;
+      const bw = Math.max(64, g.measureText(b.label).width + (b.ic ? 74 : 44)), by = y + RH / 2 - 30, id = r.key + ":" + b.label;
+      bx -= bw;
+      g.fillStyle = b.on === false ? vrInk(0.14) : vrColor(b.color || "accent"); if (hov(id)) g.globalAlpha = 0.7;
+      vrRound(g, bx, by, bw, 60, 30); g.fill(); g.globalAlpha = 1;
+      const fg = b.on === false ? vrInk(1) : "#fff", im = b.ic && vrdIcon(b.ic, fg); if (im) g.drawImage(im, bx + 22, by + 15, 30, 30);
+      g.fillStyle = fg; g.fillText(b.label, bx + (b.ic ? 60 : 22), by + 40);
+      spot(id, bx, by, bw, 60, b.fn);
+      bx -= 14;
+    }
+    if (r.batt) {
+      g.fillStyle = vrInk(1); g.font = `600 30px ${VR_FONT}`; g.textAlign = "right"; g.fillText(`${r.batt.pct}%`, bx, y + RH / 2 + 11); g.textAlign = "left";
+      bx -= g.measureText(`${r.batt.pct}%`).width + 20 + 66;
+      vrBattery(g, bx, y + RH / 2 - 16, 58, 32, r.batt.pct, r.batt.charging); bx -= 14;
+    } else if (r.value) {
+      g.fillStyle = vrInk(1); g.font = `700 32px ${VR_FONT}`; g.textAlign = "right"; g.fillText(r.value, bx, y + RH / 2 + 12); g.textAlign = "left";
+      bx -= g.measureText(r.value).width + 20;
+    }
+    const tw = bx - x - 10;
+    g.fillStyle = vrInk(1); g.font = `600 32px ${VR_FONT}`; g.fillText(vrFit(g, r.name, tw), x, y + (r.sub ? 46 : 62));
+    if (r.sub) { g.fillStyle = vrInk(0.62); g.font = `26px ${VR_FONT}`; g.fillText(vrFit(g, r.sub, tw), x, y + 82); }
+    if (r.id && r.fn) spot(r.id, X - 8, y + 4, bx - X, RH - 8, r.fn);
+  });
+  g.restore();
+  if (VRD.max) {  // Scroll bar
+    const th = Math.max(60, (bottom - top) * (bottom - top) / total), ty = top + (bottom - top - th) * (sc / VRD.max);
+    g.fillStyle = vrInk(0.25); vrRound(g, W - 18, ty, 8, th, 4); g.fill();
+  }
+  if (VRD.msg && Date.now() - VRD.msgAt < 3500) {  // What just happened, at the bottom
+    g.font = `600 28px ${VR_FONT}`;
+    const mw = g.measureText(VRD.msg).width + 60;
+    g.fillStyle = "rgba(48,209,88,0.95)"; vrRound(g, X + (CW - mw) / 2, H - 92, mw, 60, 30); g.fill();
+    g.fillStyle = "#fff"; g.textAlign = "center"; g.fillText(VRD.msg, X + CW / 2, H - 52); g.textAlign = "left";
+  }
+  VRD.spots = spots;
+  return cv;
+}
+
+// ---------- Keyboard: the pop-out keyboard's layout and in-game chat mode, poked on the wrist ----------
+const VRK = { W: 1400, H: 660, buf: [], cur: 0, sel: false, shift: 0, down: null, rep: 0, spots: [], msg: "", msgOk: null, msgAt: 0, last: 0, typing: false, keep: 0, idle: 0 };
+const VRK_MAX = 144, VRK_GAP = 1600;  // Chatbox max characters / send interval (VRChat rate-limits)
+function vrkRows() {
+  const lang = kbCur(), rows = kbRows(lang, VRK.shift), next = kbNext(lang, S.kbLangs), sc = VRK.shift ? "on" : "fn", lock = VRK.shift === 2;
+  const keys = ri => [...rows[ri]].map((ch, i) => ({ id: `k${ri}_${i}`, ch, f: 1 }));
+  return [
+    { h: 0.7, keys: [["copy", "copy", t("kb_copy")], ["paste", "clipboard", t("kb_paste")], ["all", "text-select", t("kb_all")], ["clear", "eraser", t("vk_clear")]]
+      .map(([id, ic, label]) => ({ id, ic, label, f: 1, cls: "fn", small: true })) },
+    { h: 1, keys: [...keys(0), { id: "bs", ic: "delete", f: 1.5, cls: "fn" }] },
+    { h: 1, keys: keys(1) },
+    { h: 1, keys: [...keys(2), vrkWin() ? { id: "enter", ic: "corner-down-left", label: "Enter", f: 1.5, cls: "on" } : { id: "enter", ic: "send", label: t("ch_send"), f: 1.5, cls: "on" }] },
+    { h: 1, keys: [{ id: "shift", ic: "arrow-big-up", f: 1.5, cls: sc, lock }, ...keys(3), { id: "shift2", ic: "arrow-big-up", f: 1.5, cls: sc, lock }] },
+    { h: 1, keys: [{ id: "lang", ic: "languages", label: KB_LANGS[next].key, f: 1.5, cls: "fn" }, { id: "space", hint: `${KB_LANGS[lang].name} · ${t("kb_space")}`, f: 5, cls: "fn" },
+      { id: "left", ic: "chevron-left", f: 1, cls: "fn" }, { id: "right", ic: "chevron-right", f: 1, cls: "fn" }] },
+  ];
+}
+function vrkDraw() {
+  // Windows mode types straight into the program, so there's no text box: the keyboard is that much shorter
+  const K = VRK, win = vrkWin(), W = K.W, H = win ? K.H - 102 : K.H, [cv, g] = vrCanvas(W, H), spots = [], acc = vrColor("accent"), dim = vrInk(0.55);
+  vrGlass(g, 0, 0, W, H, 40);
+  // Title bar and ×
+  const ki = vrdIcon("keyboard", dim); if (ki) g.drawImage(ki, 30, 20, 32, 32);
+  g.fillStyle = dim; g.font = `26px ${VR_FONT}`; g.fillText(t("vw_kb"), 74, 46);
+  const modes = [["chat", "message-square", "Chatbox"], ["win", "monitor", t("vk_win")]];
+  g.font = `600 24px ${VR_FONT}`;
+  const mw = modes.map(([, , l]) => g.measureText(l).width + 80), mx0 = (W - mw[0] - mw[1]) / 2 - 8;
+  g.fillStyle = vrInk(0.08); vrRound(g, mx0, 10, mw[0] + mw[1] + 16, 52, 26); g.fill();
+  let mx = mx0 + 8;
+  modes.forEach(([id, ic, l], i) => {
+    const on = (id === "win") === win;
+    if (on) { g.fillStyle = acc; vrRound(g, mx, 16, mw[i], 40, 20); g.fill(); }
+    const im = vrdIcon(ic, on ? "#fff" : vrInk(0.7)); if (im) g.drawImage(im, mx + 18, 24, 24, 24);
+    g.fillStyle = on ? "#fff" : vrInk(0.7); g.fillText(l, mx + 52, 45);
+    spots.push({ id: "mode:" + id, x: mx, y: 6, w: mw[i], h: 60, k: {} });
+    mx += mw[i];
+  });
+  const size = oiCfg().vrKb || OI_DEF.vrKb, sx = W - 330;
+  [["−", sx, "size:-"], ["+", sx + 170, "size:+"]].forEach(([l, x, id]) => {
+    g.fillStyle = K.down === id ? acc : vrInk(0.08); vrRound(g, x, 10, 60, 52, 14); g.fill();
+    g.fillStyle = vrInk(1); g.font = `600 32px ${VR_FONT}`; g.textAlign = "center"; g.fillText(l, x + 30, 47);
+    spots.push({ id, x: x - 6, y: 0, w: 72, h: 70, k: {} });
+  });
+  g.fillStyle = dim; g.font = `24px ${VR_FONT}`; g.fillText(t("vw_cm", size), sx + 115, 45); g.textAlign = "left";
+  g.fillStyle = K.down === "close" ? "#ff453a" : vrInk(0.07); vrRound(g, W - 100, 10, 80, 52, 14); g.fill();
+  const xi = vrdIcon("x", vrInk(1)); if (xi) g.drawImage(xi, W - 76, 20, 32, 32);
+  spots.push({ id: "close", x: W - 110, y: 0, w: 110, h: 70, k: {} });
+  // What's typed, on one line (the end stays in view), with the count and what just happened
+  if (!win) {
+    const bx = 20, by = 72, bw = W - 40, bh = 88, n = K.buf.length, cnt = `${n} / ${VRK_MAX}`;
+    g.fillStyle = vrInk(0.07); vrRound(g, bx, by, bw, bh, 20); g.fill();
+    g.font = `24px ui-monospace, Consolas, monospace`;
+    const cw = g.measureText(cnt).width;
+    g.fillStyle = n >= VRK_MAX ? "#ff453a" : dim; g.fillText(cnt, bx + bw - 24 - cw, by + 54);
+    let right = bx + bw - 24 - cw - 24;
+    if (K.msg && Date.now() - K.msgAt < 2200) {
+      g.font = `600 26px ${VR_FONT}`;
+      const mw = g.measureText(K.msg).width;
+      g.fillStyle = K.msgOk ? "#30d158" : K.msgOk === false ? "#ff453a" : dim; g.fillText(K.msg, right - mw, by + 54);
+      right -= mw + 24;
+    }
+    const tx0 = bx + 24, tw = right - tx0;
+    g.save(); g.beginPath(); g.rect(tx0 - 4, by, tw + 8, bh); g.clip();
+    if (!n) {
+      g.fillStyle = acc; g.fillRect(tx0, by + 20, 3, 48);
+      g.fillStyle = vrInk(0.45); g.font = `32px ${VR_FONT}`; g.fillText(vrFit(g, t("vk_ph"), tw - 20), tx0 + 14, by + 56);
+    } else {
+      const line = s => s.replace(/\n/g, " ⏎ ");
+      g.font = `500 38px ${VR_FONT}`;
+      const before = line(K.buf.slice(0, K.cur).join("")), after = line(K.buf.slice(K.cur).join(""));
+      const bwid = g.measureText(before).width, x0 = tx0 - Math.max(0, bwid - tw * 0.85);
+      if (K.sel) { g.globalAlpha = 0.45; g.fillStyle = acc; g.fillRect(x0, by + 18, bwid + g.measureText(after).width, 52); g.globalAlpha = 1; }
+      g.fillStyle = vrInk(1); g.fillText(before, x0, by + 58); g.fillText(after, x0 + bwid + 4, by + 58);
+      if (!K.sel) { g.fillStyle = acc; g.fillRect(x0 + bwid, by + 18, 3, 52); }
+    }
+    g.restore();
+  }
+  // Keys
+  const rows = vrkRows(), gap = 10, top = win ? 72 : 174, bottom = H - 16;
+  const unitH = (bottom - top - gap * (rows.length - 1)) / rows.reduce((s, r) => s + r.h, 0), fs = Math.min(40, unitH * 0.42);
+  let y = top;
+  for (const row of rows) {
+    const h = row.h * unitH, unitW = (W - 40 - gap * (row.keys.length - 1)) / row.keys.reduce((s, k) => s + k.f, 0);
+    let x = 20;
+    for (const k of row.keys) {
+      const w = k.f * unitW, cx = x + w / 2, cy = y + h / 2;
+      g.fillStyle = K.down === k.id || k.cls === "on" ? acc : k.cls === "fn" ? vrInk(0.07) : vrInk(0.13);
+      vrRound(g, x, y, w, h, 16); g.fill();
+      if (k.lock) { g.fillStyle = vrInk(0.85); g.fillRect(x + 12, y + h - 6, w - 24, 3); }
+      const lit = K.down === k.id || k.cls === "on";
+      g.fillStyle = lit ? "#fff" : vrInk(1); g.textAlign = "center";
+      if (k.ch !== undefined) { g.font = `500 ${fs}px ${VR_FONT}`; g.fillText(kbKeyLabel(k.ch), cx, cy + fs * 0.36); }
+      else if (k.hint) { g.fillStyle = dim; g.font = `${fs * 0.5}px ${VR_FONT}`; g.fillText(vrFit(g, k.hint, w - 20), cx, cy + fs * 0.18); }
+      else {  // Icon, with its label after it when there is one
+        const is = fs * (k.small ? 0.7 : 0.9), im = vrdIcon(k.ic, lit ? "#fff" : vrInk(1));
+        g.font = `600 ${fs * (k.small ? 0.52 : 0.62)}px ${VR_FONT}`;
+        const label = k.label ? vrFit(g, k.label, w - is - 40) : "", lw = label ? g.measureText(label).width + 12 : 0, x1 = cx - (is + lw) / 2;
+        if (im) g.drawImage(im, x1, cy - is / 2, is, is);
+        if (label) { g.textAlign = "left"; g.fillText(label, x1 + is + 12, cy + fs * 0.2); }
+      }
+      g.textAlign = "left";
+      spots.push({ id: k.id, x, y, w, h, k });
+      x += w + gap;
+    }
+    y += h + gap;
+  }
+  K.spots = spots;
+  return cv;
+}
+function vrkPoke(kind, x, y) {
+  if (kind === "up") { clearTimeout(VRK.rep); VRK.down = null; return vrwDraw("panel"); }
+  if (kind !== "down") return;
+  const s = VRK.spots.find(s => x >= s.x && x < s.x + s.w && y >= s.y && y < s.y + s.h);
+  if (!s) return;
+  if (s.id === "close") return vrwPage(null);
+  if (s.id.startsWith("mode:")) {  // Shared with the pop-out keyboard
+    const m = s.id.slice(5);
+    if (m !== (vrkWin() ? "win" : "chat")) { vrkStop(); S.kbFloatMode = m; VRK.wprev = null; save(); }
+    return vrwDraw("panel");
+  }
+  if (s.id.startsWith("size:")) {
+    const v = oiCfg().vrKb || OI_DEF.vrKb, nv = Math.min(60, Math.max(20, v + (s.id === "size:+" ? 2 : -2)));
+    VRK.down = s.id;
+    return nv !== v ? vrSet({ vrKb: nv }) : vrwDraw("panel");
+  }
+  VRK.down = s.id;
+  if (s.k.ch !== undefined) { vrkKey(s.k.ch); if (VRK.shift === 1) VRK.shift = 0; }
+  else vrkAct(s.id === "shift2" ? "shift" : s.id);
+  if (s.id === "bs") VRK.rep = setTimeout(function again() { vrkAct("bs"); vrwDraw("panel"); VRK.rep = setTimeout(again, 70); }, 450);
+  vrwDraw("panel");
+}
+function vrkInsert(text) {
+  const K = VRK;
+  if (K.sel) { K.buf = []; K.cur = 0; K.sel = false; }
+  const chars = [...text].slice(0, VRK_MAX - K.buf.length);
+  if (!chars.length) return;
+  K.buf.splice(K.cur, 0, ...chars); K.cur += chars.length;
+  // VRChat shows at most 9 lines
+  while (K.buf.filter(c => c === "\n").length > 8) { const i = K.buf.lastIndexOf("\n"); K.buf.splice(i, 1); if (K.cur > i) K.cur--; }
+  vrkChanged();
+}
+// Korean syllable composition / Vietnamese + Pinyin tone marks on the character before the cursor
+const vrkWin = () => S.kbFloatMode === "win";
+// Windows mode: each key goes to the program that has focus right away (a Korean syllable or a tone mark replaces the
+// letter just sent)
+function vrkWinKey(ch) {
+  const r = VRK.wprev ? kbCompose(kbCur(), VRK.wprev, ch) : null;
+  if (r != null) { api("vr_press", "bs"); api("vr_type", r); VRK.wprev = [...r].pop(); }
+  else { api("vr_type", ch); VRK.wprev = ch; }
+}
+function vrkWinAct(a) {
+  const K = VRK;
+  K.wprev = null;
+  if (a === "enter") { api("vr_press", K.shift ? "newline" : "enter"); if (K.shift === 1) K.shift = 0; }
+  else if (a === "space") api("vr_type", " ");
+  else if (a === "clear") { api("vr_press", "all"); api("vr_press", "bs"); }
+  else if (["bs", "left", "right", "all", "copy", "paste"].includes(a)) api("vr_press", a);
+}
+function vrkKey(ch) {
+  if (vrkWin()) return vrkWinKey(ch);
+  const K = VRK, r = !K.sel && K.cur > 0 ? kbCompose(kbCur(), K.buf[K.cur - 1], ch) : null;
+  if (r == null) return vrkInsert(ch);
+  K.buf.splice(K.cur - 1, 1, ...r); K.cur += [...r].length - 1;
+  vrkChanged();
+}
+// In-game "typing…" dots: on while there's text, off when empty / sent / idle for 10 s
+function vrkChanged() {
+  if (!VRK.buf.length || S.chatTyping === false) return vrkStop();
+  if (!VRK.typing) { VRK.typing = true; api("chat_typing", true); VRK.keep = setInterval(() => api("chat_typing", true), 4000); }
+  clearTimeout(VRK.idle); VRK.idle = setTimeout(vrkStop, 10000);
+}
+function vrkStop() {
+  clearInterval(VRK.keep); clearTimeout(VRK.idle);
+  if (VRK.typing) { VRK.typing = false; api("chat_typing", false); }
+}
+function vrkSay(msg, ok = null) { VRK.msg = msg; VRK.msgOk = ok; VRK.msgAt = Date.now(); vrwDraw("panel"); setTimeout(() => vrwDraw("panel"), 2300); }
+async function vrkSend() {
+  const text = VRK.buf.join("").trim();
+  if (!text) return;
+  if (Date.now() - VRK.last < VRK_GAP) return vrkSay(t("vk_wait"));
+  VRK.last = Date.now();
+  vrkStop();
+  const r = await api("chat_send", text, S.chatSound !== false);
+  if (!r || r.error) return vrkSay(t("vk_fail"), false);
+  if (r.id) window.onChatSent?.(r);  // Into the chat page's history too
+  VRK.buf = []; VRK.cur = 0; VRK.sel = false;
+  vrkSay(t("vk_sent"), true);
+}
+function vrkAct(a) {
+  const K = VRK;
+  if (vrkWin() && a !== "shift" && a !== "lang") return vrkWinAct(a);
+  if (a === "shift") K.shift = (K.shift + 1) % 3;
+  else if (a === "lang") { S.kbLang = kbNext(kbCur(), S.kbLangs); K.shift = 0; save(); }
+  else if (a === "bs") { if (K.sel) { K.buf = []; K.cur = 0; K.sel = false; } else if (K.cur > 0) { K.buf.splice(K.cur - 1, 1); K.cur--; } vrkChanged(); }
+  else if (a === "space") vrkInsert(" ");
+  else if (a === "enter") { if (K.shift) { vrkInsert("\n"); if (K.shift === 1) K.shift = 0; } else vrkSend(); }
+  else if (a === "left" || a === "right") { K.sel = false; K.cur = Math.max(0, Math.min(K.buf.length, K.cur + (a === "left" ? -1 : 1))); }
+  else if (a === "all") K.sel = K.buf.length > 0;
+  else if (a === "clear") { K.buf = []; K.cur = 0; K.sel = false; vrkChanged(); }
+  else if (a === "copy") { if (K.buf.length) { api("copy", K.buf.join("")); vrkSay(t("kb_copied"), true); } }
+  else if (a === "paste") api("clip_get").then(x => { if (x) { vrkInsert(String(x).replace(/\r/g, "")); vrwDraw("panel"); } });
+}
+
+// What each page lists: {title, sub, empty, rows: [{key, uid|ic, name, sub, dot, buttons: [{label, ic, color, fn}]}]}
+function vrdPage(tab) {
+  const dotOf = st => ({ "join me": "#42a5f5", active: "#30d158", "ask me": "#ff9f0a", busy: "#ff453a" })[(st || "").toLowerCase()] || "#30d158";
+  if (tab === "friends") {
+    const list = Object.values(FRIENDS).filter(f => f.state === "online")
+      .sort((a, b) => (+!!favRecord("friend", b.id) - +!!favRecord("friend", a.id)) || (a.displayName || "").localeCompare(b.displayName || ""));
+    return { title: t("vd_friends"), sub: t("vd_count", list.length), empty: AUTH.loggedIn ? t("vd_noFriends") : t("needLogin"),
+      rows: list.map(f => {
+        const L2 = parseLoc(f.location), canJoin = !!(L2.wid && L2.name);
+        return { key: "f:" + f.id, uid: f.id, dot: dotOf(f.status), name: (favRecord("friend", f.id) ? "★ " : "") + (f.displayName || f.id),
+          sub: [f.statusDescription, locLabel(f.location, f.state)].filter(Boolean).join(" · "),
+          buttons: canJoin ? [{ label: t("vd_join"), ic: "rocket", fn: () => { doLaunch(f.location); vrdSay(t("vd_joining")); } },
+            { label: t("inviteMe"), ic: "send", color: "purple", fn: () => { doInvite(f.location); vrdSay(t("inviteSent")); } }] : [] };
+      }) };
+  }
+  if (tab === "notifs") {
+    const list = [...NOTIFS].sort((a, b) => (b.t || "").localeCompare(a.t || ""));
+    return { title: t("vd_notifs"), sub: t("vd_items", list.length), empty: t("noNotifs"),
+      rows: list.map(n => {
+        const drop = { label: t("vw_delete"), ic: "trash-2", color: "red", fn: () => { respond(n.id, false); vrdSay(t("dismissed")); } };
+        const buttons = n.type === "friendRequest" ? [{ label: t("accept"), ic: "check", color: "green", fn: () => { respond(n.id, true); vrdSay(t("accepted")); } }, { ...drop, label: t("decline"), ic: undefined, color: undefined, on: false }]
+          : n.type === "invite" && n.world ? [{ label: t("vd_join"), ic: "rocket", fn: () => { doLaunch(n.world); vrdSay(t("vd_joining")); } }, drop] : [drop];
+        return { key: "n:" + n.id, uid: n.from, name: n.name || n.from, sub: `${t("n_" + n.type, n.worldName || WORLDS[parseLoc(n.world).wid]?.name || "")}${n.msg ? ` — “${n.msg}”` : ""}`, buttons };
+      }) };
+  }
+  if (tab === "room") {
+    const players = lastBatch?.players || [];
+    const world = lastBatch?.world && lastBatch.world !== "-" ? lastBatch.world : "";
+    const owner = vrOwner(myLoc()), mine = owner === AUTH.id;
+    // A group's instance: ban from the group when you're allowed to (kick and warn exist only in the game's own menu)
+    const gid = owner.startsWith("grp_") ? owner : "";
+    if (gid && !GRP.perms && !GRP.permsLoading) gLoadPerms().then(() => vrwDraw("panel"));
+    const perms = (GRP.perms?.[gid] || []).map(permName), canBan = !!gid && (perms.includes("*") || perms.includes("group-bans-manage"));
+    const banBtn = uid => VRD.banned.has(uid) ? { label: t("vw_banned"), on: false, fn: () => {} }
+      : VRD.confirm?.uid === uid && Date.now() < VRD.confirm.until
+        ? { label: t("vw_banSure"), ic: "ban", color: "red", fn: async () => {
+          VRD.confirm = null;
+          const r = await vrc("banGroupMember", { groupId: gid, userId: uid });
+          if ("error" in r) vrdSay(t("errGeneric")); else { VRD.banned.add(uid); vrdSay(t("vw_banned")); }
+        } }
+        : { label: t("vw_ban"), ic: "ban", color: "red", fn: () => { VRD.confirm = { uid, until: Date.now() + 4000 }; vrwDraw("panel"); setTimeout(() => vrwDraw("panel"), 4100); } };
+    return { title: world || t("vd_room"), sub: [mine ? t("vw_owner") : canBan ? t("vw_canBan") : "", t("vd_count", players.length)].filter(Boolean).join(" · "), empty: t("vd_notInWorld"),
+      rows: players.map(([uid, name]) => {
+        const friend = !!FRIENDS[uid], me = uid === AUTH.id;
+        const add = me || friend || !uid ? [] : VRD.sent.has(uid) ? [{ label: t("vd_requested"), on: false, fn: () => {} }]
+          : [{ label: t("vd_addFriend"), ic: "user-plus", color: "green", fn: async () => {
+            const r = await vrc("friend", { userId: uid });
+            if ("error" in r) vrdSay(t("errGeneric")); else { VRD.sent.add(uid); vrdSay(t("vd_requested")); }
+          } }];
+        return { key: "p:" + uid, uid, name, sub: me ? t("vd_you") : friend ? t("vd_friendTag") : "", buttons: [...add, ...(canBan && !me && uid ? [banBtn(uid)] : [])] };
+      }) };
+  }
+  if (tab === "devices") {
+    const info = VRW.info || {}, list = info.devices || [];
+    const kindName = { hmd: t("vw_k_hmd"), ctrl: t("vw_k_ctrl"), trk: t("vw_k_trk"), toy: t("vw_k_toy") };
+    const color = { hmd: "blue", ctrl: "indigo", trk: "teal", toy: "pink" };
+    // Named by model; the label says which hand or tracker (the headset's and toys' labels are emoji, left out)
+    const side = l => l === "L" ? t("vr_left") : l === "R" ? t("vr_right") : /^T\d+$/.test(l || "") ? l : "";
+    const rows = list.map((d, i) => ({ key: "d:" + (d.serial || i), glyph: d.kind, color: color[d.kind] || "gray", name: oiCfg().devNames?.[d.serial] || d.model || [kindName[d.kind] || d.kind, side(d.label)].filter(Boolean).join(" "),
+      sub: [d.model ? [kindName[d.kind], side(d.label)].filter(Boolean).join(" ") : "", d.battery == null ? t("vw_noBatt") : d.charging ? t("vw_charging") : ""].filter(Boolean).join(" · "),
+      batt: d.battery == null ? null : { pct: d.battery, charging: d.charging } }));
+    if (info.bpm) rows.unshift({ key: "d:hr", glyph: "heart", color: "red", name: t("vw_heart"), sub: t("vw_hrLive"), value: `${info.bpm} bpm` });
+    return { title: t("vw_devices"), sub: t("vd_items", rows.length), empty: t("vw_noDevices"), rows };
+  }
+  // Settings: the overlay's own, and the Chatbox switch
+  const c = oiCfg(), input = c.vrInput || "both";
+  const toggle = (key, on) => [{ label: "sw", sw: !!on, fn: () => vrSet({ [key]: !on }) }];
+  const r1 = v => Math.round(v * 10) / 10;
+  const step = (key, v, lo, hi, d) => [{ label: "−", on: v > lo ? undefined : false, fn: () => v > lo && vrSet({ [key]: r1(Math.max(lo, v - d)) }) },
+    { label: "+", on: v < hi ? undefined : false, fn: () => v < hi && vrSet({ [key]: r1(Math.min(hi, v + d)) }) }];
+  const btn = c.vrBtn || OI_DEF.vrBtn, panel = c.vrPanel || OI_DEF.vrPanel, dist = c.vrDist ?? OI_DEF.vrDist, px = c.vrX ?? 0, py = c.vrY ?? 0;
+  return { title: t("vw_settings"), sub: "", rows: [
+    { key: "s:on", ic: "message-square", color: c.on ? "green" : "gray", name: t("vd_chatOn"), sub: c.on ? t("vw_onNow") : t("vd_off"), buttons: toggle("on", c.on) },
+    { key: "s:toast", ic: "bell", color: c.vrToast ? "blue" : "gray", name: t("vr_toast"), sub: t("vr_toastHint"), buttons: toggle("vrToast", c.vrToast) },
+    { key: "s:gaze", ic: "eye", color: c.vrGaze ? "purple" : "gray", name: t("vr_gaze"), sub: t("vr_gazeHint"), buttons: toggle("vrGaze", c.vrGaze) },
+    { key: "s:palm", ic: c.vrPalm ? "hand" : "eye", color: c.vrGaze ? "purple" : "gray", name: t("vr_palm"), sub: t(c.vrPalm ? "vr_show_palm" : "vr_show_look"),
+      buttons: [["look", false], ["palm", true]].map(([k, v]) => ({ label: t("vr_show_" + k), on: !!c.vrPalm === v ? undefined : false, fn: () => vrSet({ vrPalm: v }) })) },
+    { key: "s:input", ic: "hand", color: "orange", name: t("vr_input"), sub: t("vr_in_" + input),
+      buttons: [{ label: t("vw_change"), fn: () => vrSet({ vrInput: { both: "poke", poke: "laser", laser: "both" }[input] }) }] },
+    { key: "s:hand", ic: "hand", color: "teal", name: t("vr_hand"), sub: t(c.vrHand === "right" ? "vr_right" : "vr_left"),
+      buttons: [{ label: t(c.vrHand === "right" ? "vr_left" : "vr_right"), fn: () => vrSet({ vrHand: c.vrHand === "right" ? "left" : "right" }) }] },
+    { key: "s:btn", ic: "circle-plus", color: "indigo", name: t("vr_size"), sub: t("vw_cm", btn), buttons: step("vrBtn", btn, 3, 12, 1) },
+    { key: "s:panel", ic: "picture-in-picture-2", color: "indigo", name: t("vr_panel"), sub: t("vw_cm", panel), buttons: step("vrPanel", panel, 15, 40, 2) },
+    { key: "s:x", ic: "arrow-right-left", color: "indigo", name: t("vr_posX"), sub: t("vw_cm", px), buttons: step("vrX", px, -20, 20, 0.5) },
+    { key: "s:y", ic: "arrow-up", color: "indigo", name: t("vr_posY"), sub: t("vw_cm", py), buttons: step("vrY", py, -20, 20, 0.5) },
+    { key: "s:dist", ic: "map-pin", color: "indigo", name: t("vr_posZ"), sub: t("vw_cm", dist), buttons: step("vrDist", dist, -10, 40, 0.5) },
+  ] };
+}
+tx({
+  vd_friends: ["เพื่อนออนไลน์", "Friends online", "オンラインのフレンド"], vd_notifs: ["แจ้งเตือน", "Notifications", "通知"],
+  vd_room: ["ห้องนี้", "This room", "このルーム"], vd_chat: ["Chatbox", "Chatbox", "Chatbox"],
+  vd_count: [n => `${n} คน`, n => `${n}`, n => `${n} 人`], vd_items: [n => `${n} รายการ`, n => `${n}`, n => `${n} 件`],
+  vd_tab_friends: ["เพื่อน", "Friends", "フレンド"], vd_tab_notifs: ["แจ้งเตือน", "Alerts", "通知"], vd_tab_room: ["ห้องนี้", "Room", "ルーム"], vd_tab_chat: ["Chatbox", "Chatbox", "Chatbox"], vd_join: ["เข้าร่วม", "Join", "参加"], vd_joining: ["กำลังเข้าร่วม…", "Joining…", "参加中…"],
+  vd_noFriends: ["ไม่มีเพื่อนออนไลน์ตอนนี้", "No friends online right now", "オンラインのフレンドはいません"],
+  vd_notInWorld: ["ยังไม่ได้อยู่ในโลก", "Not in a world yet", "まだワールドにいません"], vd_you: ["คุณ", "You", "あなた"], vd_friendTag: ["เพื่อน", "Friend", "フレンド"],
+  vd_addFriend: ["เพิ่มเพื่อน", "Add friend", "フレンド申請"], vd_requested: ["ส่งคำขอแล้ว", "Request sent", "申請済み"],
+  vd_chatOn: ["ส่งข้อมูลขึ้น Chatbox", "Send info to the Chatbox", "Chatbox に情報を送信"], vd_off: ["ปิดอยู่", "Off", "オフ"],
+  vd_turnOn: ["เปิด", "Turn on", "オン"], vd_turnOff: ["ปิด", "Turn off", "オフ"],
+  vd_chatOnNow: ["เปิดส่งขึ้น Chatbox แล้ว", "Chatbox info on", "Chatbox 送信オン"], vd_chatOffNow: ["ปิดส่งขึ้น Chatbox แล้ว", "Chatbox info off", "Chatbox 送信オフ"],
+  vd_type: ["พิมพ์ข้อความ", "Type a message", "メッセージを入力"], vd_typeHint: ["พิมพ์บนคีย์บอร์ดที่ข้อมือ แล้วส่งขึ้น Chatbox", "On the wrist keyboard, sent to the Chatbox", "手首のキーボードで入力して Chatbox に送信"],
+  vd_typeBtn: ["พิมพ์", "Type", "入力"], vd_send: ["ส่ง", "Send", "送信"], vd_chatSent: ["ส่งข้อความแล้ว", "Message sent", "送信しました"],
+  vd_quick: ["กดสถานะเพื่อส่ง", "Tap a status to send it", "ステータスをタップで送信"],
+});
+Object.assign(UPD_I18N.ko, { vd_items: n => `${n}`, vd_tab_friends: "친구", vd_tab_notifs: "알림", vd_tab_room: "방", vd_tab_chat: "Chatbox", vd_friends: "접속 중인 친구", vd_notifs: "알림", vd_room: "이 방", vd_chat: "Chatbox", vd_count: n => `${n}`, vd_join: "참가", vd_joining: "참가하는 중…",
+  vd_noFriends: "지금 접속한 친구가 없습니다", vd_notInWorld: "아직 월드에 없습니다", vd_you: "나", vd_friendTag: "친구", vd_addFriend: "친구 추가", vd_requested: "요청 보냄",
+  vd_chatOn: "Chatbox에 정보 보내기", vd_off: "꺼짐", vd_turnOn: "켜기", vd_turnOff: "끄기", vd_chatOnNow: "Chatbox 보내기 켬", vd_chatOffNow: "Chatbox 보내기 끔",
+  vd_type: "메시지 입력", vd_typeHint: "손목 키보드로 입력해 Chatbox에 보냄", vd_typeBtn: "입력", vd_send: "보내기", vd_chatSent: "메시지를 보냈습니다", vd_quick: "상태를 눌러 보내기", });
+Object.assign(UPD_I18N.ru, { vd_items: n => `${n}`, vd_tab_friends: "Друзья", vd_tab_notifs: "Уведомл.", vd_tab_room: "Комната", vd_tab_chat: "Chatbox", vd_friends: "Друзья в сети", vd_notifs: "Уведомления", vd_room: "Эта комната", vd_chat: "Chatbox", vd_count: n => `${n}`, vd_join: "Войти", vd_joining: "Подключение…",
+  vd_noFriends: "Сейчас никого из друзей нет в сети", vd_notInWorld: "Вы ещё не в мире", vd_you: "Вы", vd_friendTag: "Друг", vd_addFriend: "В друзья", vd_requested: "Заявка отправлена",
+  vd_chatOn: "Отправлять в Chatbox", vd_off: "Выкл.", vd_turnOn: "Вкл.", vd_turnOff: "Выкл.", vd_chatOnNow: "Отправка в Chatbox включена", vd_chatOffNow: "Отправка в Chatbox выключена",
+  vd_type: "Написать сообщение", vd_typeHint: "На клавиатуре на запястье, отправится в Chatbox", vd_typeBtn: "Написать", vd_send: "Отправить", vd_chatSent: "Сообщение отправлено", vd_quick: "Нажмите статус, чтобы отправить", });
+Object.assign(UPD_I18N.vi, { vd_items: n => `${n}`, vd_tab_friends: "Bạn bè", vd_tab_notifs: "Thông báo", vd_tab_room: "Phòng", vd_tab_chat: "Chatbox", vd_friends: "Bạn bè trực tuyến", vd_notifs: "Thông báo", vd_room: "Phòng này", vd_chat: "Chatbox", vd_count: n => `${n}`, vd_join: "Tham gia", vd_joining: "Đang tham gia…",
+  vd_noFriends: "Hiện không có bạn nào trực tuyến", vd_notInWorld: "Chưa ở trong thế giới nào", vd_you: "Bạn", vd_friendTag: "Bạn bè", vd_addFriend: "Kết bạn", vd_requested: "Đã gửi lời mời",
+  vd_chatOn: "Gửi thông tin lên Chatbox", vd_off: "Tắt", vd_turnOn: "Bật", vd_turnOff: "Tắt", vd_chatOnNow: "Đã bật gửi Chatbox", vd_chatOffNow: "Đã tắt gửi Chatbox",
+  vd_type: "Nhập tin nhắn", vd_typeHint: "Bằng bàn phím ở cổ tay, gửi lên Chatbox", vd_typeBtn: "Nhập", vd_send: "Gửi", vd_chatSent: "Đã gửi tin nhắn", vd_quick: "Chạm trạng thái để gửi", });
+Object.assign(UPD_I18N.zh, { vd_items: n => `${n} 条`, vd_tab_friends: "好友", vd_tab_notifs: "通知", vd_tab_room: "房间", vd_tab_chat: "Chatbox", vd_friends: "在线好友", vd_notifs: "通知", vd_room: "这个房间", vd_chat: "Chatbox", vd_count: n => `${n}`, vd_join: "加入", vd_joining: "正在加入…",
+  vd_noFriends: "现在没有在线好友", vd_notInWorld: "还没进入世界", vd_you: "你", vd_friendTag: "好友", vd_addFriend: "加好友", vd_requested: "已发送请求",
+  vd_chatOn: "发送信息到 Chatbox", vd_off: "关闭", vd_turnOn: "开启", vd_turnOff: "关闭", vd_chatOnNow: "已开启 Chatbox 发送", vd_chatOffNow: "已关闭 Chatbox 发送",
+  vd_type: "输入消息", vd_typeHint: "用手腕键盘输入并发送到 Chatbox", vd_typeBtn: "输入", vd_send: "发送", vd_chatSent: "已发送消息", vd_quick: "点击状态即可发送", });
+tx({
+  vr_panel: ["ขนาดหน้าต่าง (ซม.)", "Panel size (cm)", "パネルの大きさ (cm)"],
+  vr_panelHint: ["ความกว้างของหน้าที่เปิดจากเมนู 15–40 ซม.", "Width of the pages the menu opens, 15–40 cm", "メニューから開くページの幅 15–40 cm"],
+  vw_kb: ["คีย์บอร์ด", "Keyboard", "キーボード"],
+  vk_ph: ["พิมพ์ แล้วกดส่งเพื่อขึ้น Chatbox", "Type, then press Send to put it in the Chatbox", "入力して送信で Chatbox に表示"],
+  vk_sent: ["ส่งแล้ว", "Sent", "送信しました"],
+  vk_fail: ["ส่งไม่สำเร็จ", "Couldn't send", "送信できませんでした"],
+  vk_wait: ["รอสักครู่…", "Wait a moment…", "少しお待ちください…"],
+  vk_clear: ["ล้าง", "Clear", "消去"],
+});
+Object.assign(UPD_I18N.ko, { vr_panel: "패널 크기 (cm)", vr_panelHint: "메뉴에서 여는 페이지 너비 15–40 cm", vw_kb: "키보드", vk_ph: "입력한 뒤 보내기를 누르면 Chatbox에 표시", vk_sent: "보냈습니다", vk_fail: "보내지 못했습니다", vk_wait: "잠시 기다리세요…", vk_clear: "지우기" });
+Object.assign(UPD_I18N.ru, { vr_panel: "Размер панели (см)", vr_panelHint: "Ширина страниц из меню, 15–40 см", vw_kb: "Клавиатура", vk_ph: "Наберите текст и нажмите «Отправить»", vk_sent: "Отправлено", vk_fail: "Не удалось отправить", vk_wait: "Подождите…", vk_clear: "Очистить" });
+Object.assign(UPD_I18N.vi, { vr_panel: "Cỡ bảng (cm)", vr_panelHint: "Chiều rộng các trang mở từ menu, 15–40 cm", vw_kb: "Bàn phím", vk_ph: "Gõ rồi bấm Gửi để hiện lên Chatbox", vk_sent: "Đã gửi", vk_fail: "Gửi không thành công", vk_wait: "Đợi một chút…", vk_clear: "Xóa" });
+Object.assign(UPD_I18N.zh, { vr_panel: "面板大小 (cm)", vr_panelHint: "从菜单打开的页面宽度 15–40 cm", vw_kb: "键盘", vk_ph: "输入后按发送即可显示在 Chatbox", vk_sent: "已发送", vk_fail: "发送失败", vk_wait: "请稍候…", vk_clear: "清除" });
+tx({
+  vr_input: ["วิธีกด", "How to press", "押し方"],
+  vr_in_both: ["จิ้ม หรือ เลเซอร์", "Poke or laser", "つつく・レーザー両方"],
+  vr_in_poke: ["จิ้มด้วยปลาย controller", "Poke with the controller tip", "コントローラーの先でつつく"],
+  vr_in_laser: ["เลเซอร์ + trigger", "Laser and trigger", "レーザーとトリガー"],
+  vr_inputHint: ["เลเซอร์ใช้ของ SteamVR: ชี้ที่ปุ่มแล้วกด trigger เลื่อนรายการด้วยจอยสติ๊ก", "The laser is SteamVR's own: point at a button and pull the trigger; the stick scrolls lists", "レーザーは SteamVR のもの：ボタンを指してトリガー、スティックでリストをスクロール"],
+});
+Object.assign(UPD_I18N.ko, { vr_input: "누르는 방법", vr_in_both: "누르기 또는 레이저", vr_in_poke: "컨트롤러 끝으로 누르기", vr_in_laser: "레이저와 트리거", vr_inputHint: "레이저는 SteamVR 기본 레이저: 버튼을 가리키고 트리거, 스틱으로 목록 스크롤" });
+Object.assign(UPD_I18N.ru, { vr_input: "Как нажимать", vr_in_both: "Касанием или лазером", vr_in_poke: "Касанием кончика контроллера", vr_in_laser: "Лазер и курок", vr_inputHint: "Лазер — стандартный от SteamVR: наведите на кнопку и нажмите курок, стиком прокручивается список" });
+Object.assign(UPD_I18N.vi, { vr_input: "Cách bấm", vr_in_both: "Chạm hoặc laser", vr_in_poke: "Chạm bằng đầu tay cầm", vr_in_laser: "Laser và cò", vr_inputHint: "Laser là của SteamVR: chỉ vào nút rồi bóp cò; cần gạt để cuộn danh sách" });
+Object.assign(UPD_I18N.zh, { vr_input: "按法", vr_in_both: "点按或激光", vr_in_poke: "用手柄尖端点按", vr_in_laser: "激光和扳机", vr_inputHint: "激光为 SteamVR 自带：指向按钮并扣扳机，摇杆滚动列表" });
+tx({
+  vw_settings: ["ตั้งค่า", "Settings", "設定"],
+  vw_notices: ["แจ้งเตือน", "Notices", "通知"],
+  vw_gaze: ["มองข้อมือ", "Look to show", "見て表示"],
+  vw_noBattery: ["ไม่มีข้อมูลแบตเตอรี่", "No batteries to show", "バッテリー情報なし"],
+  vw_noMedia: ["ไม่ได้เล่นเพลง", "Not playing", "再生していません"],
+  vw_chatOff: ["Chatbox ปิดอยู่", "Chatbox is off", "Chatbox はオフ"],
+  vw_seePeople: ["ดูคนในห้อง", "People here", "ルームの人"],
+  vw_owner: ["คุณเป็นเจ้าของห้อง", "Your instance", "あなたのインスタンス"],
+  vw_onNow: ["กำลังส่งอยู่", "Sending", "送信中"],
+  vw_change: ["เปลี่ยน", "Change", "変更"],
+  vw_ban: ["แบน", "Ban", "BAN"], vw_banSure: ["ยืนยันแบน?", "Ban — sure?", "本当に BAN?"], vw_banned: ["แบนจากกลุ่มแล้ว", "Banned from the group", "グループから BAN しました"],
+  vw_canBan: ["แบนจากกลุ่มได้", "You can ban here", "ここで BAN できます"],
+  vw_in_both: ["จิ้ม+เลเซอร์", "Both", "両方"], vw_in_poke: ["จิ้ม", "Poke", "つつく"], vw_in_laser: ["เลเซอร์", "Laser", "レーザー"],
+  vw_notifCount: [n => n ? `${n} การแจ้งเตือน` : "ไม่มีการแจ้งเตือน", n => n ? `${n} notification${n > 1 ? "s" : ""}` : "No notifications", n => n ? `通知 ${n} 件` : "通知はありません"],
+  vw_cm: [n => `${n} ซม.`, n => `${n} cm`, n => `${n} cm`],
+});
+Object.assign(UPD_I18N.ko, { vw_ban: "차단(밴)", vw_banSure: "정말 밴할까요?", vw_banned: "그룹에서 밴했습니다", vw_canBan: "여기서 밴할 수 있음", vw_in_both: "둘 다", vw_in_poke: "누르기", vw_in_laser: "레이저", vw_settings: "설정", vw_notices: "알림", vw_gaze: "볼 때 표시", vw_noBattery: "배터리 정보 없음", vw_noMedia: "재생 중 아님", vw_chatOff: "Chatbox 꺼짐", vw_seePeople: "방에 있는 사람", vw_owner: "내 인스턴스", vw_onNow: "보내는 중", vw_change: "변경", vw_notifCount: n => n ? `알림 ${n}개` : "알림 없음", vw_cm: n => `${n} cm` });
+Object.assign(UPD_I18N.ru, { vw_ban: "Бан", vw_banSure: "Точно забанить?", vw_banned: "Забанен в группе", vw_canBan: "Здесь можно банить", vw_in_both: "Оба", vw_in_poke: "Касание", vw_in_laser: "Лазер", vw_settings: "Настройки", vw_notices: "Уведомл.", vw_gaze: "По взгляду", vw_noBattery: "Нет данных о заряде", vw_noMedia: "Ничего не играет", vw_chatOff: "Chatbox выключен", vw_seePeople: "Кто здесь", vw_owner: "Ваш инстанс", vw_onNow: "Отправляется", vw_change: "Сменить", vw_notifCount: n => n ? `Уведомлений: ${n}` : "Нет уведомлений", vw_cm: n => `${n} см` });
+Object.assign(UPD_I18N.vi, { vw_ban: "Cấm", vw_banSure: "Chắc chắn cấm?", vw_banned: "Đã cấm khỏi nhóm", vw_canBan: "Bạn có thể cấm ở đây", vw_in_both: "Cả hai", vw_in_poke: "Chạm", vw_in_laser: "Laser", vw_settings: "Cài đặt", vw_notices: "Thông báo", vw_gaze: "Nhìn để hiện", vw_noBattery: "Không có thông tin pin", vw_noMedia: "Không phát", vw_chatOff: "Chatbox đang tắt", vw_seePeople: "Người trong phòng", vw_owner: "Phòng của bạn", vw_onNow: "Đang gửi", vw_change: "Đổi", vw_notifCount: n => n ? `${n} thông báo` : "Không có thông báo", vw_cm: n => `${n} cm` });
+Object.assign(UPD_I18N.zh, { vw_ban: "封禁", vw_banSure: "确定封禁？", vw_banned: "已从群组封禁", vw_canBan: "你可以在这里封禁", vw_in_both: "两者", vw_in_poke: "点按", vw_in_laser: "激光", vw_settings: "设置", vw_notices: "通知", vw_gaze: "看时显示", vw_noBattery: "没有电量信息", vw_noMedia: "未在播放", vw_chatOff: "Chatbox 已关闭", vw_seePeople: "房间里的人", vw_owner: "你的房间", vw_onNow: "正在发送", vw_change: "更改", vw_notifCount: n => n ? `${n} 条通知` : "没有通知", vw_cm: n => `${n} cm` });
+// New-instance dialog's strings (UPD_I18N exists only from here on)
+Object.assign(UPD_I18N.ko, { ci_me: "바로 들어가기", ci_meHint: "만든 뒤 나에게 초대를 보냅니다 — 게임에서 수락하세요", ci_find: "친구 검색", ci_invite: "친구 초대", ci_invNone: "만든 뒤 초대할 친구를 선택하세요", ci_invPicked: n => `${n}명 선택`, ci_createInvite: n => `만들고 ${n}명 초대`,
+  ci_offline: "오프라인", ci_noFriend: "친구를 찾을 수 없음", ci_inviting: n => `${n}명 초대하는 중…`, ci_invited: n => `${n}명을 초대했습니다`, ci_invitedSome: (ok, n) => `${n}명 중 ${ok}명 초대함` });
+Object.assign(UPD_I18N.ru, { ci_me: "Сразу зайти", ci_meHint: "После создания придёт приглашение вам — примите его в игре", ci_find: "Найти друга", ci_invite: "Пригласить друзей", ci_invNone: "Отметьте друзей — приглашения уйдут после создания", ci_invPicked: n => `Выбрано: ${n}`, ci_createInvite: n => `Создать и пригласить (${n})`,
+  ci_offline: "Не в сети", ci_noFriend: "Друзья не найдены", ci_inviting: n => `Приглашаем (${n})…`, ci_invited: n => `Приглашено: ${n}`, ci_invitedSome: (ok, n) => `Приглашено ${ok} из ${n}` });
+Object.assign(UPD_I18N.vi, { ci_me: "Vào ngay", ci_meHint: "Gửi lời mời cho bạn sau khi tạo — chấp nhận trong game", ci_find: "Tìm bạn bè", ci_invite: "Mời bạn bè", ci_invNone: "Đánh dấu bạn bè để mời sau khi tạo", ci_invPicked: n => `Đã chọn ${n}`, ci_createInvite: n => `Tạo và mời ${n}`,
+  ci_offline: "Ngoại tuyến", ci_noFriend: "Không tìm thấy bạn bè", ci_inviting: n => `Đang mời ${n}…`, ci_invited: n => `Đã mời ${n}`, ci_invitedSome: (ok, n) => `Đã mời ${ok}/${n}` });
+Object.assign(UPD_I18N.zh, { ci_me: "立即进入", ci_meHint: "创建后向你发送邀请——在游戏中接受即可", ci_find: "搜索好友", ci_invite: "邀请好友", ci_invNone: "勾选好友，创建后发送邀请", ci_invPicked: n => `已选 ${n} 人`, ci_createInvite: n => `创建并邀请 ${n} 人`,
+  ci_offline: "离线", ci_noFriend: "未找到好友", ci_inviting: n => `正在邀请 ${n} 人…`, ci_invited: n => `已邀请 ${n} 人`, ci_invitedSome: (ok, n) => `已邀请 ${ok}/${n} 人` });
+
+tx({
+  vw_devices: ["อุปกรณ์ที่เชื่อมต่อ", "Connected devices", "接続中のデバイス"], vw_devShort: ["อุปกรณ์", "Devices", "デバイス"], vw_noDevices: ["ยังไม่มีอุปกรณ์ที่เชื่อมต่อ", "No devices connected", "接続中のデバイスはありません"],
+  vw_k_hmd: ["แว่น", "Headset", "ヘッドセット"], vw_k_ctrl: ["คอนโทรลเลอร์", "Controller", "コントローラー"], vw_k_trk: ["แทรคเกอร์", "Tracker", "トラッカー"], vw_k_toy: ["Intiface", "Intiface", "Intiface"],
+  vw_noBatt: ["ไม่รายงานแบต", "No battery reading", "バッテリー情報なし"], vw_charging: ["กำลังชาร์จ", "Charging", "充電中"],
+  vw_heart: ["อัตราการเต้นหัวใจ", "Heart rate", "心拍数"], vw_hrLive: ["เชื่อมต่ออยู่", "Connected", "接続中"],
+  vr_posX: ["ตำแหน่ง X ซ้าย/ขวา (ซม.)", "Position X, left/right (cm)", "位置 X 左右 (cm)"], vr_posY: ["ตำแหน่ง Y ลง/ขึ้น (ซม.)", "Position Y, down/up (cm)", "位置 Y 上下 (cm)"],
+  vr_posZ: ["ตำแหน่ง Z ระยะจากมือ (ซม.)", "Position Z, from the hand (cm)", "位置 Z 手からの距離 (cm)"],
+  vr_posXHint: ["ค่าลบไปทางซ้าย ค่าบวกไปทางขวา ของ controller ปรับได้ทีละ 0.5", "Minus moves it left of the controller, plus right; steps of 0.5", "マイナスでコントローラーの左、プラスで右。0.5 刻み"],
+  vr_posYHint: ["ค่าลบลงล่าง ค่าบวกขึ้นบน ปรับได้ทีละ 0.5", "Minus moves it down, plus up; steps of 0.5", "マイナスで下、プラスで上。0.5 刻み"],
+});
+Object.assign(UPD_I18N.ko, { vw_devShort: "기기", vw_devices: "연결된 기기", vw_noDevices: "연결된 기기가 없습니다", vw_k_hmd: "헤드셋", vw_k_ctrl: "컨트롤러", vw_k_trk: "트래커", vw_k_toy: "Intiface", vw_noBatt: "배터리 정보 없음", vw_charging: "충전 중",
+  vw_heart: "심박수", vw_hrLive: "연결됨", vr_posX: "위치 X 좌/우 (cm)", vr_posY: "위치 Y 아래/위 (cm)", vr_posZ: "위치 Z 손에서 거리 (cm)",
+  vr_posXHint: "마이너스는 컨트롤러 왼쪽, 플러스는 오른쪽 · 0.5 단위", vr_posYHint: "마이너스는 아래, 플러스는 위 · 0.5 단위" });
+Object.assign(UPD_I18N.ru, { vw_devShort: "Устройства", vw_devices: "Подключённые устройства", vw_noDevices: "Нет подключённых устройств", vw_k_hmd: "Шлем", vw_k_ctrl: "Контроллер", vw_k_trk: "Трекер", vw_k_toy: "Intiface", vw_noBatt: "Нет данных о батарее", vw_charging: "Заряжается",
+  vw_heart: "Пульс", vw_hrLive: "Подключено", vr_posX: "Позиция X, влево/вправо (см)", vr_posY: "Позиция Y, вниз/вверх (см)", vr_posZ: "Позиция Z, от руки (см)",
+  vr_posXHint: "Минус — левее контроллера, плюс — правее; шаг 0,5", vr_posYHint: "Минус — ниже, плюс — выше; шаг 0,5" });
+Object.assign(UPD_I18N.vi, { vw_devShort: "Thiết bị", vw_devices: "Thiết bị đã kết nối", vw_noDevices: "Chưa có thiết bị nào kết nối", vw_k_hmd: "Kính", vw_k_ctrl: "Tay cầm", vw_k_trk: "Tracker", vw_k_toy: "Intiface", vw_noBatt: "Không có thông tin pin", vw_charging: "Đang sạc",
+  vw_heart: "Nhịp tim", vw_hrLive: "Đã kết nối", vr_posX: "Vị trí X, trái/phải (cm)", vr_posY: "Vị trí Y, xuống/lên (cm)", vr_posZ: "Vị trí Z, cách tay (cm)",
+  vr_posXHint: "Âm sang trái tay cầm, dương sang phải; bước 0,5", vr_posYHint: "Âm xuống dưới, dương lên trên; bước 0,5" });
+Object.assign(UPD_I18N.zh, { vw_devShort: "设备", vw_devices: "已连接的设备", vw_noDevices: "没有已连接的设备", vw_k_hmd: "头显", vw_k_ctrl: "手柄", vw_k_trk: "追踪器", vw_k_toy: "Intiface", vw_noBatt: "无电量信息", vw_charging: "充电中",
+  vw_heart: "心率", vw_hrLive: "已连接", vr_posX: "位置 X 左/右 (cm)", vr_posY: "位置 Y 下/上 (cm)", vr_posZ: "位置 Z 离手距离 (cm)",
+  vr_posXHint: "负数移到手柄左边，正数右边；每次 0.5", vr_posYHint: "负数向下，正数向上；每次 0.5" });
+
+tx({
+  vw_delete: ["ลบ", "Delete", "削除"], vk_win: ["Windows", "Windows", "Windows"],
+  vk_winPh: ["พิมพ์ลงโปรแกรมที่เปิดอยู่บนคอมทันที (เช่น VRChat หรือเบราว์เซอร์)", "Types straight into the program in focus on your PC (VRChat, a browser…)", "PC で選択中のプログラムに直接入力（VRChat、ブラウザなど）"],
+  vr_kbSize: ["ขนาดคีย์บอร์ด (ซม.)", "Keyboard size (cm)", "キーボードの大きさ (cm)"], vr_kbSizeHint: ["20–60 ซม. ปรับในหน้าคีย์บอร์ดบนข้อมือได้ด้วย", "20–60 cm; also on the wrist keyboard itself", "20–60 cm。手首のキーボードでも変更できます"],
+  vr_palm: ["ท่าเรียกปุ่ม", "Gesture that shows it", "ボタンを出す動作"],
+  vr_palmHint: ["ใช้ตอนเปิด \"แสดงเฉพาะตอนมองข้อมือ\" · ยกแขน: ยกข้อมือขึ้นมามอง · แบมือ: หงายฝ่ามือข้างที่มีปุ่มเข้าหาหน้า", "With \"Only when you look at it\" on · Raise arm: lift your wrist to look at it · Palm: turn the palm of that hand towards your face", "「見たときだけ表示」がオンのとき · 腕を上げる：手首を見る · 手のひら：ボタンのある手のひらを顔に向ける"],
+  vr_show_look: ["ยกแขน", "Raise arm", "腕を上げる"], vr_show_palm: ["แบมือ", "Palm", "手のひら"], vw_palm: ["แบมือ", "Palm", "手のひら"],
+});
+Object.assign(UPD_I18N.ko, { vw_delete: "삭제", vk_win: "Windows", vk_winPh: "PC에서 선택된 프로그램에 바로 입력 (VRChat, 브라우저 등)", vr_kbSize: "키보드 크기 (cm)", vr_kbSizeHint: "20–60 cm · 손목 키보드에서도 바꿀 수 있음",
+  vr_palm: "버튼을 띄우는 동작", vr_palmHint: "\"볼 때만 표시\"가 켜져 있을 때 · 팔 들기: 손목을 들어 보기 · 손바닥: 그 손의 손바닥을 얼굴 쪽으로", vr_show_look: "팔 들기", vr_show_palm: "손바닥", vw_palm: "손바닥" });
+Object.assign(UPD_I18N.ru, { vw_delete: "Удалить", vk_win: "Windows", vk_winPh: "Печатает сразу в активную программу на ПК (VRChat, браузер…)", vr_kbSize: "Размер клавиатуры (см)", vr_kbSizeHint: "20–60 см; меняется и на самой клавиатуре",
+  vr_palm: "Жест для кнопки", vr_palmHint: "Когда включено «Только когда смотрите» · Поднять руку: посмотреть на запястье · Ладонь: повернуть ладонь этой руки к лицу", vr_show_look: "Поднять руку", vr_show_palm: "Ладонь", vw_palm: "Ладонь" });
+Object.assign(UPD_I18N.vi, { vw_delete: "Xóa", vk_win: "Windows", vk_winPh: "Gõ thẳng vào chương trình đang chọn trên PC (VRChat, trình duyệt…)", vr_kbSize: "Cỡ bàn phím (cm)", vr_kbSizeHint: "20–60 cm; chỉnh được ngay trên bàn phím ở cổ tay",
+  vr_palm: "Cử chỉ hiện nút", vr_palmHint: "Khi bật \"Chỉ hiện khi nhìn vào\" · Giơ tay: nâng cổ tay lên nhìn · Lòng bàn tay: ngửa lòng bàn tay đó về phía mặt", vr_show_look: "Giơ tay", vr_show_palm: "Lòng bàn tay", vw_palm: "Bàn tay" });
+Object.assign(UPD_I18N.zh, { vw_delete: "删除", vk_win: "Windows", vk_winPh: "直接输入到电脑上当前选中的程序（VRChat、浏览器等）", vr_kbSize: "键盘大小 (cm)", vr_kbSizeHint: "20–60 cm；也可在手腕键盘上调整",
+  vr_palm: "显示按钮的手势", vr_palmHint: "开启“仅在看时显示”时 · 抬手：抬起手腕看 · 手掌：把那只手的掌心转向脸", vr_show_look: "抬手", vr_show_palm: "手掌", vw_palm: "手掌" });
+
+// ---------- Feedback: the Discord server, at the bottom of the sidebar ----------
+const FEEDBACK_URL = "https://discord.gg/S7nH9QJKX";
+tx({ nav_vr: ["VR overlay", "VR overlay", "VR オーバーレイ"], feedback: ["Feedback", "Feedback", "フィードバック"],
+  feedbackHint: ["แจ้งปัญหาหรือเสนอไอเดียใน Discord", "Report a problem or share an idea on Discord", "Discord で不具合の報告やアイデアを送る"] });
+Object.assign(UPD_I18N.ko, { nav_vr: "VR 오버레이", feedback: "피드백", feedbackHint: "Discord에서 문제 신고나 아이디어 공유" });
+Object.assign(UPD_I18N.ru, { nav_vr: "VR-оверлей", feedback: "Отзыв", feedbackHint: "Сообщить о проблеме или предложить идею в Discord" });
+Object.assign(UPD_I18N.vi, { nav_vr: "Lớp phủ VR", feedback: "Góp ý", feedbackHint: "Báo lỗi hoặc gửi ý tưởng trên Discord" });
+Object.assign(UPD_I18N.zh, { nav_vr: "VR 叠加层", feedback: "反馈", feedbackHint: "在 Discord 报告问题或分享想法" });
+document.head.insertAdjacentHTML("beforeend", `<style>
+.side-feedback { margin-top: auto; padding: 6px 10px 12px; border-top: 1px solid var(--sep); }
+.side-feedback .nav-item { width: 100%; }
+</style>`);
+document.querySelector(".sidebar").insertAdjacentHTML("beforeend", `<div class="side-feedback"><button class="nav-item" id="feedbackBtn"
+  onclick="feedbackOpen()"><span class="tile" style="--c:#5865f2">${icon("megaphone")}</span><span class="label"></span></button></div>`);
+// It leaves the app for a website: say where first
+function feedbackOpen() {
+  openX(t("feedback"), () => `<p class="hint-inline" style="display:block;margin:4px 2px 10px">${t("fb_leave")}</p>
+    <div class="locline">${icon("link")}<span class="w">${esc(FEEDBACK_URL)}</span></div>
+    <div class="form-actions">${btn(t("cancel"), "closeX()")}${btn(t("fb_open"), "closeX();api('open_url',FEEDBACK_URL)", "primary", "external-link")}</div>`);
+}
+function feedbackUi() { const b = $("feedbackBtn"); b.querySelector(".label").textContent = t("feedback"); b.title = t("feedbackHint"); }
+const _buildNavF = buildNav;
+buildNav = function (...a) { feedbackUi(); return _buildNavF(...a); };
+feedbackUi();
+tx({ oi_devPerLine: ["อุปกรณ์ละ 1 บรรทัด", "One device per line", "1 行に 1 台"],
+  oi_devPerLineHint: ["ขึ้นบรรทัดใหม่ทุกชิ้น (Chatbox แสดงได้สูงสุด 9 บรรทัด)", "Each device on its own line (the Chatbox shows up to 9 lines)", "デバイスごとに改行（Chatbox は最大 9 行）"],
+  fb_leave: ["ปุ่มนี้จะเปิดเว็บไซต์ภายนอกในเบราว์เซอร์ (Discord ของ VRC Nook)", "This opens an outside website in your browser (VRC Nook's Discord)", "外部サイト（VRC Nook の Discord）をブラウザで開きます"],
+  fb_open: ["เปิดลิงก์", "Open link", "リンクを開く"] });
+Object.assign(UPD_I18N.ko, { oi_devPerLine: "기기마다 한 줄", oi_devPerLineHint: "기기마다 줄바꿈 (Chatbox는 최대 9줄)", fb_leave: "브라우저에서 외부 웹사이트(VRC Nook Discord)를 엽니다", fb_open: "링크 열기" });
+Object.assign(UPD_I18N.ru, { oi_devPerLine: "Одно устройство в строке", oi_devPerLineHint: "Каждое устройство с новой строки (в чатбоксе до 9 строк)", fb_leave: "Откроется внешний сайт в браузере (Discord VRC Nook)", fb_open: "Открыть ссылку" });
+Object.assign(UPD_I18N.vi, { oi_devPerLine: "Mỗi thiết bị một dòng", oi_devPerLineHint: "Xuống dòng cho từng thiết bị (Chatbox hiện tối đa 9 dòng)", fb_leave: "Sẽ mở một trang web bên ngoài trong trình duyệt (Discord của VRC Nook)", fb_open: "Mở liên kết" });
+Object.assign(UPD_I18N.zh, { oi_devPerLine: "每个设备一行", oi_devPerLineHint: "每个设备单独一行（聊天框最多 9 行）", fb_leave: "将在浏览器中打开外部网站（VRC Nook 的 Discord）", fb_open: "打开链接" });
+tx({ oi_devRename: ["คลิกเพื่อตั้งชื่อเอง (เว้นว่าง = ใช้ชื่อเดิม)", "Click to give it your own name (empty = its own name)", "クリックして名前を付ける（空欄 = 元の名前）"] });
+Object.assign(UPD_I18N.ko, { oi_devRename: "클릭해서 이름 지정 (비우면 원래 이름)" });
+Object.assign(UPD_I18N.ru, { oi_devRename: "Нажмите, чтобы задать своё имя (пусто — исходное)" });
+Object.assign(UPD_I18N.vi, { oi_devRename: "Bấm để đặt tên riêng (để trống = tên gốc)" });
+Object.assign(UPD_I18N.zh, { oi_devRename: "点击自定义名称（留空 = 原名）" });

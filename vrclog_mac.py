@@ -1,4 +1,5 @@
 """VRC Nook — macOS Tahoe (Liquid Glass) style UI with pywebview + HTML"""
+import asyncio
 import base64
 import ctypes
 import json
@@ -24,6 +25,7 @@ import tray
 import updater
 import vrc_ops
 import vrclog
+import vroverlay
 from social import Social
 from store import Store
 from vrclog import KINDS, Room, parse_line
@@ -32,7 +34,7 @@ from vrclog import KINDS, Room, parse_line
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w", encoding="utf-8")
 
-VERSION = "0.7.1"
+VERSION = "0.8.0"
 log = logging.getLogger("vrclog")
 UPLOAD_FIELDS = ("animationStyle", "maskTag", "frames", "framesOverTime", "loopStyle")
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
@@ -109,6 +111,7 @@ class Api:
         self._kb_hwnd = None
         self._kb_rect = None
         self._info = chatinfo.ChatInfo()  # Now playing / clock / heart rate / random status in the Chatbox
+        self._info.vr.overlay = vroverlay.VrOverlay(js)  # SteamVR notices and wrist panel (drawn by the page)
 
     def _fetch_user(self, uid):
         p = self._client.get_profile(uid)
@@ -340,6 +343,32 @@ class Api:
             return {"ok": False}
         Path(path if isinstance(path, str) else path[0]).write_bytes(data)
         return {"ok": True}
+
+    def vr_frame(self, kind, png, width=0):
+        """A picture for the SteamVR overlay that the page drew (kind: toast / wrist / panel; width in metres)"""
+        if kind in ("toast", "wrist", "panel") and isinstance(png, str) and len(png) < 8_000_000 and isinstance(width, (int, float)):
+            try:
+                self._info.vr.overlay.push(kind, png, width)
+            except Exception as e:
+                log.info("vr frame: %r", e)
+
+    def media_ctl(self, action):
+        """Play / pause, next or previous on whatever is playing (Windows' media controls), from the wrist menu"""
+        if action not in ("toggle", "next", "prev"):
+            return False
+
+        async def go():
+            from winrt.windows.media.control import GlobalSystemMediaTransportControlsSessionManager as Manager
+            s = (await Manager.request_async()).get_current_session()
+            if not s:
+                return False
+            fn = {"toggle": s.try_toggle_play_pause_async, "next": s.try_skip_next_async, "prev": s.try_skip_previous_async}[action]
+            return bool(await fn())
+        try:
+            return asyncio.run(go())
+        except Exception as e:  # No media API (old Windows) or no player
+            log.info("media control: %r", e)
+            return False
 
     def save_text(self, filename, text):
         """Save text made in the page (e.g. an exported group log) where the user picks"""
@@ -649,6 +678,14 @@ class Api:
             osc.typing(bool(on))
         except OSError:
             pass
+
+    # ---------- The wrist keyboard's Windows mode: keys go to whatever program has focus (not this app's window) ----------
+    def vr_type(self, text):
+        vkbd.type_text(str(text)[:200], vkbd.ANY_OWN)
+
+    def vr_press(self, name):
+        if name in KbApi._KEYS:
+            vkbd.press(name, vkbd.ANY_OWN)
 
     def info_set(self, cfg):
         self._info.configure(cfg)
@@ -1029,6 +1066,8 @@ def main():
     window.events.shown += lambda: round_corners(window)
     window.events.loaded += on_loaded
     webview.start()
+    js.window = None  # The window is gone: calls to it from other threads end at once
+    api._info.vr.stop()
     if api._tray:
         api._tray.stop()
 

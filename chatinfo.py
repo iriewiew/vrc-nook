@@ -39,14 +39,17 @@ DEFAULTS = {
     "layout": ["status", "br", "media", "br", "clock", "sep:   ", "heart"],
     "icons": {"status": "", "media": "🎵", "clock": "🕒", "heart": "❤️", "devices": "", "pc": ""},   # Emoji in front of each part ("" = none)
     # VR devices from SteamVR: one entry per device, or one per kind (headset / controllers / trackers)
-    "devices": False, "devTrkGroup": False, "devStat": "lowest", "devHmd": True, "devCtrl": True, "devTrk": True,
-    "devCharging": True, "devLow": 20, "devHidden": [], "devOff": [],
+    "devices": False, "devTrkGroup": False, "devPerLine": False, "devStat": "lowest", "devHmd": True, "devCtrl": True, "devTrk": True,
+    "devCharging": True, "devLow": 20, "devHidden": [], "devOff": [], "devNames": {},
     "devVibe": True, "devVibeIcon": "〰️", "devBattIcon": False, "devBattSym": "🔋", "devKindIcon": False,
     "devKindSyms": {"hmd": "🥽", "ctrl": "🎮", "trk": "📍", "toy": "📳"},
     "pc": False, "pcCpu": True, "pcGpu": True, "pcTemp": True, "pcRam": True, "pcVram": True, "pcFps": True, "pcTotal": False,
     "pcSep": " | ", "pcPerLine": 2, "pcLabels": {"cpu": "CPU", "gpu": "GPU", "ram": "RAM", "vram": "VRAM", "fps": "FPS"},
     "pcCpuName": False, "pcGpuName": False, "pcRamType": False, "pcIcon": False, "pcLblSup": False, "pcUnitSup": False,
     "pcIcons": {"cpu": "🧠", "gpu": "🎮", "ram": "💾", "vram": "🖼️", "fps": "⏱️"},
+    # SteamVR overlay: notices in front of you (drawn by the page) and a button menu on the wrist (button / panel sizes in cm)
+    "vr": False, "vrToast": True, "vrFriends": "fav", "vrInvites": True, "vrJoins": True,
+    "vrWrist": True, "vrHand": "left", "vrBtn": 5, "vrPanel": 26, "vrDist": 20, "vrX": 0, "vrY": 0, "vrPalm": False, "vrGaze": True, "vrInput": "both",
     "devToy": False, "devToyBatt": True, "intiface": "ws://127.0.0.1:12345", "intifaceRelay": 12346,
 }
 ITEMS = ("status", "media", "clock", "heart", "devices", "pc")
@@ -98,7 +101,9 @@ class ChatInfo:
             return
         c = dict(DEFAULTS)
         for k, v in cfg.items():
-            if k in DEFAULTS and type(v) is type(DEFAULTS[k]):
+            if k not in DEFAULTS:  # Settings only the page uses (e.g. the wrist keyboard's size)
+                continue
+            if type(v) is type(DEFAULTS[k]) or {type(v), type(DEFAULTS[k])} == {int, float}:  # 20.5 cm for a whole-number default
                 c[k] = v
         c["statuses"] = [str(s).strip()[:144] for s in c["statuses"] if str(s).strip()][:200]
         c["interval"] = min(max(int(c["interval"]), 1), 60)
@@ -121,6 +126,16 @@ class ChatInfo:
             c["devTrkGroup"] = True
         if c["devStat"] not in ("lowest", "average"):
             c["devStat"] = "lowest"
+        if c["vrFriends"] not in ("off", "fav", "all"):
+            c["vrFriends"] = "fav"
+        if c["vrHand"] not in ("left", "right"):
+            c["vrHand"] = "left"
+        c["vrBtn"] = min(max(int(c["vrBtn"]), 3), 12)
+        c["vrPanel"] = min(max(int(c["vrPanel"]), 15), 40)
+        if c["vrInput"] not in ("poke", "laser", "both"):
+            c["vrInput"] = "both"
+        for k, lo, hi in (("vrDist", -10, 40), ("vrX", -20, 20), ("vrY", -20, 20)):  # cm, in halves
+            c[k] = min(max(round(float(c[k]) * 2) / 2, lo), hi)
         c["devLow"] = min(max(int(c["devLow"]), 0), 100)
         if not c["intiface"].startswith(("ws://", "wss://")):
             c["intiface"] = DEFAULTS["intiface"]
@@ -128,6 +143,7 @@ class ChatInfo:
         if c["intifaceRelay"] and not 1024 <= c["intifaceRelay"] <= 65535:  # 0 = no relay
             c["intifaceRelay"] = DEFAULTS["intifaceRelay"]
         c["devHidden"] = [str(k)[:64] for k in c["devHidden"]][:64]
+        c["devNames"] = {str(k)[:64]: str(v).strip()[:32] for k, v in list(c["devNames"].items())[:64] if str(v).strip()}  # serial -> your name
         c["devOff"] = [str(k)[:64] for k in c["devOff"]][:64]
         c["devVibeIcon"] = c["devVibeIcon"][:8]
         c["devBattSym"] = c["devBattSym"][:8]
@@ -164,6 +180,7 @@ class ChatInfo:
         return {"text": self.build(), "sent": self.text, "media": self.media, "bpm": self.bpm, "hr": self.hr_state,
                 "login": self.login, "canLogin": bool(PULSOID_CLIENT_ID), "vr": {"state": self.vr.state, "devices": self.vr.devices},
                 "pc": {**self.pc.stats, "fps": self.vr.fps, "vr": self.vr.state},
+                "overlay": {"vr": self.vr.state, "error": self.vr.overlay.error if self.vr.overlay else ""},
                 "toys": {"state": self.toys.state, "devices": self.toys.devices, "relay": self.toys.relay, "app": self.toys.app},
                 "ble": {"scanning": self._ble.scanning, "found": self._ble.list()} if self._ble else {"scanning": False, "found": []},
                 "paused": max(0, round(self._paused_until - time.monotonic()))}
@@ -226,7 +243,7 @@ class ChatInfo:
         hidden = set(c["devHidden"])  # Hidden: just the short label (🥽 / L / T1 / 📳1) instead of the device's name
 
         def name(d):
-            n = d["label"] if d["serial"] in hidden or not d["model"] else d["model"]
+            n = d["label"] if d["serial"] in hidden else c["devNames"].get(d["serial"]) or d["model"] or d["label"]
             default, kind = DEV_KINDS[d["kind"]][1], c["devKindSyms"][d["kind"]]
             if n.startswith(default):  # Short labels like '🥽' / '📳1' use the user's icon too
                 n = kind + n[len(default):]
@@ -239,7 +256,7 @@ class ChatInfo:
                 vals = [t["battery"] for t in trackers]
                 val = min(vals) if c["devStat"] == "lowest" else round(sum(vals) / len(vals))
                 out.append(bits(c["devKindSyms"]["trk"] + (f"×{len(trackers)}" if len(trackers) > 1 else ""), val, any(t["charging"] for t in trackers), None))
-        return " ".join(out)
+        return ("\n" if c["devPerLine"] else " ").join(out)  # One device a line, or all on one
 
     def _pc_text(self):
         """'CPU 60% | GPU 47% 56°C' / 'RAM 23.6GB | VRAM 7.5GB' / 'FPS 40' (one line each) — whatever is switched on and could be read.
@@ -310,7 +327,9 @@ class ChatInfo:
         while True:
             now = time.monotonic()
             c = self.cfg
-            if (c["on"] or now < self._watch_until) and c["media"] and now >= next_media:
+            ov = self.vr.overlay
+            wrist = bool(ov and ov.wanted and c["vrWrist"])  # The wrist menu shows batteries and what's playing, Chatbox or not
+            if ((c["on"] or now < self._watch_until) and c["media"] or wrist) and now >= next_media:
                 next_media = now + 2
                 try:
                     self.media = loop.run_until_complete(self._read_media())
@@ -319,10 +338,15 @@ class ChatInfo:
                     self.media = None
             watching = c["on"] or now < self._watch_until
             self.vr.fps_wanted = c["pc"] and c["pcFps"] and watching
-            self.vr.wanted = (c["devices"] and watching) or self.vr.fps_wanted
+            if ov:
+                ov.wanted = c["vr"]
+                ov.cfg = {"wrist": c["vrWrist"], "hand": c["vrHand"], "dist": c["vrDist"], "x": c["vrX"], "y": c["vrY"], "palm": c["vrPalm"], "gaze": c["vrGaze"], "input": c["vrInput"]}
+                ov.panel_info = lambda: {"chat": self.text if self.cfg["on"] else "", "devices": self.vr.devices + self.toys.devices, "media": self.media,
+                                             "bpm": self.bpm if self.cfg["heart"] else None}
+            self.vr.wanted = (c["devices"] and watching) or self.vr.fps_wanted or bool(ov and ov.wanted)
             self.pc.wanted = c["pc"] and watching
             self.toys.url, self.toys.relay_port, self.toys.battery = c["intiface"], c["intifaceRelay"], c["devToyBatt"]
-            self.toys.wanted = c["devices"] and c["devToy"] and (c["on"] or now < self._watch_until)
+            self.toys.wanted = c["devToy"] and (c["devices"] and watching or wrist)
             if c["heart"] and self.bpm and now - self._hr_at > 15:  # No reading for a while = sensor off
                 self.bpm = None
                 self._send_hr(None)
@@ -556,15 +580,32 @@ class _Vr:
         self.devices = []      # [{"serial", "kind": hmd|ctrl|trk, "label", "model", "battery": 0-100|None, "charging"}]
         self.fps = None        # Frames per second the game hands SteamVR (None = no game / not wanted)
         self._frames = None    # (pid, frames submitted, time) at the last FPS reading
-        threading.Thread(target=self._run, name="steamvr", daemon=True).start()
+        self.overlay = None    # vroverlay.VrOverlay, set by the app: ticks here, on the same SteamVR connection
+        self._stopping = False
+        self._thread = threading.Thread(target=self._run, name="steamvr", daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        """The app is closing: take the overlays down and leave SteamVR properly before the process goes (leaving
+        mid-way can keep files of the unpacked app in use, and Windows then can't clean them up)"""
+        self._stopping, self.wanted = True, False
+        self._thread.join(2)
 
     def _run(self):
         system = None
         while True:
             if not self.wanted:
                 if system:
+                    if self.overlay:
+                        if self._stopping:
+                            import openvr
+                            self.overlay.close(openvr)
+                        else:
+                            self.overlay.forget()
                     self._close()
                     system = None
+                if self._stopping:
+                    return
                 self.state, self.devices, self.fps = "off", [], None
                 time.sleep(1)
                 continue
@@ -578,15 +619,25 @@ class _Vr:
                     raise OSError("SteamVR closed")
                 self.devices = self._read(system, openvr)
                 self.state = "ok"
-                for _ in range(self.POLL):  # FPS is read every second
-                    self.fps = self._read_fps(openvr) if self.fps_wanted else None
-                    time.sleep(1)
+                end, next_fps = time.monotonic() + self.POLL, 0.0
+                while time.monotonic() < end and self.wanted:
+                    now, ov = time.monotonic(), self.overlay
+                    if now >= next_fps:  # FPS is read every second
+                        self.fps = self._read_fps(openvr) if self.fps_wanted else None
+                        next_fps = now + 1
+                    if ov and ov.wanted:  # The overlay moves and fades smoothly, so it ticks often
+                        ov.tick(openvr, system)
+                    elif ov:
+                        ov.close(openvr)
+                    time.sleep(0.011 if ov and ov.wanted else 1)  # About 90 times a second: pokes need to feel instant
             except Exception as e:  # SteamVR not running (InitError_Init_NoServerForBackgroundApp) or it just quit
                 not_running = "NoServer" in type(e).__name__ or "closed" in str(e)
                 self.state, self.devices, self.fps, self._frames = ("noSteamVR" if not_running else "error"), [], None, None
                 if not not_running:
                     log.info("steamvr: %r", e)
                 if system:
+                    if self.overlay:
+                        self.overlay.forget()
                     self._close()
                     system = None
                 time.sleep(self.RETRY)

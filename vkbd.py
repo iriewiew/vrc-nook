@@ -96,10 +96,14 @@ def _watch():
 threading.Thread(target=_watch, daemon=True).start()
 
 
+ANY_OWN = -1  # own_hwnd for "any window of this app" (the wrist keyboard has no window of its own)
+
+
 def _ensure_target(own_hwnd):
     """If focus landed on the keyboard window, switch back to the original program before sending keys"""
     fg = user32.GetForegroundWindow()
-    if fg and fg == own_hwnd and _target:
+    ours = fg and (_pid(fg) == _own_pid if own_hwnd == ANY_OWN else fg == own_hwnd)
+    if ours and _target:
         user32.SetForegroundWindow(_target)
         time.sleep(0.03)
 
