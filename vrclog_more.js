@@ -132,6 +132,23 @@ const fCheck = (id, on) => `<label class="switch"><input type="checkbox" id="${i
 const btn = (label, onclick, cls = "", ic = "") => `<button class="btn ${cls}" onclick="${esc(onclick)}">${ic ? icon(ic) : ""}${label}</button>`;
 const tabsHtml = (tabs, cur, setter) => `<div class="segmented scroll-x">${Object.entries(tabs).map(([k, label]) =>
   `<button class="${cur === k ? "on" : ""}" onclick="${setter}('${k}')">${label}</button>`).join("")}</div>`;
+// The mouse wheel scrolls a tab row sideways while there's more of it that way (otherwise the page scrolls as usual)
+document.addEventListener("wheel", e => {
+  const row = e.target.closest?.(".segmented.scroll-x");
+  if (!row || e.deltaX || row.scrollWidth <= row.clientWidth) return;
+  const max = row.scrollWidth - row.clientWidth;
+  if ((e.deltaY < 0 && row.scrollLeft <= 0) || (e.deltaY > 0 && row.scrollLeft >= max - 1)) return;
+  row.scrollLeft += e.deltaY;
+  e.preventDefault();
+}, { passive: false });
+// A tab row that was just drawn (pages redraw it on every click) scrolls to show its chosen tab
+new MutationObserver(() => document.querySelectorAll(".segmented.scroll-x").forEach(row => {
+  const on = row.querySelector("button.on");
+  if (!on || row.dataset.shown === on.textContent) return;
+  row.dataset.shown = on.textContent;
+  if (on.offsetLeft < row.scrollLeft || on.offsetLeft + on.offsetWidth > row.scrollLeft + row.clientWidth)
+    row.scrollLeft = on.offsetLeft - (row.clientWidth - on.offsetWidth) / 2;
+})).observe(document.documentElement, { childList: true, subtree: true });
 
 // Pick an image from disk → PNG base64 (scaled to at most max, square = fit into a square with contain)
 function pickImage(max = 2048, square = false) {
@@ -188,9 +205,15 @@ select.field option { background: var(--sheet); color: var(--text); }
 .btn svg { width: 13px; height: 13px; }
 .btn.sm { padding: 3px 11px; font-size: 11.5px; }
 .btn:disabled { opacity: .5; }
-/* Tabs that don't fit wrap onto another row: a hidden sideways scroll left them unreachable with a mouse wheel */
-.segmented.scroll-x { flex-wrap: wrap; max-width: 100%; }
-.segmented.scroll-x button { flex: 1 0 auto; }
+/* Tabs that don't fit stay on one row and scroll sideways (mouse wheel too, see below); a faded edge shows there's more that way */
+@property --segL { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --segR { syntax: "<length>"; inherits: false; initial-value: 0px; }
+.segmented.scroll-x { overflow-x: auto; scrollbar-width: none; max-width: 100%; position: relative;
+  mask-image: linear-gradient(to right, transparent, #000 var(--segL), #000 calc(100% - var(--segR)), transparent);
+  animation: segFade linear both; animation-timeline: scroll(self inline); }
+.segmented.scroll-x::-webkit-scrollbar { display: none; }
+.segmented.scroll-x button { flex: 0 0 auto; }
+@keyframes segFade { 0% { --segL: 0px; --segR: 28px; } 6%, 94% { --segL: 28px; --segR: 28px; } 100% { --segL: 28px; --segR: 0px; } }
 .lrow { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--sep); min-width: 0; }
 .lrow + .lrow { margin-top: 6px; }
 .lrow[onclick] { cursor: pointer; }
