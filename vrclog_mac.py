@@ -34,7 +34,7 @@ from vrclog import KINDS, Room, parse_line
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w", encoding="utf-8")
 
-VERSION = "0.8.1"
+VERSION = "0.8.2"
 log = logging.getLogger("vrclog")
 UPLOAD_FIELDS = ("animationStyle", "maskTag", "frames", "framesOverTime", "loopStyle")
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
