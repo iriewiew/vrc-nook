@@ -1608,9 +1608,13 @@ window.onWorlds = (list) => {
 };
 window.onNotifs = (list) => { NOTIFS = list; buildNav(); if (view === "notifs") renderView(); };
 window.onNewNotif = (n) => toast(t("newNotif", n.name || "?", t("n_" + n.type, n.worldName || "")));
+const FEED_KEEP = new Set(["name", "bio", "friendAdd", "friendRemove"]);
 window.onFeed = (list) => {
   feed.push(...list);
-  if (feed.length > 5000) feed.splice(0, feed.length - 5000);
+  if (feed.length > 5000) {  // Drop the oldest of the busy kinds; name / bio / friend changes are few and stay
+    let drop = feed.length - 5000;
+    feed = feed.filter(e => drop <= 0 || FEED_KEEP.has(e.type) || !drop--);
+  }
   if (view === "feed") renderView();
 };
 

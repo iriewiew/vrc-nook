@@ -113,11 +113,13 @@ class Store:
         self._exec("INSERT INTO feed (t, type, uid, name, data) VALUES (?,?,?,?,?)",
                    (entry["t"], entry["type"], entry["u"], entry["name"], json.dumps(entry.get("d", {}), ensure_ascii=False)))
 
-    def recent_feed(self, limit=1000, rare=300):
-        """The latest entries, plus older ones of the rarer kinds (name / avatar / bio / friend changes) that the busy kinds would push out"""
+    def recent_feed(self, limit=1000, rare=300, keep=1000):
+        """The latest entries, plus older avatar changes, plus name / bio / friend changes going back much further: those are
+        few, and sharing one cap with avatar changes (a friend switches avatar many times a day) pushed them out"""
         rows = self._query("SELECT t, type, uid, name, data FROM feed WHERE id IN (SELECT id FROM feed ORDER BY id DESC LIMIT ?)"
-                           " OR id IN (SELECT id FROM feed WHERE type NOT IN ('online', 'offline', 'location', 'status') ORDER BY id DESC LIMIT ?)"
-                           " ORDER BY id DESC", (limit, rare))
+                           " OR id IN (SELECT id FROM feed WHERE type = 'avatar' ORDER BY id DESC LIMIT ?)"
+                           " OR id IN (SELECT id FROM feed WHERE type NOT IN ('online', 'offline', 'location', 'status', 'avatar') ORDER BY id DESC LIMIT ?)"
+                           " ORDER BY id DESC", (limit, rare, keep))
         return [{"t": t, "type": ty, "u": u, "name": n, "d": json.loads(d or "{}")} for t, ty, u, n, d in reversed(rows)]
 
     # ---------- Chatbox message history ----------
