@@ -629,7 +629,9 @@ class _Vr:
                         ov.tick(openvr, system)
                     elif ov:
                         ov.close(openvr)
-                    time.sleep(0.011 if ov and ov.wanted else 1)  # About 90 times a second: pokes need to feel instant
+                    # About 90 times a second while the wrist menu shows (pokes need to feel instant); 30 while it's hidden,
+                    # which is plenty to notice you raising your arm, and leaves SteamVR alone
+                    time.sleep((0.033 if ov.idle and not ov.busy() else 0.011) if ov and ov.wanted else 1)
             except Exception as e:  # SteamVR not running (InitError_Init_NoServerForBackgroundApp) or it just quit
                 not_running = "NoServer" in type(e).__name__ or "closed" in str(e)
                 self.state, self.devices, self.fps, self._frames = ("noSteamVR" if not_running else "error"), [], None, None

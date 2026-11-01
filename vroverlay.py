@@ -56,6 +56,8 @@ class VrOverlay:
         self._cursor = None             # The dot's picture on show: "near" / "press"
         self._gpu = None                # _Gpu once made (False: not available, pictures go through setOverlayRaw)
         self._shown = {}                # Overlay handle -> the picture's bytes it shows now (to skip uploading the same one)
+        self._visible = False           # Whether the wrist overlays are shown in SteamVR now (faded all the way out = hidden)
+        self.idle = True                # Nothing on the wrist to move or fade: the reader can tick slowly
 
     def js(self, fn, data):
         self._calls.put((fn, data))
@@ -103,6 +105,10 @@ class VrOverlay:
                 log.info("vr overlay: %r", e)
             self.error = str(e) or type(e).__name__
 
+    def busy(self):
+        """A notice is fading in or out (or waiting): tick fast so the fade is smooth"""
+        return self._toast_at is not None or bool(self._toasts)
+
     def close(self, openvr):
         """Remove the overlays (overlay switched off). SteamVR removes them by itself when it closes"""
         if self._h:
@@ -128,6 +134,7 @@ class VrOverlay:
         self._size, self._key, self._places, self._alpha = {}, None, {}, 0.0
         self._asked = 0.0  # Ask the page for its pictures straight away
         self._last = self._press = self._cursor = self._laser_at = self._interactive = None
+        self._visible, self.idle = False, True
 
     def _upload(self, openvr, ov, h, pic):
         """Show a picture on an overlay. Through a D3D11 texture when there is one: setOverlayRaw drops the old picture
@@ -201,7 +208,9 @@ class VrOverlay:
                 self._hidden()
             return
         now = time.monotonic()
-        if now - self._asked >= self.TICK_EVERY:  # The page draws them; the pictures come back through push()
+        # The page draws them; the pictures come back through push(). Not while they're hidden: no point drawing and
+        # uploading pictures nobody sees (asked again the moment they start to show)
+        if now - self._asked >= self.TICK_EVERY and (self._visible or "wrist" not in self._size):
             self._asked = now
             self.js("vrWristTick", {**self.panel_info(), "all": "wrist" not in self._size})
         with self._lock:
@@ -221,7 +230,8 @@ class VrOverlay:
                 ov.setOverlayMouseScale(h[name], openvr.HmdVector2_t(w, ht))  # The laser's position comes in pixels
                 if name not in self._size:
                     ov.setOverlayAlpha(h[name], self._alpha)
-                    ov.showOverlay(h[name])
+                    if self._visible:
+                        ov.showOverlay(h[name])
                 self._size[name] = size
                 self._key = None
         if "wrist" not in self._size:  # The page hasn't drawn it yet
@@ -234,7 +244,6 @@ class VrOverlay:
             self._key, self._interactive = (dev, c["input"]), None
         poses = (openvr.TrackedDevicePose_t * openvr.k_unMaxTrackedDeviceCount)()
         system.getDeviceToAbsoluteTrackingPose(openvr.TrackingUniverseStanding, 0, poses)
-        self._place(openvr, ov, poses, dev, c)
         # With "only when called" on, fade in while you raise your arm to look at your wrist, or while its palm faces you
         showing = self._alpha > 0.5
         if not c["gaze"]:
@@ -242,16 +251,39 @@ class VrOverlay:
         elif c.get("palm"):
             target = 1.0 if self._palm_up(openvr, poses, dev, right, showing) else 0.0
         else:
-            target = self._looking(openvr, poses, dev, self._places["wrist"][1], showing)
+            target = self._looking(openvr, poses, dev, self._wrist_pos(c), showing)
         step = 0.035  # Per tick (about 90 a second): a quarter-second fade
         alpha = self._alpha + max(-step, min(step, target - self._alpha))
         if alpha != self._alpha:
             for name in self._size:
                 ov.setOverlayAlpha(h[name], alpha)
             self._alpha = alpha
+        # Faded all the way out = hidden in SteamVR, not just see-through: the compositor still draws a shown overlay every
+        # frame, alpha 0 or not, and with other overlay apps open those layers add up (stutter)
+        visible = alpha > 0
+        self.idle = not visible
+        if not visible:
+            if self._visible:
+                for name in self._size:
+                    ov.hideOverlay(h[name])
+                self._visible = False
+            if self._interactive:
+                for name in ("wrist", "panel"):
+                    ov.setOverlayFlag(h[name], openvr.VROverlayFlags_MakeOverlaysInteractiveIfVisible, False)
+                self._interactive = False
+            if self._cursor or self._press:
+                self._poke(openvr, ov, system, poses, dev, openvr.k_unTrackedDeviceIndexInvalid)
+            return
+        self._place(openvr, ov, poses, dev, c)
+        if not self._visible:  # Placed first, so it doesn't show for a frame where it was last time
+            for name in self._size:
+                ov.showOverlay(h[name])
+            self._visible = True
+            self._asked = now - self.TICK_EVERY + 0.35  # Fresh pictures (clock, lists) once it has faded in, not during it
         # The laser only finds them while they're shown (a faded-out button mustn't catch the trigger), and only while the
         # other controller points their way: while they're interactive SteamVR keeps the controllers from the game (no walking)
-        if c["input"] != "poke" and self._alpha >= 0.5 and self._aiming(openvr, poses, dev, other, self._places, self._size, now < self._aim_until):
+        if c["input"] != "poke" and self._alpha >= 0.5 and self._aiming(openvr, poses, dev, other, self._places, self._size, now < self._aim_until,
+                                                                         near=c["input"] == "laser"):
             self._aim_until = now + 1.0  # A moment's grace, so a shaky aim or a press in progress isn't cut off
         interactive = c["input"] != "poke" and self._alpha >= 0.5 and now < self._aim_until
         if interactive != self._interactive:
@@ -269,7 +301,7 @@ class VrOverlay:
         """The button at the wrist ("dist" cm back from the controller towards the elbow, clear of its ring, moved "x" cm
         right and "y" cm up), turned to face your eyes and upright as you see it, so you don't have to twist your wrist; the
         panel just above it"""
-        p, R = (c.get("x", 0) / 100, -0.01 + c.get("y", 0) / 100, c["dist"] / 100), self._places.get("wrist", (_rot(0, 0),))[0]
+        p, R = self._wrist_pos(c), self._places.get("wrist", (_rot(0, 0),))[0]
         hmd, ctl = poses[openvr.k_unTrackedDeviceIndex_Hmd], poses[dev]
         if hmd.bPoseIsValid and ctl.bPoseIsValid:
             C, H = ctl.mDeviceToAbsoluteTracking.m, hmd.mDeviceToAbsoluteTracking.m
@@ -286,6 +318,10 @@ class VrOverlay:
             self._places["panel"] = (R, _add(p, _mul(R, (0.0, up, 0.005))))
         for name, (R2, p2) in self._places.items():
             ov.setOverlayTransformTrackedDeviceRelative(self._h[name], dev, _matrix(openvr, R2, p2))
+
+    @staticmethod
+    def _wrist_pos(c):
+        return c.get("x", 0) / 100, -0.01 + c.get("y", 0) / 100, c["dist"] / 100
 
     def _laser(self, openvr, ov):
         """SteamVR's laser on the button ring or the panel: pulling the trigger presses there (passed on like a poke), the
@@ -379,10 +415,13 @@ class VrOverlay:
         ov.setOverlayTransformTrackedDeviceRelative(h, other, _matrix(openvr, Rc, self.TIP))
 
     @staticmethod
-    def _aiming(openvr, poses, dev, other, places, sizes, already):
-        """Whether the other controller points roughly at the button or the open panel, or is right by it. SteamVR's laser
-        comes out of the controller's front or tilted down from it depending on the model, so both count: within 40
-        degrees (55 once it's caught, so it doesn't drop out mid-press), widened by how big the overlay looks from there"""
+    def _aiming(openvr, poses, dev, other, places, sizes, already, near):
+        """Whether the other controller points roughly at the button or the open panel (or, with near, is right by it).
+        SteamVR's laser comes out of the controller's front or tilted down from it depending on the model, so both count:
+        within 40 degrees (55 once it's caught, so it doesn't drop out mid-press), widened by how big the overlay looks from
+        there. "Right by it" only counts with laser-only input: with poke on too, the tip does the close-up pressing, and
+        turning the laser on just because the other hand is near (it usually is when you raise your arm to look) made
+        SteamVR take the controllers from the game every time — a stutter with other overlay apps open"""
         if other == openvr.k_unTrackedDeviceIndexInvalid:
             return False
         ctl, o = poses[dev], poses[other]
@@ -397,7 +436,7 @@ class VrOverlay:
                 continue
             v = [sum(C[i][j] * p[j] for j in range(3)) + C[i][3] - O[i][3] for i in range(3)]
             dist = math.sqrt(sum(x * x for x in v))
-            if dist < 0.3:  # Close enough to poke it
+            if near and dist < 0.3:  # Close enough to poke it
                 return True
             if dist > 2.0:
                 continue
