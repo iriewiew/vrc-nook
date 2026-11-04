@@ -297,6 +297,7 @@ class Api:
         if not self._client.logged_in:
             return {"error": 401}
         params = dict(params) if isinstance(params, dict) else {}
+        lite = bool(params.pop("_lite", False))
         try:
             src = params.pop("_imageUrl", None)  # Reuse the existing image on VRChat (e.g. editing a print's note without changing the image)
             if src:
@@ -312,7 +313,9 @@ class Api:
             log.warning("vrc %s failed: %s", name, e)
             return {"error": e.status, "message": e.message}
         users = vrc_ops.users_in(name, res)
-        if users:
+        if users and lite:  # Member pages for the rank filter: keep the names, but no pictures and nothing sent to the page
+            self._users.ingest(users, images=False, push=False)
+        elif users:
             self._users.ingest(users, images=len(users) <= 100)
         self._after_op(name, params or {}, res)
         return {"ok": res}
@@ -570,10 +573,22 @@ class Api:
     def worlds(self, wids):
         self._worlds.want(wids, network=True)
 
-    def need_ranks(self, uids):
-        """Group member lists don't include trust ranks: load the profiles of the users the cache has no rank for"""
+    def need_ranks(self, uids, days=7):
+        """Group member lists don't include trust ranks: known ranks from the cache, and the profiles of the rest queued
+        (a rank checked more than `days` ago is checked again; 0 = never)"""
+        if not isinstance(uids, list):
+            return {"ranks": {}, "queued": []}
+        try:
+            days = max(0.0, float(days))
+        except (TypeError, ValueError):
+            days = 7.0
+        ids = [u for u in uids[:RANK_MAX] if isinstance(u, str) and u.startswith("usr_")]
+        return self._users.want_ranks(ids, days * 86400 or None)
+
+    def user_images(self, uids):
+        """Pictures for the member rows on screen (member pages for the rank filter are loaded without them)"""
         if isinstance(uids, list):
-            self._users.want_ranks([u for u in uids[:RANK_MAX] if isinstance(u, str) and u.startswith("usr_")])
+            self._users.want_images([u for u in uids[:200] if isinstance(u, str) and u.startswith("usr_")])
 
     def drop_ranks(self):
         return self._users.drop_ranks()

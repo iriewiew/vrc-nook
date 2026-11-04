@@ -2867,6 +2867,8 @@ function buildSettings() {
 
       <div class="sec-title">${t("data")}</div>
       <div class="card">
+        ${srow("users", "orange", t("rank_days"), `<select class="field" style="width:auto" onchange="setS('rankDays',+this.value)">${[0, 1, 3, 7, 14, 30].map(n =>
+          `<option value="${n}" ${(S.rankDays ?? 7) === n ? "selected" : ""}>${n ? t("rank_nDays", n) : t("rank_never")}</option>`).join("")}</select>`, t("rank_daysHint"))}
         ${srow("trash-2", "gray", t("clearCache"),
           `<button class="btn" onclick="api('vrc_clear_cache');toast(t('cacheCleared'))">${t("clear2")}</button>`)}
         ${srow("rotate-ccw", "red", t("resetAll"),

@@ -21,6 +21,7 @@ log = logging.getLogger("vrclog")
 API = "https://api.vrchat.cloud/api/1"
 USER_AGENT = "VRCNook/0.3 (personal companion app)"
 INFO_TTL = 3 * 24 * 3600  # Data older than this is reloaded
+RANK_TAGS = ("system_trust_veteran", "system_trust_trusted", "system_trust_known", "system_trust_basic")  # Trusted User … New User, highest first
 CACHE_VERSION = 2  # Bump when the stored data format changes to force a reload
 API_DELAY = 1.0  # Seconds between API requests — don't lower it or you'll hit the rate limit
 IMG_DELAY = 0.5
@@ -426,31 +427,59 @@ class Cache:
         if out:
             self.push(out)
 
-    def want_ranks(self, keys):
-        """Queue a full load (/profile) for users whose trust rank isn't known yet: no trustTags from /profile and no tags from a search"""
+    def want_ranks(self, keys, max_age=None):
+        """Trust ranks for group members (their lists don't include them): the rank from the cache where it's known and fresh enough,
+        and a full load (/profile) queued for the rest. max_age (seconds): a Visitor checked longer ago than this is checked again
+        (the rank people leave first; other ranks stay as they are); None = never again. Returns {"ranks": {id: rank}, "queued": [ids]}"""
+        now, ranks, queued = time.time(), {}, []
         for key in keys:
-            info = self.index.get(key, {}).get("info", {})
-            if "trustTags" in info or info.get("tags"):
-                self.sent.discard(key)
-                self.want([key], network=False)  # Known already — make sure the page has it
-            elif self.fetch_info:
-                self.f.enqueue((self, "info", key, None))  # Front: ahead of the member pictures that loaded with the list
+            entry = self.index.get(key, {})
+            info = entry.get("info", {})
+            tags = (info.get("trustTags") or []) + (info.get("tags") or [])
+            if "trustTags" in info or tags:
+                rank = next((t for t in RANK_TAGS if t in tags), "visitor")
+                ranks[key] = rank
+                if rank != "visitor" or not max_age or now - entry.get("ts", 0) < max_age:
+                    continue
+            if self.fetch_info:
+                self.f.enqueue((self, "info", key, None))  # Front: ahead of the pictures
                 self.rank_keys.add(key)
+                queued.append(key)
+        return {"ranks": ranks, "queued": queued}
+
+    def want_images(self, keys):
+        """Pictures for these users (rows on screen): send what's cached, and load the ones that have a picture but no file yet"""
+        out = []
+        for key in keys:
+            entry = self.index.get(key)
+            if not entry:
+                continue
+            if entry.get("url") and not entry.get("img"):
+                self.f.enqueue((self, "img", key, entry["url"]), bump=True)  # Front: rows on screen come before a long queue of rank checks
+            elif key not in self.sent:
+                p = self.payload(key)
+                if p:
+                    out.append(p)
+                    self.sent.add(key)
+        if out:
+            self.push(out)
 
     def drop_ranks(self):
         """Forget the trust-rank loads still waiting in the queue (the page stopped filtering by rank)"""
         keys, self.rank_keys = self.rank_keys, set()
         return self.f.drop(self, "info", keys)
 
-    def ingest(self, objs, images=True):
+    def ingest(self, objs, images=True, push=True):
         """Take objects already fetched from the API (e.g. the friend list) — update the data and load only changed images
-        images=False: don't load images now (they load when the profile is opened)"""
+        images=False: don't load images now (they load when the profile is opened); push=False: don't send them to the page"""
         out = []
         for o in objs:
             key = o.get("id")
             if not key:
                 continue
             self._update(key, o, full=False, images=images)
+            if not push:
+                continue
             p = self.payload(key)
             if p:
                 out.append(p)
@@ -533,10 +562,19 @@ class Fetcher:
         self.cond = threading.Condition()
         threading.Thread(target=self._worker, daemon=True).start()
 
-    def enqueue(self, task, front=True):
+    def enqueue(self, task, front=True, bump=False):
+        """bump=True: if it's already waiting, move it to the front (e.g. a picture now on screen)"""
         cache, kind, key, _ = task
         tag = (id(cache), kind, key)
-        if not self.client.logged_in or tag in self.queued:
+        if not self.client.logged_in:
+            return
+        if tag in self.queued:
+            if bump:
+                with self.cond:
+                    old = next((t for t in self.queue if t[0] is cache and t[1] == kind and t[2] == key), None)
+                    if old is not None:
+                        self.queue.remove(old)
+                        self.queue.appendleft(old)
             return
         with self.cond:
             # Data (info) before images so names/status show up quickly

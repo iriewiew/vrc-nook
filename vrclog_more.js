@@ -1187,6 +1187,7 @@ function gBody() {
       const hit = scan.list.filter(m => rankOf(m.userId) === rk);
       note = rankNote(hit.length, scan.list.length, scan);
       c = { data: hit.slice(GX.memberOff, GX.memberOff + GX.memberN), loading: !scan.list.length && !scan.done, error: scan.err };
+      rankImages(c.data.map(m => m.userId));
       if (!c.data.length && (!scan.done || rankWait.size)) c.loading = true;  // No match yet, but ranks are still coming in
     } else if (rk && c?.data) {
       needRanks(c.data.map(m => m.userId));
@@ -1201,7 +1202,8 @@ function gBody() {
           <option value="">${t("g_allRoles")}</option>${roles.map(r => `<option value="${escA(r.id)}" ${GX.memberRole === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select>` : ""}</div>
       ${note}
       ${stateHtml(c) || c.data.map(m => lrow({ uid: m.userId, name: m.user?.displayName || m.userId,
-        sub: `${t("g_joined", fmtIso(m.joinedAt || m.createdAt, true))}${(m.roleIds || []).length ? " · " + (m.roleIds || []).map(r => esc(roles.find(x => x.id === r)?.name || "")).filter(Boolean).join(", ") : ""}${rankTag(m.userId)}`,
+        sub: [m.joinedAt || m.createdAt ? t("g_joined", fmtIso(m.joinedAt || m.createdAt, true)) : "",
+          (m.roleIds || []).map(r => esc(roles.find(x => x.id === r)?.name || "")).filter(Boolean).join(", ")].filter(Boolean).join(" · ").concat(rankTag(m.userId)).replace(/^ · /, ""),
         onclick: `showProfile('${esc(m.userId)}')`,
         acts: (canRole && roles.length ? `<button class="mini-btn" title="${t("g_roles")}" onclick="gRolesDialog('${esc(m.userId)}')">${icon("user-cog")}</button>` : "")
           + (canKick && m.userId !== AUTH.id ? `<button class="mini-btn" title="${t("g_kick")}" onclick="confirmBtn(this,()=>gDo('kickGroupMember',{userId:'${esc(m.userId)}'},'done','g_mem'))">${icon("door-open")}</button>` : "")
@@ -5104,7 +5106,7 @@ function gMemberPager(shown, total) {
     const roleNames = ids => (ids || []).map(r => (groupOpen.roles || []).find(x => x.id === r && !x.defaultRole)?.name).filter(Boolean).join(", ");
     const picked = id => GX.sel.some(s => s.id === id);
     const row = u => lrow({ uid: u.id, name: u.name, onclick: `showProfile('${esc(u.id)}')`, cls: mode === "pick" && picked(u.id) ? "picked" : "",
-      sub: [roleNames(u.roles), u.joined ? t("g_joined", fmtIso(u.joined, true)) : ""].filter(Boolean).join(" · ") + rankTag(u.id),
+      sub: [roleNames(u.roles), u.joined ? t("g_joined", fmtIso(u.joined, true)) : ""].filter(Boolean).join(" · ").concat(rankTag(u.id)).replace(/^ · /, ""),
       pre: mode === "pick" && u.id !== AUTH.id ? `<input type="checkbox" class="gck" ${picked(u.id) ? "checked" : ""} onchange="_gmpTick('${esc(u.id)}',this.checked)">` : "",
       acts: mode === "ban" && u.id !== AUTH.id
         ? `<button class="btn sm danger" onclick="confirmBtn(this,()=>gDo('banGroupMember',{userId:'${esc(u.id)}'},'done','g_bans'))">${icon("ban")}${t("g_ban")}</button>` : "" });
@@ -5130,6 +5132,7 @@ function gMemberPager(shown, total) {
         note = rankNote(hit.length, scan.list.length, scan);
         total = hit.length || 1;
         res = hit.slice(st.off, st.off + N).map(memToRow);
+        rankImages(res.map(u => u.id));
       } else if (st.rank && res) {
         needRanks(res.map(u => u.id));
         const hit = res.filter(u => rankOf(u.id) === st.rank);
@@ -6717,13 +6720,15 @@ Object.assign(UPD_I18N.zh, { nav_battery: "电池", bt_day: "按天", bt_sum: "�
 // Without a search the filter goes through the member list itself: up to RSCAN_MAX members, newest first, 100 per request.
 const RANK_ORDER = [["visitor", "Visitor", "#8e8e93"], ...[...RANKS].reverse()];
 const RSCAN_MAX = 1000;
-let RSCAN = null;  // {key: groupId|roleId, list: members, done, capped, err}
+let RSCAN = null;  // {key: groupId|roleId, list: members, done, capped, err, all: scanning the whole group, ask: confirming that}
 const rankWait = new Set(), rankAsked = new Set();
+const RANKMAP = {};  // uid -> rank, from the cache (member pages for the filter don't send whole profiles to the page)
+const RPROG = { total: 0, done: 0, t0: 0 };  // Rank checks of this run, for the progress bar
+const rankDays = () => S.rankDays ?? 7;  // Settings: check a Visitor again after this many days (0 = never)
 function rankOf(uid) {
   const p = PROFILES[uid];
-  if (!p) return null;
-  const tags = [...(p.trustTags || []), ...(p.tags || [])];
-  if (!tags.length && !Array.isArray(p.trustTags)) return null;  // Not loaded from /profile yet: unknown, not Visitor
+  const tags = p ? [...(p.trustTags || []), ...(p.tags || [])] : [];
+  if (!tags.length && !Array.isArray(p?.trustTags)) return RANKMAP[uid] || null;  // Not loaded from /profile here: what the cache said, else unknown
   return RANKS.find(([tag]) => tags.includes(tag))?.[0] || "visitor";
 }
 function rankTag(uid) {
@@ -6734,42 +6739,102 @@ function rankSelHtml(v, onchange) {
   return `<select class="field" style="width:auto" title="${escA(t("g_rank"))}" onchange="${esc(onchange)}"><option value="">${t("g_allRanks")}</option>
     ${RANK_ORDER.map(([k, name]) => `<option value="${k}" ${v === k ? "selected" : ""}>${name}</option>`).join("")}</select>`;
 }
-function needRanks(ids) {
-  const ask = ids.filter(id => id && !rankAsked.has(id) && !rankOf(id));
+// Ranks for these users: the cache answers at once; unknown ones, and ones checked longer ago than the setting, are queued
+async function needRanks(ids, scan) {
+  const ask = ids.filter(id => id && !rankAsked.has(id));
   if (!ask.length) return;
-  ask.forEach(id => { rankAsked.add(id); rankWait.add(id); });
-  api("need_ranks", ask);
+  ask.forEach(id => rankAsked.add(id));
+  const r = await api("need_ranks", ask, rankDays()) || {};
+  Object.assign(RANKMAP, r.ranks || {});
+  if (scan && (scan.stopped || RSCAN !== scan)) {  // Stopped while this page was on its way: don't start checking it
+    if (r.queued?.length) { r.queued.forEach(id => rankAsked.delete(id)); api("drop_ranks"); }
+    return rankRedraw();
+  }
+  const q = (r.queued || []).filter(id => !rankWait.has(id));
+  q.forEach(id => rankWait.add(id));
+  if (q.length) { RPROG.t0 ||= Date.now(); RPROG.total += q.length; }
+  if (scan) scan.queued = (scan.queued || 0) + q.length;
+  rankRedraw();
 }
+// Pictures only for the rows on screen (member pages for the filter come without them)
+const imgAsked = new Set();
+function rankImages(ids) {
+  const ask = ids.filter(id => id && !imgAsked.has(id) && !PROFILES[id]?.img);
+  if (!ask.length) return;
+  ask.forEach(id => imgAsked.add(id));
+  api("user_images", ask);
+}
+const SEC_PER_CHECK = 1.3;  // Seconds per profile until there's a measurement (the app waits 1 s between requests)
+function rankSecPer() {
+  const secs = (Date.now() - RPROG.t0) / 1000;
+  return RPROG.done >= 5 && secs > 0 ? secs / RPROG.done : SEC_PER_CHECK;
+}
+function fmtDur(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+  return h ? t("dur_hm", h, m) : sec >= 60 ? t("dur_m", Math.max(1, m)) : t("dur_lt1m");
+}
+function rankBar(label, done, total, extra = "") {
+  const pct = total ? Math.min(100, Math.round(done * 100 / total)) : 0;
+  return `<div class="rank-bar"><div class="rank-bar-t"><span>${label}</span><b>${done.toLocaleString()} / ${total.toLocaleString()}</b>${extra}</div>
+    <div class="rank-bar-track"><i style="width:${pct}%"></i></div></div>`;
+}
+// The note above the filtered list: counts, progress bars while loading / checking, and the buttons to go further or stop
 function rankNote(hit, of, scan) {
-  const wait = rankWait.size, parts = [t("g_rankMatch", hit.toLocaleString(), of.toLocaleString())];
-  if (!scan.done) parts.push(t("g_rankLoading"));
-  if (wait) parts.push(t("g_rankWait", wait));
-  if (scan.capped) parts.push(t("g_rankCap", scan.list.length.toLocaleString()));
-  return `<div class="pcard-note rank-note">${!scan.done || wait ? `<span class="spin">${icon("refresh-cw")}</span>` : icon("funnel")}${parts.join(" · ")}
-    ${scan.capped && scan.done ? `<button class="btn sm" onclick="rankMore()">${icon("chevron-down")}${t("g_rankMore", RSCAN_MAX.toLocaleString())}</button>` : ""}</div>`;
+  const wait = rankWait.size, total = scan.total || 0, busy = !scan.done || wait > 0;
+  const head = `<div class="rank-note-h">${busy ? `<span class="spin">${icon("refresh-cw")}</span>` : icon("funnel")}
+    <span>${t("g_rankMatch", hit.toLocaleString(), of.toLocaleString())}${scan.capped && scan.done ? " · " + t("g_rankCap", scan.list.length.toLocaleString()) : ""}</span>
+    ${busy && scan.list ? `<button class="btn sm" onclick="rankHalt()">${icon("x")}${t("g_rankStop")}</button>` : ""}</div>`;
+  let body = "";
+  if (scan.rate) body += `<div class="rank-ask">${icon("info")}<span>${t("g_rankRate")}</span></div>`;
+  if (scan.list && !scan.done && total) body += rankBar(t("g_rankLoadBar"), scan.list.length, scan.all ? total : Math.min(total, scan.limit));
+  if (wait) body += rankBar(t("g_rankCheckBar"), RPROG.done, RPROG.total, `<span class="rank-eta">${t("g_rankEta", fmtDur(wait * rankSecPer()))}</span>`);
+  if (scan.ask) {
+    const left = Math.max(0, total - scan.list.length), ratio = scan.list.length ? (scan.queued || 0) / scan.list.length : 1;
+    const checks = Math.round(wait + left * ratio), secs = Math.max(checks * rankSecPer(), left / 100 * 2.3);  // Pages and rank checks run side by side
+    body += `<div class="rank-ask">${icon("info")}<span>${t("g_rankAllAsk", checks.toLocaleString(), fmtDur(secs))}</span>
+      <button class="btn sm primary" onclick="rankAll(true)">${t("g_rankAllGo")}</button><button class="btn sm" onclick="rankAll(false)">${t("cancel")}</button></div>`;
+  } else if (scan.list && scan.done && !scan.all && (scan.capped || !wait && scan.list.some(m => !rankOf(m.userId)))) {
+    body += `<div class="rank-acts">${scan.capped ? `<button class="btn sm" onclick="rankMore()">${icon("chevron-down")}${t("g_rankMore", RSCAN_MAX.toLocaleString())}</button>` : ""}
+      <button class="btn sm" onclick="rankAll()">${icon("users")}${t(scan.capped ? "g_rankAll" : "g_rankRest")}</button></div>`;
+  }
+  return `<div class="pcard-note rank-note">${head}${body}</div>`;
 }
 function rankScan(gid, role) {
   const key = gid + "|" + (role || "");
   if (RSCAN?.key === key) return RSCAN;
-  const s = RSCAN = { key, gid, role, list: [], limit: RSCAN_MAX, done: false, capped: false, err: null };
+  const s = RSCAN = { key, gid, role, list: [], limit: RSCAN_MAX, done: false, capped: false, err: null, queued: 0,
+    total: role ? (groupOpen?.roles || []).find(r => r.id === role)?.memberCount || 0 : groupOpen?.memberCount || 0 };
   rankPages(s);
   return s;
 }
-// Load member pages until the list ends or reaches s.limit ("Check 1,000 more" raises the limit and calls this again)
+// Load member pages until the list ends, reaches s.limit ("Check 1,000 more" raises it, "Scan the whole group" removes it) or is stopped
 async function rankPages(s) {
-  s.done = false; s.capped = false;
+  s.done = false; s.capped = false; s.stopped = false;
+  let tries = 0;
   while (true) {
-    const r = await vrc("getGroupMembers", { groupId: s.gid, n: 100, offset: s.list.length, sort: "joinedAt:desc", ...(s.role ? { roleId: s.role } : {}) });
+    const r = await vrc("getGroupMembers", { groupId: s.gid, n: 100, offset: s.list.length, sort: "joinedAt:desc", ...(s.role ? { roleId: s.role } : {}), _lite: true });
     if (RSCAN !== s) return;
+    if (r.error === 429 && tries++ < 10 && !s.stopped) {  // VRChat says slow down: wait and try the same page again
+      s.rate = true; rankRedraw();
+      await new Promise(res => setTimeout(res, 30000));
+      s.rate = false;
+      if (RSCAN !== s) return;
+      if (s.stopped) break;
+      continue;
+    }
     if ("error" in r) { s.err = r; break; }
+    tries = 0;
     const page = Array.isArray(r.ok) ? r.ok : [];
     const have = new Set(s.list.map(m => m.userId));
     s.list.push(...page.filter(m => !have.has(m.userId)));  // Someone joining meanwhile shifts the pages by one
-    needRanks(page.map(m => m.userId));
+    if (!s.stopped) await needRanks(page.map(m => m.userId), s);
+    if (RSCAN !== s) return;
     rankRedraw();
     if (page.length < 100) break;
-    if (s.list.length >= s.limit) { s.capped = true; break; }
-    await new Promise(res => setTimeout(res, 400));
+    if (s.stopped || s.list.length >= s.limit) { s.capped = true; break; }
+    // A whole-group scan runs alongside the rank checks (1 a second): keep the total well under VRChat's rate limit
+    await new Promise(res => setTimeout(res, s.list.length > RSCAN_MAX ? 2000 : 400));
   }
   s.done = true;
   rankRedraw();
@@ -6779,6 +6844,35 @@ function rankMore() {
   RSCAN.limit = RSCAN.list.length + RSCAN_MAX;
   rankPages(RSCAN);
   rankRedraw();
+}
+// "Scan the whole group": first show how long it will take (go = undefined), then start (true) or cancel (false)
+function rankAll(go) {
+  const s = RSCAN;
+  if (!s) return;
+  if (go === undefined) { s.ask = true; return rankRedraw(); }
+  s.ask = false;
+  if (go) {
+    s.all = true;
+    s.limit = Infinity;
+    needRanks(s.list.map(m => m.userId), s);  // Also the ones an earlier stop dropped
+    if (s.done && s.capped) rankPages(s);
+  }
+  rankRedraw();
+}
+// Stop button: no more member pages, and the rank checks still waiting are dropped (the checked ones stay in the cache)
+function rankHalt() {
+  const s = RSCAN;
+  if (s) { s.stopped = true; s.all = false; s.limit = s.list.length; s.ask = false; }
+  rankDrop();
+  rankRedraw();
+}
+function rankDrop() {
+  if (rankWait.size) {
+    rankWait.forEach(id => rankAsked.delete(id));  // Not checked: ask again next time
+    rankWait.clear();
+    api("drop_ranks");
+  }
+  Object.assign(RPROG, { total: 0, done: 0, t0: 0 });
 }
 // Is a list still filtering by rank? (Members tab with a rank chosen, or the picker with one)
 function rankInUse() {
@@ -6790,10 +6884,7 @@ function rankInUse() {
 function rankStop() {
   if (rankInUse()) return;
   RSCAN = null;
-  if (!rankWait.size) return;
-  rankWait.forEach(id => rankAsked.delete(id));  // Not checked: ask again next time
-  rankWait.clear();
-  api("drop_ranks");
+  rankDrop();
 }
 const rankStopSoon = () => setTimeout(rankStop, 0);
 {
@@ -6815,7 +6906,11 @@ function rankRedraw() {
   window.onProfiles = list => {
     base(list);
     let hit = false;
-    for (const p of list) if (rankWait.delete(p.id)) hit = true;
+    for (const p of list) {
+      if (rankWait.delete(p.id)) { hit = true; RPROG.done++; }
+      if (!p.img && imgAsked.delete(p.id)) hit = true;  // Its picture wasn't known when asked: ask again on the next draw
+    }
+    if (hit && !rankWait.size) Object.assign(RPROG, { total: 0, done: 0, t0: 0 });  // This run of checks is finished
     if (hit && !rankInUse()) rankStop();  // Left the list some other way (e.g. opened another card)
     else if (hit) rankRedraw();
   };
@@ -6823,8 +6918,20 @@ function rankRedraw() {
 document.head.insertAdjacentHTML("beforeend", `<style>
 .rank-tag { color: var(--rk); font-weight: 600; }
 .rank-tag::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--rk); margin-right: 4px; vertical-align: 1px; }
-.rank-note { display: flex; align-items: center; gap: 6px; margin: -4px 2px 8px; }
-.rank-note svg { width: 13px; height: 13px; }
+.rank-note { display: grid; gap: 6px; margin: -4px 2px 8px; }
+.rank-note svg { width: 13px; height: 13px; flex-shrink: 0; }
+.rank-note-h, .rank-ask, .rank-acts { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rank-note-h > span:not(.spin) { flex: 1; min-width: 0; }
+.rank-note .btn.sm { padding: 2px 10px; font-size: 11.5px; }
+.rank-bar { display: grid; gap: 3px; }
+.rank-bar-t { display: flex; gap: 8px; align-items: baseline; font-size: 11.5px; }
+.rank-bar-t span:first-child { flex: 1; }
+.rank-bar-t b { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.rank-eta { color: var(--text2); }
+.rank-bar-track { height: 5px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.rank-bar-track i { display: block; height: 100%; border-radius: 99px; background: var(--accent); transition: width .3s; }
+.rank-ask { padding: 8px 10px; border-radius: 10px; background: var(--hover); color: var(--text); }
+.rank-ask > span { flex: 1; min-width: 0; }
 .rank-note .spin { display: inline-flex; animation: rkspin 1s linear infinite; }
 @keyframes rkspin { to { transform: rotate(360deg); } }
 </style>`);
@@ -6835,14 +6942,34 @@ tx({
   g_rankWait: [n => `กำลังเช็คยศอีก ${n} คน`, n => `checking ${n} more ranks`, n => `あと ${n} 人のランクを確認中`],
   g_rankCap: [n => `ดูแล้ว ${n} คนที่เข้าล่าสุด`, n => `checked the ${n} newest members`, n => `新しい ${n} 人まで確認`],
   g_rankMore: [n => `ดูต่ออีก ${n} คน`, n => `Check ${n} more`, n => `さらに ${n} 人確認`],
+  g_rankStop: ["หยุด", "Stop", "停止"],
+  g_rankRate: ["VRChat ขอให้ช้าลง รอ 30 วินาทีแล้วจะโหลดต่อเอง", "VRChat asked us to slow down: continuing in 30 seconds", "VRChat から待機を求められました。30 秒後に続けます"],
+  g_rankAll: ["สแกนทั้งกลุ่ม", "Scan the whole group", "グループ全体をスキャン"],
+  g_rankRest: ["เช็คยศที่เหลือ", "Check the rest", "残りを確認"],
+  g_rankAllAsk: [(n, d) => `ต้องเช็คยศอีกราว ${n} คน ใช้เวลาประมาณ ${d} (ยศที่เช็คแล้วเก็บไว้ หยุดกลางทางแล้วมาทำต่อได้)`,
+    (n, d) => `About ${n} ranks to check, roughly ${d}. Checked ranks are kept, so you can stop and continue later.`,
+    (n, d) => `約 ${n} 人のランクを確認、およそ ${d}。確認済みは保存されるので途中で止めて後で続けられます。`],
+  g_rankAllGo: ["เริ่มสแกน", "Start", "開始"],
+  g_rankLoadBar: ["โหลดรายชื่อ", "Loading members", "メンバー読み込み"],
+  g_rankCheckBar: ["เช็คยศ", "Checking ranks", "ランク確認"],
+  g_rankEta: [d => `เหลืออีกราว ${d}`, d => `about ${d} left`, d => `残り約 ${d}`],
+  dur_hm: [(h, m) => `${h} ชม. ${m} นาที`, (h, m) => `${h} h ${m} min`, (h, m) => `${h} 時間 ${m} 分`],
+  dur_m: [m => `${m} นาที`, m => `${m} min`, m => `${m} 分`],
+  dur_lt1m: ["ไม่ถึงนาที", "under a minute", "1 分未満"],
+  rank_days: ["เช็คสมาชิกกลุ่มที่เป็น Visitor ใหม่ทุก", "Check group members who were Visitor again every", "Visitor だったグループメンバーを再確認"],
+  rank_daysHint: ["ตอนกรองยศ คนที่เคยเป็น Visitor และเช็คนานกว่านี้จะเช็คใหม่ เผื่ออัปยศแล้ว (ยศอื่นใช้ค่าเดิม)",
+    "When filtering by rank, people who were Visitor when checked longer ago than this are checked again, in case they've ranked up (other ranks stay as they are)",
+    "ランクで絞り込むとき、これより前に Visitor だった人を再確認します（ランクアップしているかもしれないため。他のランクはそのまま）"],
+  rank_never: ["ไม่เช็คซ้ำ", "Never", "しない"],
+  rank_nDays: [n => `${n} วัน`, n => n === 1 ? "1 day" : `${n} days`, n => `${n} 日`],
 });
-Object.assign(UPD_I18N.ko, { g_rank: "신뢰 등급", g_allRanks: "모든 등급", g_rankMatch: (n, m) => `${m}명 중 ${n}명`, g_rankLoading: "멤버 불러오는 중…",
+Object.assign(UPD_I18N.ko, { g_rankRate: "VRChat이 속도를 줄이라고 함: 30초 후 계속", g_rankStop: "중지", g_rankAll: "그룹 전체 스캔", g_rankRest: "나머지 확인", g_rankAllAsk: (n, d) => `약 ${n}명의 등급 확인, 약 ${d} 소요. 확인한 등급은 저장되어 중간에 멈추고 나중에 이어갈 수 있음`, g_rankAllGo: "시작", g_rankLoadBar: "멤버 불러오기", g_rankCheckBar: "등급 확인", g_rankEta: d => `약 ${d} 남음`, dur_hm: (h, m) => `${h}시간 ${m}분`, dur_m: m => `${m}분`, dur_lt1m: "1분 미만", rank_days: "Visitor였던 그룹 멤버 다시 확인 주기", rank_daysHint: "등급으로 거를 때 이보다 오래전에 Visitor였던 사람은 등급이 올랐을 수 있어 다시 확인 (다른 등급은 그대로)", rank_never: "안 함", rank_nDays: n => `${n}일`, g_rank: "신뢰 등급", g_allRanks: "모든 등급", g_rankMatch: (n, m) => `${m}명 중 ${n}명`, g_rankLoading: "멤버 불러오는 중…",
   g_rankWait: n => `${n}명 등급 확인 중`, g_rankCap: n => `최근 가입한 ${n}명 확인함`, g_rankMore: n => `${n}명 더 확인` });
-Object.assign(UPD_I18N.ru, { g_rank: "Ранг доверия", g_allRanks: "Все ранги", g_rankMatch: (n, m) => `${n} из ${m}`, g_rankLoading: "Загрузка участников…",
+Object.assign(UPD_I18N.ru, { g_rankRate: "VRChat просит помедленнее: продолжим через 30 секунд", g_rankStop: "Стоп", g_rankAll: "Сканировать всю группу", g_rankRest: "Проверить остальных", g_rankAllAsk: (n, d) => `Нужно проверить около ${n} рангов, примерно ${d}. Проверенные сохраняются, можно остановить и продолжить позже`, g_rankAllGo: "Начать", g_rankLoadBar: "Загрузка участников", g_rankCheckBar: "Проверка рангов", g_rankEta: d => `осталось около ${d}`, dur_hm: (h, m) => `${h} ч ${m} мин`, dur_m: m => `${m} мин`, dur_lt1m: "меньше минуты", rank_days: "Перепроверять участников с рангом Visitor каждые", rank_daysHint: "При фильтре по рангу тех, кто был Visitor при проверке раньше этого срока, проверяем снова: ранг мог вырасти (остальные ранги не трогаем)", rank_never: "Никогда", rank_nDays: n => `${n} дн.`, g_rank: "Ранг доверия", g_allRanks: "Все ранги", g_rankMatch: (n, m) => `${n} из ${m}`, g_rankLoading: "Загрузка участников…",
   g_rankWait: n => `проверяется ещё ${n}`, g_rankCap: n => `проверено ${n} новейших участников`, g_rankMore: n => `Проверить ещё ${n}` });
-Object.assign(UPD_I18N.vi, { g_rank: "Cấp tin cậy", g_allRanks: "Mọi cấp", g_rankMatch: (n, m) => `${n} / ${m} người khớp`, g_rankLoading: "Đang tải thành viên…",
+Object.assign(UPD_I18N.vi, { g_rankRate: "VRChat yêu cầu chậm lại: sẽ tiếp tục sau 30 giây", g_rankStop: "Dừng", g_rankAll: "Quét cả nhóm", g_rankRest: "Kiểm tra phần còn lại", g_rankAllAsk: (n, d) => `Cần kiểm tra khoảng ${n} người, mất khoảng ${d}. Cấp đã kiểm tra được lưu, có thể dừng rồi làm tiếp sau`, g_rankAllGo: "Bắt đầu", g_rankLoadBar: "Đang tải thành viên", g_rankCheckBar: "Kiểm tra cấp", g_rankEta: d => `còn khoảng ${d}`, dur_hm: (h, m) => `${h} giờ ${m} phút`, dur_m: m => `${m} phút`, dur_lt1m: "dưới 1 phút", rank_days: "Kiểm tra lại thành viên từng là Visitor mỗi", rank_daysHint: "Khi lọc theo cấp, người từng là Visitor được kiểm tra lâu hơn mức này sẽ được kiểm tra lại vì có thể đã lên cấp (các cấp khác giữ nguyên)", rank_never: "Không bao giờ", rank_nDays: n => `${n} ngày`, g_rank: "Cấp tin cậy", g_allRanks: "Mọi cấp", g_rankMatch: (n, m) => `${n} / ${m} người khớp`, g_rankLoading: "Đang tải thành viên…",
   g_rankWait: n => `đang kiểm tra thêm ${n} người`, g_rankCap: n => `đã kiểm tra ${n} thành viên mới nhất`, g_rankMore: n => `Kiểm tra thêm ${n}` });
-Object.assign(UPD_I18N.zh, { g_rank: "信任等级", g_allRanks: "所有等级", g_rankMatch: (n, m) => `${m} 人中 ${n} 人符合`, g_rankLoading: "正在加载成员…",
+Object.assign(UPD_I18N.zh, { g_rankRate: "VRChat 要求放慢速度：30 秒后继续", g_rankStop: "停止", g_rankAll: "扫描整个群组", g_rankRest: "检查剩余的", g_rankAllAsk: (n, d) => `约需检查 ${n} 人的等级，大约 ${d}。已检查的会保存，可以中途停止稍后继续`, g_rankAllGo: "开始", g_rankLoadBar: "加载成员", g_rankCheckBar: "检查等级", g_rankEta: d => `约剩 ${d}`, dur_hm: (h, m) => `${h} 小时 ${m} 分钟`, dur_m: m => `${m} 分钟`, dur_lt1m: "不到 1 分钟", rank_days: "重新检查曾是 Visitor 的成员的间隔", rank_daysHint: "按等级筛选时，早于此时间检查时还是 Visitor 的人会重新检查，可能已升级（其他等级保持不变）", rank_never: "从不", rank_nDays: n => `${n} 天`, g_rank: "信任等级", g_allRanks: "所有等级", g_rankMatch: (n, m) => `${m} 人中 ${n} 人符合`, g_rankLoading: "正在加载成员…",
   g_rankWait: n => `还在检查 ${n} 人的等级`, g_rankCap: n => `已检查最新加入的 ${n} 人`, g_rankMore: n => `再检查 ${n} 人` });
 
 // ---------- Back to the group: a profile / world / avatar / other group opened from a group card goes back to it on close ----------
