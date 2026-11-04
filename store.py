@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS memos (uid TEXT PRIMARY KEY, text TEXT);
 CREATE TABLE IF NOT EXISTS name_changes (uid TEXT, old TEXT, new TEXT, t TEXT);
 CREATE INDEX IF NOT EXISTS name_changes_uid ON name_changes (uid);
 CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY, t TEXT, text TEXT, world TEXT);
+CREATE TABLE IF NOT EXISTS battery (t INTEGER, serial TEXT, kind TEXT, label TEXT, model TEXT, level INTEGER, charging INTEGER);
+CREATE INDEX IF NOT EXISTS battery_t ON battery (t);
 """
 
 
@@ -27,11 +29,14 @@ def now():
 
 
 class Store:
+    BATTERY_DAYS = 400  # Battery samples kept this long (a few hundred small rows a day)
+
     def __init__(self, path: Path):
         path.parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.executescript(SCHEMA)
         self.lock = threading.Lock()
+        self._exec("DELETE FROM battery WHERE t < ?", (int(time.time()) - self.BATTERY_DAYS * 86400,))
 
     def _exec(self, sql, args=(), many=False):
         with self.lock:
@@ -151,6 +156,22 @@ class Store:
             seen.setdefault(new, [t, t])
             seen[new][0] = min(seen[new][0], t)
         return [{"name": n, "first": f, "last": l} for n, (f, l) in sorted(seen.items(), key=lambda x: x[1][0])]
+
+    # ---------- Battery log (battlog.py) ----------
+    def add_battery(self, rows):
+        if rows:
+            self._exec("INSERT INTO battery VALUES (?,?,?,?,?,?,?)", rows, many=True)
+
+    def battery(self, start, end):
+        """Samples from start up to end (epoch seconds), oldest first"""
+        return self._query("SELECT t, serial, kind, label, model, level, charging FROM battery WHERE t >= ? AND t < ? ORDER BY t", (start, end))
+
+    def battery_days(self):
+        """Local dates (YYYY-MM-DD) that have samples, newest first"""
+        return [d for (d,) in self._query("SELECT DISTINCT date(t, 'unixepoch', 'localtime') FROM battery ORDER BY 1 DESC")]
+
+    def battery_clear(self):
+        self._exec("DELETE FROM battery")
 
     # ---------- Notes ----------
     def memo(self, uid):

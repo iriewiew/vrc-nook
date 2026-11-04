@@ -19,6 +19,7 @@ import webbrowser
 
 import websocket
 
+import battlog
 import osc
 
 log = logging.getLogger(__name__)
@@ -40,6 +41,7 @@ DEFAULTS = {
     "icons": {"status": "", "media": "🎵", "clock": "🕒", "heart": "❤️", "devices": "", "pc": ""},   # Emoji in front of each part ("" = none)
     # VR devices from SteamVR: one entry per device, or one per kind (headset / controllers / trackers)
     "devices": False, "devTrkGroup": False, "devPerLine": False, "devStat": "lowest", "devHmd": True, "devCtrl": True, "devTrk": True,
+    "battLog": True,      # Keep a battery log of the connected devices (battlog.py), whatever the Chatbox shows
     "devCharging": True, "devLow": 20, "devHidden": [], "devOff": [], "devNames": {},
     "devVibe": True, "devVibeIcon": "〰️", "devBattIcon": False, "devBattSym": "🔋", "devKindIcon": False,
     "devKindSyms": {"hmd": "🥽", "ctrl": "🎮", "trk": "📍", "toy": "📳"},
@@ -92,6 +94,8 @@ class ChatInfo:
         self.vr = _Vr()            # SteamVR devices (reads only while the devices part is on)
         self.toys = _Intiface()    # Devices connected in Intiface Central (only when switched on: it takes one app at a time)
         self.pc = _Pc()            # CPU / GPU / RAM / VRAM (FPS comes from SteamVR, in self.vr)
+        self.batt_log = None       # Saves battery samples (set by the app: Store.add_battery)
+        self._batt, self._batt_at = battlog.Recorder(), 0.0
         self._lock = threading.Lock()
         threading.Thread(target=self._run, name="chatinfo", daemon=True).start()
 
@@ -343,10 +347,16 @@ class ChatInfo:
                 ov.cfg = {"wrist": c["vrWrist"], "hand": c["vrHand"], "dist": c["vrDist"], "x": c["vrX"], "y": c["vrY"], "palm": c["vrPalm"], "gaze": c["vrGaze"], "input": c["vrInput"]}
                 ov.panel_info = lambda: {"chat": self.text if self.cfg["on"] else "", "devices": self.vr.devices + self.toys.devices, "media": self.media,
                                              "bpm": self.bpm if self.cfg["heart"] else None}
-            self.vr.wanted = (c["devices"] and watching) or self.vr.fps_wanted or bool(ov and ov.wanted)
+            self.vr.wanted = (c["devices"] and watching) or self.vr.fps_wanted or bool(ov and ov.wanted) or c["battLog"]
             self.pc.wanted = c["pc"] and watching
             self.toys.url, self.toys.relay_port, self.toys.battery = c["intiface"], c["intifaceRelay"], c["devToyBatt"]
-            self.toys.wanted = c["devToy"] and (c["devices"] and watching or wrist)
+            self.toys.wanted = c["devToy"] and (c["devices"] and watching or wrist or c["battLog"])
+            if c["battLog"] and self.batt_log and now - self._batt_at >= 60:  # Battery log: a reading a minute (written when it changes)
+                self._batt_at = now
+                try:
+                    self.batt_log(self._batt.sample(self.vr.devices + self.toys.devices))
+                except Exception as e:
+                    log.info("battery log: %r", e)
             if c["heart"] and self.bpm and now - self._hr_at > 15:  # No reading for a while = sensor off
                 self.bpm = None
                 self._send_hr(None)

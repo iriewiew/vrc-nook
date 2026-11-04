@@ -17,6 +17,7 @@ from pathlib import Path
 
 import webview
 
+import battlog
 import chatinfo
 import osc
 import vkbd
@@ -112,6 +113,7 @@ class Api:
         self._kb_rect = None
         self._info = chatinfo.ChatInfo()  # Now playing / clock / heart rate / random status in the Chatbox
         self._info.vr.overlay = vroverlay.VrOverlay(js)  # SteamVR notices and wrist panel (drawn by the page)
+        self._info.batt_log = self._store.add_battery
 
     def _fetch_user(self, uid):
         p = self._client.get_profile(uid)
@@ -693,6 +695,34 @@ class Api:
 
     def info_state(self):
         return self._info.state()
+
+    # ---------- Battery log ----------
+    @staticmethod
+    def _local_day(date):
+        """'YYYY-MM-DD' -> (start, end) epoch seconds of that local day (23 or 25 hours long on a clock change)"""
+        y, m, d = (int(x) for x in date.split("-"))
+        start = int(time.mktime((y, m, d, 0, 0, 0, 0, 0, -1)))
+        return start, int(time.mktime((y, m, d + 1, 0, 0, 0, 0, 0, -1)))
+
+    def battery_days(self):
+        return self._store.battery_days()
+
+    def battery_day(self, date):
+        start, end = self._local_day(date)
+        return {"start": start, "end": end, "devices": battlog.day(self._store.battery(start, end))}
+
+    def battery_summary(self, date, days):
+        """The `days` days ending with `date`, and the same number of days before them (to compare)"""
+        days = min(max(int(days), 1), 366)
+        _, end = self._local_day(date)
+        start = end - days * 86400
+        prev = start - days * 86400
+        return {"start": start, "end": end, "cur": battlog.summary(self._store.battery(start, end), start, days),
+                "prev": battlog.summary(self._store.battery(prev, start), prev, days)}
+
+    def battery_clear(self):
+        self._store.battery_clear()
+        return True
 
     def info_ble_scan(self):
         return self._info.ble_scan()

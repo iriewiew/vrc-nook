@@ -3159,7 +3159,7 @@ VIEWS.splice(VIEWS.indexOf("osc") + 1, 0, "vr");
 $("jump").insertAdjacentHTML("beforebegin", `<div class="view" id="v_vr"></div>`);
 const OI_DEF = { on: false, status: true, statuses: [], statusEvery: 60, media: true, mediaFmt: "{artist} - {title}", clock: true, clock24: true,
   layout: ["status", "br", "media", "br", "clock", "sep:   ", "heart"], icons: { status: "", media: "🎵", clock: "🕒", heart: "❤️", devices: "", pc: "" },
-  devices: false, devTrkGroup: false, devPerLine: false, devStat: "lowest", devHmd: true, devCtrl: true, devTrk: true, devCharging: true, devLow: 20, devHidden: [], devOff: [], devNames: {}, devVibe: true, devVibeIcon: "〰️", devBattIcon: false, devBattSym: "🔋", devKindIcon: false, devKindSyms: { hmd: "🥽", ctrl: "🎮", trk: "📍", toy: "📳" },
+  devices: false, devTrkGroup: false, devPerLine: false, devStat: "lowest", devHmd: true, devCtrl: true, devTrk: true, battLog: true, devCharging: true, devLow: 20, devHidden: [], devOff: [], devNames: {}, devVibe: true, devVibeIcon: "〰️", devBattIcon: false, devBattSym: "🔋", devKindIcon: false, devKindSyms: { hmd: "🥽", ctrl: "🎮", trk: "📍", toy: "📳" },
   pc: false, pcCpu: true, pcGpu: true, pcTemp: true, pcRam: true, pcVram: true, pcFps: true, pcTotal: false, pcSep: " | ", pcPerLine: 2,
   pcLabels: { cpu: "CPU", gpu: "GPU", ram: "RAM", vram: "VRAM", fps: "FPS" },
   pcCpuName: false, pcGpuName: false, pcRamType: false, pcIcon: false, pcLblSup: false, pcUnitSup: false,
@@ -3401,6 +3401,7 @@ function oiSave() {
     pcIcon: fv("oiPcIcon"), pcLblSup: fv("oiPcLblSup"), pcUnitSup: fv("oiPcUnitSup"),
     hrSource: fv("oiSource") || "ble", bleAddr: fv("oiBleAddr") || "", bleName: fv("oiBleName") || "",
     pulsoid: fv("oiToken") || "", hrParams: fv("oiParams"), interval: num("oiInterval", OI_DEF.interval),
+    battLog: oiCfg().battLog,  // Switched on the Battery page (vrSet), not in this form
     layout: [...oiLayout], icons: { ...oiIcons } };
   save();
   api("info_set", S.chatInfo);
@@ -6316,3 +6317,328 @@ Object.assign(UPD_I18N.ko, { oi_devRename: "클릭해서 이름 지정 (비우�
 Object.assign(UPD_I18N.ru, { oi_devRename: "Нажмите, чтобы задать своё имя (пусто — исходное)" });
 Object.assign(UPD_I18N.vi, { oi_devRename: "Bấm để đặt tên riêng (để trống = tên gốc)" });
 Object.assign(UPD_I18N.zh, { oi_devRename: "点击自定义名称（留空 = 原名）" });
+
+// ---------- Battery log: each connected device's battery by day, a summary over 7 / 30 / 90 days, and a comparison with the
+// days before. Python records the samples (battlog.py) whether the Chatbox shows devices or not; this draws them ----------
+NAV.battery = ["battery-medium", "green"];
+VIEWS.splice(VIEWS.indexOf("vr") + 1, 0, "battery");
+$("jump").insertAdjacentHTML("beforebegin", `<div class="view" id="v_battery"></div>`);
+const BT = { tab: "day", date: "", days: 7, data: {}, hide: new Set(), day: null };
+// Categorical palette (fixed order, light / dark steps), validated for adjacent pairs; a device keeps its slot for good
+const BT_PAL = { light: ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"],
+  dark: ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"] };
+const BT_KINDS = ["hmd", "ctrl", "trk", "toy"];
+const BT_GAP = 660;  // Samples further apart than this (s) are separate stretches (battlog.GAP)
+const btYmd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const btHm = s => new Date(s * 1000).toTimeString().slice(0, 5);
+const btH = h => h == null ? "—" : h < 1 ? `${Math.round(h * 60)} ${t("bt_min")}` : `${h.toFixed(1)} ${t("bt_hr")}`;
+function btColor(serial) {  // First seen = next slot; past eight devices they share a neutral gray
+  const m = S.battColors || (S.battColors = {});
+  if (!(serial in m)) { m[serial] = Object.keys(m).length; save(); }
+  return m[serial] < 8 ? BT_PAL[dark() ? "dark" : "light"][m[serial]] : "#8a8a86";
+}
+function btName(d) {
+  const own = oiCfg().devNames?.[d.serial];
+  if (own) return own;
+  const base = d.model || t("bt_k_" + d.kind);
+  return d.kind === "ctrl" && d.label ? `${base} ${d.label}` : d.kind === "hmd" ? base : `${base} · ${d.serial.replace(/^intiface:/, "").slice(-4)}`;
+}
+const btSort = list => [...list].sort((a, b) => BT_KINDS.indexOf(a.kind) - BT_KINDS.indexOf(b.kind) || btName(a).localeCompare(btName(b)));
+async function btLoad(force) {
+  const key = BT.tab === "day" ? "d:" + BT.date : `s:${BT.date}:${BT.days}`, have = BT.data[key];
+  const live = BT.date === btYmd(new Date());  // Today keeps filling in
+  if (have && !force && !(live && Date.now() - have.at > 60000)) return have;
+  const r = BT.tab === "day" ? await api("battery_day", BT.date) : await api("battery_summary", BT.date, BT.days);
+  BT.data[key] = { at: Date.now(), r: r || { devices: [], cur: [], prev: [] } };
+  return BT.data[key];
+}
+function renderBattery() {
+  const el = $("v_battery"), c = oiCfg(), today = btYmd(new Date());
+  if (!BT.date) BT.date = today;
+  const tabs = tabsHtml({ day: t("bt_day"), sum: t("bt_sum"), cmp: t("bt_cmp") }, BT.tab, "btTab");
+  const when = BT.tab === "day"
+    ? `<button class="mini-btn" title="${t("bt_prevDay")}" onclick="btStep(-1)">${icon("chevron-left")}</button>
+       <input type="date" class="field bt-date" value="${BT.date}" max="${today}" onchange="BT.date=this.value||BT.date;renderBattery()">
+       <button class="mini-btn" title="${t("bt_nextDay")}" onclick="btStep(1)" ${BT.date >= today ? "disabled" : ""}>${icon("chevron-right")}</button>`
+    : `<div class="segmented">${[7, 30, 90].map(n => `<button class="${BT.days === n ? "on" : ""}" onclick="BT.days=${n};renderBattery()">${t("bt_lastN", n)}</button>`).join("")}</div>`;
+  el.innerHTML = `<div class="toolbar">${tabs}${when}<span style="flex:1"></span>
+      <span class="bt-rec" title="${escA(t("bt_recHint"))}">${t("bt_rec")}<label class="switch"><input type="checkbox" ${c.battLog ? "checked" : ""}
+        onchange="vrSet({battLog:this.checked});renderBattery()"></label></span>
+      <button class="mini-btn" title="${t("bt_clear")}" onclick="btClearAsk()">${icon("trash-2")}</button></div>
+    <div id="btBody"><div class="empty-state" style="height:160px">${t("loading")}</div></div>`;
+  const tab = BT.tab, date = BT.date, days = BT.days;
+  btLoad().then(({ r }) => {
+    if (view !== "battery" || BT.tab !== tab || BT.date !== date || BT.days !== days) return;
+    $("btBody").innerHTML = tab === "day" ? btDayHtml(r) : tab === "sum" ? btSumHtml(r) : btCmpHtml(r);
+    if (tab === "day") btChartWire(r);
+  });
+}
+function btTab(k) { BT.tab = k; renderBattery(); }
+function btStep(n) {
+  const d = new Date(BT.date + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  if (btYmd(d) <= btYmd(new Date())) { BT.date = btYmd(d); renderBattery(); }
+}
+function btClearAsk() {
+  openX(t("bt_clear"), () => `<p class="hint-inline" style="display:block;margin:4px 2px 10px">${t("bt_clearAsk")}</p>
+    <div class="form-actions">${btn(t("cancel"), "closeX()")}${btn(t("bt_clear"), "closeX();btClear()", "danger", "trash-2")}</div>`);
+}
+async function btClear() { await api("battery_clear"); BT.data = {}; renderBattery(); }
+const btNone = () => `<div class="empty-state" style="height:220px;flex-direction:column;gap:8px"><span class="tile" style="--c:var(--gray)">${icon("battery-medium")}</span>
+  <div>${t("bt_none")}</div><div class="hint-inline" style="max-width:440px;text-align:center">${t(oiCfg().battLog ? "bt_noneHint" : "bt_offHint")}</div></div>`;
+const btDev = d => `<span class="bt-dev"><i style="background:${btColor(d.serial)}"></i>${esc(btName(d))}</span>`;
+const btLegend = list => `<div class="bt-legend">${list.map(d => `<button class="bt-chip ${BT.hide.has(d.serial) ? "off" : ""}" onclick="btToggle('${escA(d.serial)}')"
+  title="${escA(d.serial)}"><i style="background:${btColor(d.serial)}"></i>${esc(btName(d))}</button>`).join("")}</div>`;
+function btToggle(serial) { BT.hide.has(serial) ? BT.hide.delete(serial) : BT.hide.add(serial); renderBattery(); }
+const btWarn = n => n ? `<span class="bt-warn">${icon("triangle-alert")}${n}</span>` : "—";
+const btRate = s => s.rate != null ? `${s.rate}%/${t("bt_hr")}` : "—";
+const btFull = s => s.fullH != null ? "~" + btH(s.fullH) : "—";
+
+// ----- One day: % over the day for every device (charging = a faint band under the line) and its numbers -----
+const BT_CH = { W: 760, H: 230, L: 34, R: 10, T: 10, B: 24 };
+function btDayHtml(r) {
+  const list = btSort(r.devices || []);
+  if (!list.length) return btNone();
+  BT.day = { ...r, devices: list };
+  BT_CH.W = Math.max(320, ($("v_battery").clientWidth || 790) - 58);  // Drawn at the real width, so text isn't stretched
+  const { W, H, L, R, T, B } = BT_CH, span = r.end - r.start;
+  const x = s => L + (s - r.start) / span * (W - L - R), y = v => T + (100 - v) / 100 * (H - T - B);
+  let grid = "", marks = "";
+  for (const v of [0, 25, 50, 75, 100]) grid += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" class="bt-grid"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" class="bt-ax">${v}</text>`;
+  for (let h = 0; h <= 24; h += 3) grid += `<text x="${x(r.start + h * 3600)}" y="${H - 6}" text-anchor="middle" class="bt-ax">${String(h % 24).padStart(2, "0")}</text>`;
+  for (const d of list) {
+    if (BT.hide.has(d.serial)) continue;
+    const col = btColor(d.serial);
+    let line = "", band = "";
+    d.pts.forEach(([s, v, ch], i) => {
+      const prev = d.pts[i - 1], joined = prev && s - prev[0] <= BT_GAP;
+      line += `${joined ? "L" : "M"}${x(s).toFixed(1)},${y(v).toFixed(1)}`;
+      if (joined && (ch || prev[2])) band += `M${x(prev[0]).toFixed(1)},${y(prev[1]).toFixed(1)}L${x(s).toFixed(1)},${y(v).toFixed(1)}`;
+    });
+    if (band) marks += `<path d="${band}" stroke="${col}" class="bt-band"/>`;
+    marks += `<path d="${line}" stroke="${col}" class="bt-line"/>`;
+    if (d.pts.length === 1) marks += `<circle cx="${x(d.pts[0][0])}" cy="${y(d.pts[0][1])}" r="4" fill="${col}"/>`;
+  }
+  return `<div class="card bt-card">${btLegend(list)}<div class="bt-chart" id="btChart"><svg viewBox="0 0 ${W} ${H}">${grid}${marks}
+      <line id="btCross" class="bt-cross" y1="${T}" y2="${H - B}" x1="-10" x2="-10"/></svg><div class="bt-tip" id="btTip"></div></div>
+      <div class="hint-inline bt-note">${t("bt_bandHint")}</div></div>
+    <div class="card bt-card bt-scroll"><table class="bt-table"><thead><tr><th>${t("bt_device")}</th><th>${t("bt_use")}</th><th>${t("bt_drain")}</th>
+      <th>${t("bt_rate")}</th><th>${t("bt_full")}</th><th>${t("bt_charges")}</th><th>${t("bt_low")}</th><th>${t("bt_empty")}</th></tr></thead>
+      <tbody>${list.map(d => { const s = d.stats; return `<tr><td>${btDev(d)}</td><td>${btH(s.useH)}</td><td>${s.drain ? s.drain + "%" : "—"}</td>
+        <td>${btRate(s)}</td><td>${btFull(s)}</td>
+        <td>${s.charges.length ? s.charges.map(c => `<span class="bt-charge" title="${btHm(c.t)}">${icon("zap")}${c.from}→${c.to}%</span>`).join(" ") : "—"}</td>
+        <td>${s.min != null ? s.min + "%" : "—"}</td><td>${btWarn(s.empties)}</td></tr>`; }).join("")}</tbody></table>
+      <div class="hint-inline bt-note">${t("bt_rateHint")}</div></div>`;
+}
+function btChartWire(r) {  // Crosshair + tooltip: every shown device's level at that moment
+  const box = $("btChart");
+  if (!box || !BT.day) return;
+  const { W, L, R } = BT_CH, span = r.end - r.start;
+  box.onmouseleave = () => { $("btTip").style.display = "none"; $("btCross").setAttribute("x1", -10); $("btCross").setAttribute("x2", -10); };
+  box.onmousemove = e => {
+    const rc = box.getBoundingClientRect(), fx = (e.clientX - rc.left) / rc.width * W;
+    if (fx < L || fx > W - R) return box.onmouseleave();
+    const s = r.start + (fx - L) / (W - L - R) * span, rows = [];
+    for (const d of BT.day.devices) {
+      if (BT.hide.has(d.serial)) continue;
+      let p = null;
+      for (const q of d.pts) { if (q[0] > s) break; p = q; }
+      if (p && s - p[0] <= BT_GAP) rows.push(`<div>${btDev(d)}<b>${p[1]}%</b>${p[2] ? icon("zap") : ""}</div>`);
+    }
+    $("btCross").setAttribute("x1", fx); $("btCross").setAttribute("x2", fx);
+    const tip = $("btTip"), left = e.clientX - rc.left;
+    tip.innerHTML = `<div class="bt-tip-t">${btHm(s)}</div>${rows.join("") || `<div class="hint-inline">${t("bt_noData")}</div>`}`;
+    tip.style.display = "block";
+    tip.style.left = (left + 12 + tip.offsetWidth > rc.width ? Math.max(left - 12 - tip.offsetWidth, 0) : left + 12) + "px";
+  };
+}
+
+// ----- Summary over the range: totals, wear (drain rate week by week) and things worth a look -----
+function btSumHtml(r) {
+  const list = btSort(r.cur || []);
+  if (!list.length) return btNone();
+  const notes = btNotes(list);
+  return `${notes.length ? `<div class="card bt-card bt-notes">${notes.map(n => `<div>${icon("triangle-alert")}<span>${n}</span></div>`).join("")}</div>` : ""}
+    <div class="card bt-card bt-scroll"><table class="bt-table"><thead><tr><th>${t("bt_device")}</th><th>${t("bt_daysUsed")}</th><th>${t("bt_use")}</th>
+      <th>${t("bt_rate")}</th><th>${t("bt_full")}</th><th>${t("bt_perDay")}</th><th>${t("bt_empty")}</th><th>${t("bt_wear")}</th></tr></thead>
+      <tbody>${list.map(d => { const s = d.stats; return `<tr><td>${btDev(d)}</td><td>${s.days}</td><td>${btH(s.useH)}</td>
+        <td>${btRate(s)}</td><td>${btFull(s)}</td><td>${s.chargesPerDay}</td><td>${btWarn(s.empties)}</td><td>${btSpark(d)}</td></tr>`; }).join("")}</tbody></table>
+      <div class="hint-inline bt-note">${t("bt_wearHint")}</div></div>`;
+}
+function btSpark(d) {  // Drain rate per week: a line that climbs means the battery holds less
+  const w = d.weeks.filter(x => x[1] != null);
+  if (w.length < 2) return `<span class="hint-inline">${t("bt_needWeeks")}</span>`;
+  const max = Math.max(...w.map(x => x[1])) * 1.1, X = i => 4 + i * 72 / (w.length - 1), Y = v => 22 - v / max * 18;
+  const ch = Math.round((w[w.length - 1][1] / w[0][1] - 1) * 100);
+  return `<span class="bt-spark"><svg viewBox="0 0 80 26" width="80" height="26"><path d="${w.map((p, i) => `${i ? "L" : "M"}${X(i)},${Y(p[1])}`).join("")}"
+    stroke="${btColor(d.serial)}" class="bt-line"/></svg><span>${ch > 0 ? "+" : ""}${ch}%</span></span>`;
+}
+function btNotes(list) {
+  const out = [];
+  for (const kind of BT_KINDS) {  // Much hungrier than the others of its kind
+    const g = list.filter(d => d.kind === kind && d.stats.rate != null);
+    if (g.length < 2) continue;
+    for (const d of g) {
+      const rest = g.filter(o => o !== d).map(o => o.stats.rate).sort((a, b) => a - b), mid = rest[Math.floor(rest.length / 2)];
+      if (d.stats.rate > mid * 1.3) out.push(t("bt_nHungry", esc(btName(d)), Math.round((d.stats.rate / mid - 1) * 100), t("bt_k_" + kind)));
+    }
+  }
+  for (const d of list) {
+    if (d.stats.empties) out.push(t("bt_nEmpty", esc(btName(d)), d.stats.empties));
+    const w = d.weeks.filter(x => x[1] != null);
+    if (w.length >= 3 && w[w.length - 1][1] > w[0][1] * 1.2) out.push(t("bt_nWear", esc(btName(d)), Math.round((w[w.length - 1][1] / w[0][1] - 1) * 100)));
+  }
+  return out;
+}
+
+// ----- Compare: drain rate of every device side by side (grouped by kind), and against the same number of days before -----
+function btCmpHtml(r) {
+  const list = btSort((r.cur || []).filter(d => d.stats.rate != null));
+  if (!list.length) return btNone();
+  const prev = Object.fromEntries((r.prev || []).map(d => [d.serial, d.stats]));
+  const max = Math.max(...list.map(d => Math.max(d.stats.rate, prev[d.serial]?.rate || 0)));
+  let html = "";
+  for (const kind of BT_KINDS) {
+    const g = list.filter(d => d.kind === kind);
+    if (!g.length) continue;
+    html += `<div class="sec-head">${t("bt_k_" + kind)}</div><div class="card bt-card bt-bars">${g.map(d => {
+      const s = d.stats, p = prev[d.serial]?.rate, ch = p ? Math.round((s.rate / p - 1) * 100) : null;
+      return `<div class="bt-bar"><div class="bt-bar-name">${btDev(d)}</div>
+        <div class="bt-bar-val"><b>${s.rate}%/${t("bt_hr")}</b><span class="hint-inline">~${btH(s.fullH)}</span>
+        ${ch == null ? `<span class="hint-inline">${t("bt_noPrev")}</span>` : `<span class="bt-ch">${ch ? icon(ch > 0 ? "arrow-up" : "arrow-down") : ""}${Math.abs(ch)}%</span>`}</div>
+        <div class="bt-bar-track" title="${escA(t("bt_prevTip", p ?? "—"))}"><div class="bt-bar-fill" style="width:${s.rate / max * 100}%;background:${btColor(d.serial)}"></div>
+        ${p ? `<div class="bt-bar-prev" style="left:${p / max * 100}%"></div>` : ""}</div></div>`;
+    }).join("")}</div>`;
+  }
+  return html + `<div class="hint-inline bt-note">${t("bt_cmpHint")}</div>`;
+}
+VIEW_RENDER.battery = renderBattery;
+VIEW_REFRESH.battery = () => { BT.data = {}; renderBattery(); };
+let btResize = 0;
+window.addEventListener("resize", () => { clearTimeout(btResize); btResize = setTimeout(() => view === "battery" && BT.tab === "day" && renderBattery(), 200); });
+document.head.insertAdjacentHTML("beforeend", `<style>
+.bt-date { width: auto; padding: 4px 8px; }
+.bt-rec { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text2); }
+.bt-card { padding: 12px 14px; margin-bottom: 12px; }
+.bt-scroll { overflow-x: auto; }
+.bt-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.bt-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--sep); background: var(--card); color: var(--text); border-radius: 99px;
+  padding: 3px 10px 3px 8px; font: 12px var(--font); cursor: pointer; }
+.bt-chip.off { opacity: .45; text-decoration: line-through; }
+.bt-chip i, .bt-dev i { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+.bt-chart { position: relative; height: 230px; }
+.bt-chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.bt-grid { stroke: var(--sep); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.bt-ax { fill: var(--text3); font: 10.5px var(--font); }
+.bt-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.bt-band { fill: none; stroke-width: 9; stroke-opacity: .22; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.bt-cross { stroke: var(--text3); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.bt-tip { position: absolute; top: 4px; display: none; pointer-events: none; background: var(--bg-solid, var(--card)); backdrop-filter: blur(20px);
+  border: 1px solid var(--sep); border-radius: 10px; padding: 6px 10px; font-size: 12px; box-shadow: var(--shadow); min-width: 150px; z-index: 2; }
+.bt-tip > div { display: flex; align-items: center; gap: 8px; }
+.bt-tip b { margin-left: auto; }
+.bt-tip svg, .bt-charge svg, .bt-warn svg, .bt-ch svg, .bt-notes svg { width: 12px; height: 12px; }
+.bt-tip-t { font-weight: 700; color: var(--text2); margin-bottom: 2px; }
+.bt-note { display: block; margin-top: 8px; }
+.bt-table { width: 100%; border-collapse: collapse; font-size: 12.5px; white-space: nowrap; }
+.bt-table th { text-align: left; font-weight: 600; color: var(--text3); font-size: 11.5px; padding: 0 12px 6px 0; }
+.bt-table td { padding: 7px 12px 7px 0; border-top: 1px solid var(--sep); color: var(--text); }
+.bt-dev { display: inline-flex; align-items: center; gap: 7px; }
+.bt-charge, .bt-warn, .bt-ch { display: inline-flex; align-items: center; gap: 2px; }
+.bt-spark { display: inline-flex; align-items: center; gap: 6px; color: var(--text2); }
+.bt-notes > div { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; padding: 3px 0; }
+.bt-notes svg { margin-top: 2px; flex: none; }
+.bt-bars { display: grid; gap: 10px; }
+.bt-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 12px; align-items: center; font-size: 12.5px; }
+.bt-bar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.bt-bar .bt-bar-track { grid-column: 1 / -1; }
+.bt-bar-track { position: relative; height: 14px; background: var(--track); border-radius: 4px; }
+.bt-bar-fill { position: absolute; inset: 0 auto 0 0; border-radius: 0 4px 4px 0; }
+.bt-bar-prev { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--text); border-radius: 1px; box-shadow: 0 0 0 2px var(--card); }
+.bt-bar-val { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+</style>`);
+tx({ nav_battery: ["แบตเตอรี่", "Battery", "バッテリー"],
+  bt_day: ["รายวัน", "Day", "日別"], bt_sum: ["สรุป", "Summary", "まとめ"], bt_cmp: ["เปรียบเทียบ", "Compare", "比較"],
+  bt_prevDay: ["วันก่อน", "Previous day", "前の日"], bt_nextDay: ["วันถัดไป", "Next day", "次の日"],
+  bt_lastN: [n => `${n} วัน`, n => `${n} days`, n => `${n} 日`],
+  bt_rec: ["บันทึก", "Record", "記録"],
+  bt_recHint: ["เก็บแบตของอุปกรณ์ที่เชื่อมต่อ (SteamVR และ Intiface ถ้าเปิดไว้) ทุกนาที ไม่ว่า Chatbox จะแสดงอุปกรณ์หรือไม่", "Logs the battery of connected devices (SteamVR, and Intiface if it's on) every minute, whether the Chatbox shows devices or not", "接続中のデバイス（SteamVR、オンなら Intiface）のバッテリーを毎分記録します（Chatbox の表示とは関係なく）"],
+  bt_clear: ["ล้างข้อมูลแบต", "Clear battery log", "バッテリー記録を消去"],
+  bt_clearAsk: ["ลบข้อมูลแบตที่บันทึกไว้ทั้งหมด ย้อนกลับไม่ได้", "Deletes every battery reading saved so far. This can't be undone.", "これまでのバッテリー記録をすべて削除します。元に戻せません。"],
+  bt_none: ["ยังไม่มีข้อมูลช่วงนี้", "No battery data for this period yet", "この期間のデータはまだありません"],
+  bt_noneHint: ["ข้อมูลจะเริ่มเก็บเมื่อเปิด SteamVR พร้อม VRC Nook · สรุปและเปรียบเทียบต้องใช้ข้อมูลหลายวัน", "It's recorded while SteamVR and VRC Nook are both running · Summary and Compare need a few days of data", "SteamVR と VRC Nook が両方動いている間に記録されます · まとめと比較には数日分のデータが必要です"],
+  bt_offHint: ["การบันทึกปิดอยู่ · เปิดสวิตช์ \"บันทึก\" ด้านบนเพื่อเริ่มเก็บ", "Recording is off · switch on \"Record\" above to start", "記録はオフです · 上の「記録」をオンにすると始まります"],
+  bt_noData: ["ไม่มีข้อมูล", "No data", "データなし"],
+  bt_k_hmd: ["แว่น", "Headset", "ヘッドセット"], bt_k_ctrl: ["คอนโทรลเลอร์", "Controllers", "コントローラー"],
+  bt_k_trk: ["Tracker", "Trackers", "トラッカー"], bt_k_toy: ["ของเล่น (Intiface)", "Toys (Intiface)", "トイ（Intiface）"],
+  bt_min: ["นาที", "min", "分"], bt_hr: ["ชม.", "h", "時間"],
+  bt_device: ["อุปกรณ์", "Device", "デバイス"], bt_use: ["ใช้งาน", "In use", "使用時間"], bt_drain: ["ลดลง", "Used", "減少"],
+  bt_rate: ["กินแบต", "Drain", "消費"], bt_full: ["ต่อการชาร์จเต็ม", "Per full charge", "満充電あたり"],
+  bt_charges: ["ชาร์จ", "Charges", "充電"], bt_low: ["ต่ำสุด", "Lowest", "最低"], bt_empty: ["แบตหมด", "Ran out", "電池切れ"],
+  bt_daysUsed: ["วันที่ใช้", "Days used", "使用日数"], bt_perDay: ["ชาร์จ/วัน", "Charges/day", "充電/日"], bt_wear: ["สุขภาพแบต (รายสัปดาห์)", "Wear (weekly)", "劣化（週ごと）"],
+  bt_bandHint: ["แถบจางใต้เส้น = กำลังชาร์จ · เส้นขาด = ไม่ได้เชื่อมต่อหรือไม่ได้เปิดแอพ · กดชื่ออุปกรณ์เพื่อซ่อน/แสดง", "Faint band under a line = charging · a break in a line = not connected or the app wasn't running · click a device to hide or show it", "線の下の薄い帯 = 充電中 · 線の切れ目 = 未接続またはアプリ未起動 · デバイス名をクリックで表示/非表示"],
+  bt_rateHint: ["กินแบต = % ที่ลดลงต่อชั่วโมงตอนใช้งาน (ไม่นับตอนชาร์จ) · ต่อการชาร์จเต็ม = ใช้ได้ประมาณกี่ชั่วโมงจาก 100% · ต้องใช้งานอย่างน้อย 15 นาทีถึงจะคำนวณ", "Drain = % used per hour in use (charging not counted) · Per full charge = about how long 100% lasts · needs at least 15 minutes of use", "消費 = 使用中 1 時間あたりの減少率（充電中は除く） · 満充電あたり = 100% で使える目安 · 15 分以上の使用が必要"],
+  bt_wearHint: ["กราฟกินแบตแต่ละสัปดาห์ ถ้าค่อย ๆ สูงขึ้น แปลว่าแบตเก็บไฟได้น้อยลง (เริ่มเสื่อม)", "Drain rate week by week: a line that keeps climbing means the battery holds less (it's wearing out)", "週ごとの消費率：上がり続けるならバッテリーが劣化しています"],
+  bt_needWeeks: ["ต้องมีข้อมูล 2 สัปดาห์ขึ้นไป", "Needs 2+ weeks", "2 週間以上必要"],
+  bt_nHungry: [(n, p, k) => `${n} กินแบตเร็วกว่า ${k} ตัวอื่น ${p}%`, (n, p, k) => `${n} drains ${p}% faster than your other ${k.toLowerCase()}`, (n, p, k) => `${n} は他の${k}より ${p}% 早く減ります`],
+  bt_nEmpty: [(n, c) => `${n} แบตหมดกลางคัน ${c} ครั้ง`, (n, c) => `${n} ran out of battery ${c}×`, (n, c) => `${n} が ${c} 回電池切れになりました`],
+  bt_nWear: [(n, p) => `${n} กินแบตเร็วขึ้น ${p}% เทียบกับสัปดาห์แรก (แบตอาจเริ่มเสื่อม)`, (n, p) => `${n} drains ${p}% faster than in the first week (the battery may be wearing out)`, (n, p) => `${n} は最初の週より ${p}% 早く減ります（劣化の可能性）`],
+  bt_prevTip: [p => `ช่วงก่อนหน้า: ${p}%/ชม.`, p => `Period before: ${p}%/h`, p => `前の期間: ${p}%/時間`],
+  bt_noPrev: ["ไม่มีข้อมูลช่วงก่อน", "no earlier data", "前の期間なし"],
+  bt_cmpHint: ["แท่ง = กินแบตเฉลี่ยในช่วงนี้ (ยิ่งยาวยิ่งหมดเร็ว) · ขีดตั้ง = ช่วงก่อนหน้าที่ยาวเท่ากัน · ลูกศรขึ้น = หมดเร็วขึ้น", "Bar = average drain in this period (longer runs out sooner) · tick = the same number of days before · arrow up = draining faster", "棒 = この期間の平均消費（長いほど早く減る） · 縦線 = 同じ日数の前の期間 · 上矢印 = 消費が増加"] });
+Object.assign(UPD_I18N.ko, { nav_battery: "배터리", bt_day: "일별", bt_sum: "요약", bt_cmp: "비교", bt_prevDay: "이전 날", bt_nextDay: "다음 날", bt_lastN: n => `${n}일`,
+  bt_rec: "기록", bt_recHint: "연결된 기기(SteamVR, 켜져 있으면 Intiface)의 배터리를 1분마다 기록합니다 (Chatbox 표시와 무관)",
+  bt_clear: "배터리 기록 지우기", bt_clearAsk: "지금까지 저장된 배터리 기록을 모두 삭제합니다. 되돌릴 수 없습니다.",
+  bt_none: "이 기간의 배터리 데이터가 아직 없습니다", bt_noneHint: "SteamVR와 VRC Nook이 함께 실행 중일 때 기록됩니다 · 요약과 비교는 며칠 분량의 데이터가 필요합니다",
+  bt_offHint: "기록이 꺼져 있습니다 · 위의 \"기록\"을 켜면 시작합니다", bt_noData: "데이터 없음",
+  bt_k_hmd: "헤드셋", bt_k_ctrl: "컨트롤러", bt_k_trk: "트래커", bt_k_toy: "토이 (Intiface)", bt_min: "분", bt_hr: "시간",
+  bt_device: "기기", bt_use: "사용 시간", bt_drain: "사용량", bt_rate: "소모", bt_full: "완충당", bt_charges: "충전", bt_low: "최저", bt_empty: "방전",
+  bt_daysUsed: "사용 일수", bt_perDay: "충전/일", bt_wear: "수명 (주별)",
+  bt_bandHint: "선 아래 옅은 띠 = 충전 중 · 끊긴 선 = 연결 안 됨 또는 앱 미실행 · 기기 이름을 눌러 숨기기/보이기",
+  bt_rateHint: "소모 = 사용 중 시간당 줄어든 % (충전 제외) · 완충당 = 100%로 쓸 수 있는 대략적인 시간 · 15분 이상 사용해야 계산됩니다",
+  bt_wearHint: "주별 소모율: 계속 오르면 배터리가 덜 버팁니다 (노화)", bt_needWeeks: "2주 이상 필요",
+  bt_nHungry: (n, p, k) => `${n}: 다른 ${k}보다 ${p}% 빨리 닳습니다`, bt_nEmpty: (n, c) => `${n}: 배터리가 ${c}번 방전되었습니다`,
+  bt_nWear: (n, p) => `${n}: 첫 주보다 ${p}% 빨리 닳습니다 (배터리 노화 가능성)`, bt_prevTip: p => `이전 기간: ${p}%/시간`, bt_noPrev: "이전 데이터 없음",
+  bt_cmpHint: "막대 = 이 기간 평균 소모 (길수록 빨리 닳음) · 세로선 = 같은 일수의 이전 기간 · 위쪽 화살표 = 더 빨리 닳음" });
+Object.assign(UPD_I18N.ru, { nav_battery: "Батарея", bt_day: "День", bt_sum: "Итоги", bt_cmp: "Сравнение", bt_prevDay: "Предыдущий день", bt_nextDay: "Следующий день", bt_lastN: n => `${n} дн.`,
+  bt_rec: "Запись", bt_recHint: "Записывает заряд подключённых устройств (SteamVR и Intiface, если включён) каждую минуту, независимо от чатбокса",
+  bt_clear: "Очистить журнал батареи", bt_clearAsk: "Удалит все сохранённые записи о заряде. Отменить нельзя.",
+  bt_none: "За этот период данных о заряде пока нет", bt_noneHint: "Запись идёт, пока запущены и SteamVR, и VRC Nook · для итогов и сравнения нужно несколько дней данных",
+  bt_offHint: "Запись выключена · включите «Запись» вверху", bt_noData: "Нет данных",
+  bt_k_hmd: "Шлем", bt_k_ctrl: "Контроллеры", bt_k_trk: "Трекеры", bt_k_toy: "Игрушки (Intiface)", bt_min: "мин", bt_hr: "ч",
+  bt_device: "Устройство", bt_use: "В работе", bt_drain: "Расход", bt_rate: "Разряд", bt_full: "На полный заряд", bt_charges: "Зарядки", bt_low: "Минимум", bt_empty: "Разрядился",
+  bt_daysUsed: "Дней", bt_perDay: "Зарядок/день", bt_wear: "Износ (по неделям)",
+  bt_bandHint: "Бледная полоса под линией = зарядка · разрыв линии = не подключено или приложение не работало · нажмите на устройство, чтобы скрыть/показать",
+  bt_rateHint: "Разряд = % в час во время работы (без зарядки) · На полный заряд = сколько примерно хватает 100% · нужно не меньше 15 минут работы",
+  bt_wearHint: "Скорость разряда по неделям: если линия растёт, батарея держит меньше (изнашивается)", bt_needWeeks: "Нужно 2+ недели",
+  bt_nHungry: (n, p, k) => `${n} разряжается на ${p}% быстрее остальных (${k.toLowerCase()})`, bt_nEmpty: (n, c) => `${n} разрядился полностью ${c} раз`,
+  bt_nWear: (n, p) => `${n} разряжается на ${p}% быстрее, чем в первую неделю (батарея может изнашиваться)`, bt_prevTip: p => `Прошлый период: ${p}%/ч`, bt_noPrev: "нет данных раньше",
+  bt_cmpHint: "Полоса = средний разряд за период (длиннее — садится быстрее) · черта = столько же дней до этого · стрелка вверх = садится быстрее" });
+Object.assign(UPD_I18N.vi, { nav_battery: "Pin", bt_day: "Theo ngày", bt_sum: "Tổng kết", bt_cmp: "So sánh", bt_prevDay: "Ngày trước", bt_nextDay: "Ngày sau", bt_lastN: n => `${n} ngày`,
+  bt_rec: "Ghi lại", bt_recHint: "Ghi pin của thiết bị đang kết nối (SteamVR, và Intiface nếu bật) mỗi phút, dù Chatbox có hiện thiết bị hay không",
+  bt_clear: "Xóa nhật ký pin", bt_clearAsk: "Xóa toàn bộ dữ liệu pin đã lưu. Không thể hoàn tác.",
+  bt_none: "Chưa có dữ liệu pin cho khoảng này", bt_noneHint: "Dữ liệu được ghi khi SteamVR và VRC Nook cùng chạy · Tổng kết và So sánh cần dữ liệu vài ngày",
+  bt_offHint: "Đang tắt ghi · bật \"Ghi lại\" ở trên để bắt đầu", bt_noData: "Không có dữ liệu",
+  bt_k_hmd: "Kính", bt_k_ctrl: "Tay cầm", bt_k_trk: "Tracker", bt_k_toy: "Đồ chơi (Intiface)", bt_min: "phút", bt_hr: "giờ",
+  bt_device: "Thiết bị", bt_use: "Thời gian dùng", bt_drain: "Đã dùng", bt_rate: "Hao pin", bt_full: "Mỗi lần sạc đầy", bt_charges: "Sạc", bt_low: "Thấp nhất", bt_empty: "Hết pin",
+  bt_daysUsed: "Số ngày dùng", bt_perDay: "Sạc/ngày", bt_wear: "Độ chai (theo tuần)",
+  bt_bandHint: "Dải mờ dưới đường = đang sạc · đường bị đứt = không kết nối hoặc app không chạy · bấm tên thiết bị để ẩn/hiện",
+  bt_rateHint: "Hao pin = % giảm mỗi giờ khi dùng (không tính lúc sạc) · Mỗi lần sạc đầy = 100% dùng được khoảng bao lâu · cần dùng ít nhất 15 phút",
+  bt_wearHint: "Tốc độ hao pin theo tuần: nếu đường cứ tăng, pin giữ điện kém đi (đang chai)", bt_needWeeks: "Cần 2+ tuần",
+  bt_nHungry: (n, p, k) => `${n} hao pin nhanh hơn các ${k.toLowerCase()} khác ${p}%`, bt_nEmpty: (n, c) => `${n} hết pin giữa chừng ${c} lần`,
+  bt_nWear: (n, p) => `${n} hao pin nhanh hơn tuần đầu ${p}% (pin có thể đang chai)`, bt_prevTip: p => `Khoảng trước: ${p}%/giờ`, bt_noPrev: "không có dữ liệu trước",
+  bt_cmpHint: "Thanh = hao pin trung bình khoảng này (dài hơn = hết nhanh hơn) · vạch = cùng số ngày trước đó · mũi tên lên = hao nhanh hơn" });
+Object.assign(UPD_I18N.zh, { nav_battery: "电池", bt_day: "按天", bt_sum: "汇总", bt_cmp: "对比", bt_prevDay: "前一天", bt_nextDay: "后一天", bt_lastN: n => `${n} 天`,
+  bt_rec: "记录", bt_recHint: "每分钟记录已连接设备（SteamVR，开启时还有 Intiface）的电量，与聊天框是否显示设备无关",
+  bt_clear: "清除电池记录", bt_clearAsk: "将删除目前保存的全部电量记录，无法撤销。",
+  bt_none: "这段时间还没有电池数据", bt_noneHint: "SteamVR 和 VRC Nook 同时运行时才会记录 · 汇总和对比需要几天的数据",
+  bt_offHint: "记录已关闭 · 打开上方的「记录」即可开始", bt_noData: "无数据",
+  bt_k_hmd: "头显", bt_k_ctrl: "手柄", bt_k_trk: "追踪器", bt_k_toy: "玩具（Intiface）", bt_min: "分钟", bt_hr: "小时",
+  bt_device: "设备", bt_use: "使用时长", bt_drain: "用掉", bt_rate: "耗电", bt_full: "每次充满", bt_charges: "充电", bt_low: "最低", bt_empty: "没电",
+  bt_daysUsed: "使用天数", bt_perDay: "充电/天", bt_wear: "损耗（每周）",
+  bt_bandHint: "线下的浅色带 = 充电中 · 线断开 = 未连接或应用未运行 · 点击设备名可隐藏/显示",
+  bt_rateHint: "耗电 = 使用时每小时下降的百分比（不含充电） · 每次充满 = 100% 大约能用多久 · 至少使用 15 分钟才会计算",
+  bt_wearHint: "每周耗电速度：线一直上升说明电池容量在下降（老化）", bt_needWeeks: "需要 2 周以上",
+  bt_nHungry: (n, p, k) => `${n} 比其他${k}耗电快 ${p}%`, bt_nEmpty: (n, c) => `${n} 中途没电 ${c} 次`,
+  bt_nWear: (n, p) => `${n} 比第一周耗电快 ${p}%（电池可能在老化）`, bt_prevTip: p => `上一时段：${p}%/小时`, bt_noPrev: "无更早数据",
+  bt_cmpHint: "条 = 本时段平均耗电（越长越快没电） · 竖线 = 之前相同天数 · 向上箭头 = 耗电变快" });
