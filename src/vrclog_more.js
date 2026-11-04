@@ -4139,7 +4139,7 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .gate-card > p { margin: 0 0 16px; color: var(--text2); font-size: 12.5px; }
 .gate-card .card { text-align: left; }
 .gate-icon { width: 60px; height: 60px; margin: 0 auto 8px; border-radius: 16px; display: grid; place-items: center; color: #fff;
-             background: linear-gradient(135deg, var(--accent), var(--purple)); }
+             background: #111; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
 .gate-icon svg { width: 32px; height: 32px; }
 .gate-wait { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--text2); padding: 14px 0 6px; }
 .gate-wait .spin-dot { position: static; margin: 0; width: 16px; height: 16px; border: 2px solid var(--track); border-top-color: var(--accent);
@@ -4283,7 +4283,7 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .upd-head b { display: block; font-size: 15px; }
 .upd-head span { color: var(--text2); font-size: 12px; }
 .upd-logo { width: 48px; height: 48px; border-radius: 13px; display: grid; place-items: center; color: #fff; flex: none;
-            background: linear-gradient(135deg, var(--accent), var(--purple)); }
+            background: #111; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
 .upd-logo svg { width: 28px; height: 28px; }
 .badge.nightly { margin: 0 0 0 4px; vertical-align: 1px; background: color-mix(in srgb, var(--purple) 18%, transparent); color: var(--purple); }
 .upd-notes-t { font-weight: 600; font-size: 12px; color: var(--text2); margin-top: 4px; }

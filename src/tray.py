@@ -16,20 +16,11 @@ OLD_NAMES = ("VRChatLogViewer",)  # Pre-rename entries — still detected, remov
 
 
 def make_icon(size=64):
-    """App icon: rounded square with a blue→purple gradient + an archway with a moon (a cozy "Nook", matches LOGO_SVG in the UI)"""
+    """App icon: black rounded square + a white archway with a moon (a cozy "Nook", matches LOGO_SVG in the UI)"""
     s = 512  # Draw large then downscale for smooth edges
-    grad = Image.new("RGBA", (s, s))
-    a, b = (10, 132, 255), (191, 90, 242)
-    px = grad.load()
-    for y in range(s):
-        for x in range(s):
-            t = (x + y) / (2 * s - 2)
-            px[x, y] = tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3)) + (255,)
-    mask = Image.new("L", (s, s), 0)
-    ImageDraw.Draw(mask).rounded_rectangle((8, 8, s - 9, s - 9), radius=s * 0.23, fill=255)
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    img.paste(grad, mask=mask)
     d = ImageDraw.Draw(img)
+    d.rounded_rectangle((8, 8, s - 9, s - 9), radius=s * 0.23, fill=(17, 17, 17, 255))
     u = s / 24  # Same coordinates as LOGO_SVG's 24x24 viewBox, scaled in to leave a margin
     k, o = 0.62, s * 0.19
     p = lambda v: o + v * u * k
