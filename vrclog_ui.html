@@ -579,7 +579,7 @@ button { cursor: default; }
 <div class="overlay" id="overlay" onmousedown="if(event.target===this)closeSettings()">
   <div class="sheet" id="sheet"></div>
 </div>
-<div class="overlay" id="pOverlay" onmousedown="if(event.target===this)closeProfile()">
+<div class="overlay" id="pOverlay" onmousedown="if(event.target===this)cardClose()">
   <div class="pcard" id="pcard"></div>
 </div>
 <div class="overlay" id="eOverlay" onmousedown="if(event.target===this)closeEmk()">
@@ -2877,6 +2877,8 @@ function buildSettings() {
       <div class="card">
         ${srow("refresh-cw", "green", t("upd_check"), updButton(), updStatus())}
         ${srow("download", "blue", t("upd_auto"), sw("autoUpdate"), t("upd_autoHint"))}
+        ${srow("moon", "purple", t("upd_nightly"), `<label class="switch"><input type="checkbox" ${S.updNightly ? "checked" : ""}
+          onchange="setS('updNightly',this.checked);UPD.info=null;updCheck(false)"></label>`, t("upd_nightlyHint"))}
       </div>
 
       <div class="sec-title">${t("about")}</div>
@@ -2915,7 +2917,7 @@ document.addEventListener("keydown", e => {
   if ((e.ctrlKey || e.metaKey) && e.key === "f") { e.preventDefault(); $("search").focus(); }
   if ((e.ctrlKey || e.metaKey) && e.key === ",") { e.preventDefault(); openSettings(); }
   if (e.key === "Escape") {
-    if ($("pOverlay").classList.contains("show")) closeProfile();
+    if ($("pOverlay").classList.contains("show")) cardClose();
     else if (settingsOpen) closeSettings();
     else if (document.activeElement === $("search")) { $("search").value = ""; query = ""; render(); }
   }

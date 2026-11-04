@@ -3909,7 +3909,7 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 // Profile / world / group / avatar cards have no header — add a floating × top-right on every redraw
 new MutationObserver(() => {
   const c = $("pcard");
-  if (c.childElementCount && !c.querySelector(":scope > .xclose")) c.insertAdjacentHTML("afterbegin", xBtn("closeProfile()", "float"));
+  if (c.childElementCount && !c.querySelector(":scope > .xclose")) c.insertAdjacentHTML("afterbegin", xBtn("cardClose()", "float"));
 }).observe($("pcard"), { childList: true });
 
 tx({ font: ["ฟอนต์", "Font", "フォント"], font_system: ["ค่าเริ่มต้นของระบบ", "System default", "システム標準"] });
@@ -4161,6 +4161,10 @@ applyLang = function () {
 // ======================= App updates (GitHub Releases) =======================
 tx({
   upd_sec: ["อัปเดต", "Updates", "アップデート"],
+  upd_nightly: ["รับรุ่น Nightly (ทดลอง)", "Get nightly builds (beta)", "ナイトリー版を受け取る（ベータ）"],
+  upd_nightlyHint: ["ได้ฟีเจอร์ใหม่ก่อนใคร แต่อาจมีบั๊ก · ปิดแล้วจะกลับมาใช้รุ่นปกติเมื่อรุ่นปกติตัวถัดไปออก",
+    "New features first, but may have bugs · turning it off moves you back to stable with the next stable release",
+    "新機能をいち早く試せますがバグがあるかもしれません · オフにすると次の安定版から通常版に戻ります"],
   upd_check: ["ตรวจหาอัปเดต", "Check for updates", "アップデートを確認"],
   upd_checkBtn: ["ตรวจเลย", "Check now", "今すぐ確認"],
   upd_checking: ["กำลังตรวจ…", "Checking…", "確認中…"],
@@ -4225,7 +4229,7 @@ async function updCheck(manual) {
   if (UPD.checking) return;
   UPD.checking = true; UPD.error = false;
   if (settingsOpen) buildSettings();
-  const r = await api("update_check");
+  const r = await api("update_check", !!S.updNightly);
   UPD.checking = false;
   if (!r || r.error) { UPD.error = true; if (manual) toast(t("upd_error")); }
   else {
@@ -4242,7 +4246,7 @@ function updPrompt() {
     const busy = UPD.pct != null;
     return `<div class="upd">
       <div class="upd-head"><div class="upd-logo">${LOGO_SVG}</div>
-        <div><b>VRC Nook ${esc(i.latest)}</b><span>${t("upd_current", VERSION)}${i.size ? ` · ${(i.size / 1048576).toFixed(1)} MB` : ""}</span></div></div>
+        <div><b>VRC Nook ${esc(i.latest)}${i.nightly ? ` <span class="badge nightly">Nightly</span>` : ""}</b><span>${t("upd_current", VERSION)}${i.size ? ` · ${(i.size / 1048576).toFixed(1)} MB` : ""}</span></div></div>
       <div class="upd-notes-t">${t("upd_notes")}</div>
       <div class="upd-notes">${esc(i.notes.trim()) || `<i>${t("upd_noNotes")}</i>`}</div>
       ${busy ? `<div class="upd-bar"><i style="width:${UPD.pct}%"></i></div>
@@ -4279,6 +4283,7 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .upd-logo { width: 48px; height: 48px; border-radius: 13px; display: grid; place-items: center; color: #fff; flex: none;
             background: linear-gradient(135deg, var(--accent), var(--purple)); }
 .upd-logo svg { width: 28px; height: 28px; }
+.badge.nightly { margin: 0 0 0 4px; vertical-align: 1px; background: color-mix(in srgb, var(--purple) 18%, transparent); color: var(--purple); }
 .upd-notes-t { font-weight: 600; font-size: 12px; color: var(--text2); margin-top: 4px; }
 .upd-notes { white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; max-height: 240px; overflow: auto; padding: 10px 12px;
              border-radius: 10px; background: var(--hover); }
@@ -6773,6 +6778,7 @@ function rankMore() {
 // Is a list still filtering by rank? (Members tab with a rank chosen, or the picker with one)
 function rankInUse() {
   return !!(groupOpen && GX.tab === "members" && GX.memberRank && $("pOverlay")?.classList.contains("show"))
+    || CARD_BACK.some(b => b.gx.tab === "members" && b.gx.memberRank)  // A member's profile opened from the filtered list
     || !!($("gmpList") && X && window._gmpRankOn);
 }
 // Nothing filters by rank any more: stop loading member pages and drop the rank checks still queued
@@ -6833,3 +6839,53 @@ Object.assign(UPD_I18N.vi, { g_rank: "Cấp tin cậy", g_allRanks: "Mọi cấp
   g_rankWait: n => `đang kiểm tra thêm ${n} người`, g_rankCap: n => `đã kiểm tra ${n} thành viên mới nhất`, g_rankMore: n => `Kiểm tra thêm ${n}` });
 Object.assign(UPD_I18N.zh, { g_rank: "信任等级", g_allRanks: "所有等级", g_rankMatch: (n, m) => `${m} 人中 ${n} 人符合`, g_rankLoading: "正在加载成员…",
   g_rankWait: n => `还在检查 ${n} 人的等级`, g_rankCap: n => `已检查最新加入的 ${n} 人`, g_rankMore: n => `再检查 ${n} 人` });
+
+// ---------- Back to the group: a profile / world / avatar / other group opened from a group card goes back to it on close ----------
+// × / Esc / a click outside the card = back one step (cardClose); anything else that calls closeProfile still closes them all
+const CARD_BACK = [];  // Group cards underneath: {g, gx: GX copy, scroll}
+function cardPush(nextGroupId) {
+  if (!groupOpen || !$("pOverlay").classList.contains("show") || nextGroupId === groupOpen.id) return;  // Same group = a reload
+  CARD_BACK.push({ g: groupOpen, gx: { ...GX }, scroll: $("pcard").scrollTop });
+  if (CARD_BACK.length > 20) CARD_BACK.shift();
+}
+for (const name of ["showProfile", "openWorld", "openAvatar"]) {
+  const f = window[name];
+  window[name] = function (...a) { cardPush(); return f.apply(this, a); };
+}
+{
+  const og = openGroup;
+  openGroup = function (g) { cardPush(g?.id); return og.call(this, g); };
+  const cp = closeProfile;
+  closeProfile = function () { CARD_BACK.length = 0; cp(); };
+}
+function cardClose() {
+  const b = CARD_BACK.pop();
+  if (!b) return closeProfile();
+  profileOpen = null; worldOpen = null; avatarOpen = null;
+  groupOpen = b.g;
+  Object.assign(GX, b.gx);
+  buildGroup();
+  $("pOverlay").classList.add("show");
+  $("pcard").scrollTop = b.scroll;
+  if (GX.tab === "members" && GX.memberRank) rankRedraw();
+}
+new MutationObserver(() => {
+  const c = $("pcard"), b = CARD_BACK.at(-1);
+  if (!b || !c.childElementCount || c.querySelector(":scope > .cardback")) return;
+  const html = `<button class="cardback" title="${escA(t("back"))}" onclick="cardClose()">${icon("chevron-left")}<span>${esc(b.g.name || t("back"))}</span></button>`;
+  const x = c.querySelector(":scope > .xclose");
+  x ? x.insertAdjacentHTML("afterend", html) : c.insertAdjacentHTML("afterbegin", html);
+}).observe($("pcard"), { childList: true });
+document.head.insertAdjacentHTML("beforeend", `<style>
+.cardback { position: sticky; top: 12px; z-index: 6; display: flex; align-items: center; gap: 2px; width: fit-content; max-width: calc(100% - 80px);
+  height: 32px; margin: 12px auto -44px 12px; padding: 0 12px 0 6px; border: 0; border-radius: 16px; background: rgba(0,0,0,.35); color: #fff;
+  backdrop-filter: blur(12px); font: 600 12.5px var(--font); cursor: pointer; }
+.cardback:hover { background: rgba(0,0,0,.5); }
+.cardback svg { width: 17px; height: 17px; flex-shrink: 0; }
+.cardback span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>`);
+
+Object.assign(UPD_I18N.ko, { upd_nightly: "나이틀리 빌드 받기 (베타)", upd_nightlyHint: "새 기능을 먼저 쓰지만 버그가 있을 수 있음 · 끄면 다음 정식 버전부터 정식 버전으로 돌아감" });
+Object.assign(UPD_I18N.ru, { upd_nightly: "Получать ночные сборки (бета)", upd_nightlyHint: "Новое раньше всех, но возможны ошибки · если выключить, со следующим стабильным выпуском вернётесь на стабильную версию" });
+Object.assign(UPD_I18N.vi, { upd_nightly: "Nhận bản nightly (thử nghiệm)", upd_nightlyHint: "Có tính năng mới sớm nhưng có thể có lỗi · tắt đi thì sẽ quay lại bản ổn định từ bản ổn định kế tiếp" });
+Object.assign(UPD_I18N.zh, { upd_nightly: "接收每夜构建（测试版）", upd_nightlyHint: "抢先体验新功能，但可能有问题 · 关闭后会在下一个正式版时回到正式版" });

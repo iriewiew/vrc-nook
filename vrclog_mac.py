@@ -624,9 +624,9 @@ class Api:
         self._window.destroy()
 
     # ---------- App updates (GitHub Releases) ----------
-    def update_check(self):
+    def update_check(self, nightly=False):
         try:
-            info = updater.check(VERSION)
+            info = updater.check(VERSION, nightly=bool(nightly))
         except Exception as e:
             log.warning("update check failed: %s", e)
             return {"error": str(e)}

@@ -18,7 +18,8 @@ from pathlib import Path
 log = logging.getLogger("vrclog")
 REPO = "iriewiew/vrc-nook"
 ASSET = "VRCNook.exe"
-API = f"https://api.github.com/repos/{REPO}/releases/latest"
+API = f"https://api.github.com/repos/{REPO}/releases/latest"  # Newest stable release (GitHub never returns pre-releases here)
+API_ALL = f"https://api.github.com/repos/{REPO}/releases?per_page=20"  # Nightly channel: newest of stable + pre-releases
 HOSTS = {"api.github.com", "github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com"}
 UA = "VRCNook-updater"
 
@@ -44,7 +45,12 @@ def _get(url, accept="application/vnd.github+json"):
 
 
 def _ver(s):
-    return tuple(int(x) for x in re.findall(r"\d+", s or "")[:3])
+    """Sort key for a version: "0.9.2" > "0.9.2-nightly.202611042130" > "0.9.1" (a nightly comes before the stable release it leads to)"""
+    m = re.match(r"v?(\d+)\.(\d+)\.(\d+)(?:-nightly\.(\d+))?", s or "")
+    if not m:
+        return (0, 0, 0, 0, 0)
+    a, b, c, n = m.groups()
+    return (int(a), int(b), int(c), 0 if n else 1, int(n or 0))
 
 
 def exe_path():
@@ -63,15 +69,19 @@ def cleanup():
                 pass  # The old one hasn't fully exited yet — delete it next time
 
 
-def check(current):
-    """Check the latest version → {"latest", "newer", "notes", "url", "size", "sha256", "page"}"""
+def check(current, nightly=False):
+    """Check the latest version → {"latest", "newer", "notes", "url", "size", "sha256", "page", "nightly"}
+    nightly=True: also consider pre-releases (nightly builds), taking whichever version is highest"""
     try:
-        with _get(API) as r:
+        with _get(API_ALL if nightly else API) as r:
             rel = json.load(r)
     except urllib.error.HTTPError as e:
         if e.code != 404:
             raise
         rel = {}  # No release yet
+    if nightly:
+        rels = [x for x in rel if not x.get("draft") and any(a.get("name") == ASSET for a in x.get("assets", []))]
+        rel = max(rels, key=lambda x: _ver(x.get("tag_name")), default={})
     tag = rel.get("tag_name", "")
     assets = {a["name"]: a for a in rel.get("assets", [])}
     a = assets.get(ASSET)
@@ -86,7 +96,7 @@ def check(current):
                 sha = m.group(0).lower() if m else ""
     return {"latest": tag.lstrip("v"), "newer": _ver(tag) > _ver(current), "notes": (rel.get("body") or "")[:4000],
             "url": a["browser_download_url"] if a else "", "size": a.get("size", 0) if a else 0,
-            "sha256": sha, "page": rel.get("html_url", f"https://github.com/{REPO}/releases")}
+            "sha256": sha, "page": rel.get("html_url", f"https://github.com/{REPO}/releases"), "nightly": bool(rel.get("prerelease"))}
 
 
 def download(info, progress):
