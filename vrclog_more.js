@@ -5120,6 +5120,8 @@ function gMemberPager(shown, total) {
     const draw = () => {
       const box = $("gmpList");
       if (!box) return;
+      const keep = st.top ? 0 : box.querySelector(".gmp-rows")?.scrollTop || 0;
+      st.top = false;
       // Rank filter: over the whole member list (paged here), or over the loaded search results
       const scan = scanMode() ? rankScan(groupOpen.id, "") : null;
       let res = st.res, note = "", total = st.scope === "members" && !st.q ? groupOpen.memberCount : null;
@@ -5150,21 +5152,24 @@ function gMemberPager(shown, total) {
             <button class="btn sm" ${more ? "" : "disabled"} onclick="_gmpPage(1)">${icon("chevron-right")}</button></div>` : "");
       fillSlots(box);
       box.querySelectorAll("[data-mixed]").forEach(c => c.indeterminate = true);
+      const rows = box.querySelector(".gmp-rows");  // Same list redrawn (ranks coming in, a tick): stay where you were
+      if (rows) rows.scrollTop = keep;
     };
     window._gmpDraw = draw;
-    window._gmpPage = d => { st.off = Math.max(0, st.off + d * N); load(); };
-    window._gmpScope = s => { st.scope = s; st.off = 0; st.res = null;
+    window._gmpPage = d => { st.top = true; st.off = Math.max(0, st.off + d * N); load(); };
+    window._gmpScope = s => { st.top = true; st.scope = s; st.off = 0; st.res = null;
       document.querySelectorAll(".gmp-scope button").forEach(b => b.classList.toggle("on", b.dataset.s === s)); load(); };
     window._gmpRankOn = false;
-    window._gmpRank = v => { st.rank = v; st.off = 0; window._gmpRankOn = !!v; load(); rankStopSoon(); };
-    window._gmpType = v => { st.q = v.trim(); st.off = 0; clearTimeout(st.timer); st.timer = setTimeout(load, 350); };
+    window._gmpRank = v => { st.top = true; st.rank = v; st.off = 0; window._gmpRankOn = !!v; load(); rankStopSoon(); };
+    window._gmpType = v => { st.top = true; st.q = v.trim(); st.off = 0; clearTimeout(st.timer); st.timer = setTimeout(load, 350); };
+    // Drawn from st, so a redraw (or coming back from a profile opened here) keeps the search, rank, scope and list
     openX(t(mode === "ban" ? "g_banUser" : "g_pickUser"), () => `<div class="toolbar" style="margin-bottom:8px">
-        <input class="field grow" id="gupq" placeholder="${t("g_userPh")}" autocomplete="off" oninput="_gmpType(this.value)">
-        ${rankSelHtml("", "_gmpRank(this.value)")}
-        <div class="segmented sm gmp-scope"><button data-s="members" class="on" onclick="_gmpScope('members')">${t("g_members")}</button>
-          <button data-s="all" onclick="_gmpScope('all')">${t("g_allUsers")}</button></div></div>
+        <input class="field grow" id="gupq" placeholder="${t("g_userPh")}" autocomplete="off" value="${escA(st.q)}" oninput="_gmpType(this.value)">
+        ${rankSelHtml(st.rank, "_gmpRank(this.value)")}
+        <div class="segmented sm gmp-scope">${[["members", "g_members"], ["all", "g_allUsers"]].map(([k, l]) =>
+          `<button data-s="${k}" class="${st.scope === k ? "on" : ""}" onclick="_gmpScope('${k}')">${t(l)}</button>`).join("")}</div></div>
       <div id="gmpList"></div>`,
-    () => { $("gupq").focus(); });
+    () => { if (st.res || st.rank) draw(); $("gupq").focus(); });
     load();
   };
 }
@@ -6778,7 +6783,7 @@ function rankMore() {
 // Is a list still filtering by rank? (Members tab with a rank chosen, or the picker with one)
 function rankInUse() {
   return !!(groupOpen && GX.tab === "members" && GX.memberRank && $("pOverlay")?.classList.contains("show"))
-    || CARD_BACK.some(b => b.gx.tab === "members" && b.gx.memberRank)  // A member's profile opened from the filtered list
+    || CARD_BACK.some(b => b.gx?.tab === "members" && b.gx.memberRank || b.pickRank)  // A member's profile opened from a filtered list
     || !!($("gmpList") && X && window._gmpRankOn);
 }
 // Nothing filters by rank any more: stop loading member pages and drop the rank checks still queued
@@ -6843,10 +6848,44 @@ Object.assign(UPD_I18N.zh, { g_rank: "信任等级", g_allRanks: "所有等级",
 // ---------- Back to the group: a profile / world / avatar / other group opened from a group card goes back to it on close ----------
 // × / Esc / a click outside the card = back one step (cardClose); anything else that calls closeProfile still closes them all
 const CARD_BACK = [];  // Group cards underneath: {g, gx: GX copy, scroll}
+// A window (sheet) open on top, e.g. Select user, is put away too and comes back with the card underneath
 function cardPush(nextGroupId) {
-  if (!groupOpen || !$("pOverlay").classList.contains("show") || nextGroupId === groupOpen.id) return;  // Same group = a reload
-  CARD_BACK.push({ g: groupOpen, gx: { ...GX }, scroll: $("pcard").scrollTop });
+  const gOpen = !!groupOpen && $("pOverlay").classList.contains("show"), xOpen = !!X && $("xOverlay").classList.contains("show");
+  if (!gOpen && !xOpen) return;
+  if (gOpen && nextGroupId === groupOpen.id) return;  // Same group = a reload
+  const b = gOpen ? { g: groupOpen, gx: { ...GX }, scroll: $("pcard").scrollTop, ghost: cardSnapshot() } : { g: null };
+  if (xOpen) {
+    Object.assign(b, { x: X, xScroll: $("xsheet").querySelector(".sheet-body")?.scrollTop || 0, xRows: $("xsheet").querySelector(".gmp-rows")?.scrollTop || 0, pickRank: !!(window._gmpRankOn && $("gmpList")) });
+    X = null;
+    $("xOverlay").classList.remove("show");  // Not closeX(): that would also stop the picker's rank checks
+  }
+  CARD_BACK.push(b);
   if (CARD_BACK.length > 20) CARD_BACK.shift();
+  cardGhost();
+}
+// A still copy of the group card, shown right behind the card opened from it (nothing in it can be clicked; no ids, so it never
+// gets mixed up with the real card)
+function cardSnapshot() {
+  const c = $("pcard").cloneNode(true);
+  c.removeAttribute("id");
+  c.querySelectorAll("[id]").forEach(e => e.removeAttribute("id"));
+  c.querySelectorAll(".xclose, .cardback").forEach(e => e.remove());
+  c.querySelectorAll("[onclick],[onchange],[oninput],[onkeydown],[onmousedown]").forEach(e =>
+    ["onclick", "onchange", "oninput", "onkeydown", "onmousedown"].forEach(k => e.removeAttribute(k)));
+  return c;
+}
+function cardGhost() {
+  const old = $("pghost");
+  const b = [...CARD_BACK].reverse().find(x => x.g);  // The group card right under the current one
+  if (!b || CARD_BACK.at(-1) !== b) { old?.remove(); return; }
+  old?.remove();
+  const card = b.ghost.cloneNode(true), gh = document.createElement("div");
+  gh.id = "pghost";
+  gh.className = "pghost";
+  gh.setAttribute("inert", "");
+  gh.append(card, Object.assign(document.createElement("i"), { className: "pghost-dim" }));  // Dimmed by a layer on top (a filter would turn off the card's blur)
+  $("pOverlay").insertBefore(gh, $("pcard"));
+  card.scrollTop = b.scroll;
 }
 for (const name of ["showProfile", "openWorld", "openAvatar"]) {
   const f = window[name];
@@ -6856,23 +6895,35 @@ for (const name of ["showProfile", "openWorld", "openAvatar"]) {
   const og = openGroup;
   openGroup = function (g) { cardPush(g?.id); return og.call(this, g); };
   const cp = closeProfile;
-  closeProfile = function () { CARD_BACK.length = 0; cp(); };
+  closeProfile = function () { CARD_BACK.length = 0; cp(); cardGhost(); };
 }
 function cardClose() {
   const b = CARD_BACK.pop();
   if (!b) return closeProfile();
   profileOpen = null; worldOpen = null; avatarOpen = null;
   groupOpen = b.g;
-  Object.assign(GX, b.gx);
-  buildGroup();
-  $("pOverlay").classList.add("show");
-  $("pcard").scrollTop = b.scroll;
-  if (GX.tab === "members" && GX.memberRank) rankRedraw();
+  if (b.g) {
+    Object.assign(GX, b.gx);
+    buildGroup();
+    $("pOverlay").classList.add("show");
+    $("pcard").scrollTop = b.scroll;
+  } else $("pOverlay").classList.remove("show");
+  if (b.x) {
+    X = b.x;
+    buildX();
+    $("xOverlay").classList.add("show");
+    const body = $("xsheet").querySelector(".sheet-body");
+    if (body) body.scrollTop = b.xScroll;
+    const rows = $("xsheet").querySelector(".gmp-rows");  // The picker's list scrolls by itself
+    if (rows) rows.scrollTop = b.xRows;
+  }
+  if (GX.tab === "members" && GX.memberRank || b.pickRank) rankRedraw();
+  cardGhost();
 }
 new MutationObserver(() => {
   const c = $("pcard"), b = CARD_BACK.at(-1);
   if (!b || !c.childElementCount || c.querySelector(":scope > .cardback")) return;
-  const html = `<button class="cardback" title="${escA(t("back"))}" onclick="cardClose()">${icon("chevron-left")}<span>${esc(b.g.name || t("back"))}</span></button>`;
+  const html = `<button class="cardback" title="${escA(t("back"))}" onclick="cardClose()">${icon("chevron-left")}<span>${esc(b.x?.title || b.g?.name || t("back"))}</span></button>`;
   const x = c.querySelector(":scope > .xclose");
   x ? x.insertAdjacentHTML("afterend", html) : c.insertAdjacentHTML("afterbegin", html);
 }).observe($("pcard"), { childList: true });
@@ -6881,6 +6932,11 @@ document.head.insertAdjacentHTML("beforeend", `<style>
   height: 32px; margin: 12px auto -44px 12px; padding: 0 12px 0 6px; border: 0; border-radius: 16px; background: rgba(0,0,0,.35); color: #fff;
   backdrop-filter: blur(12px); font: 600 12.5px var(--font); cursor: pointer; }
 .cardback:hover { background: rgba(0,0,0,.5); }
+#pOverlay > .pcard, #pOverlay > .pghost { grid-area: 1 / 1; }
+.pghost { position: relative; pointer-events: none; transform: scale(.94) translateY(-14px); transition: opacity .2s; }
+.pghost > .pcard { transform: none; box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+.pghost-dim { position: absolute; inset: 0; border-radius: 24px; background: rgba(0,0,0,.2); }
+.overlay:not(.show) .pghost { opacity: 0; }
 .cardback svg { width: 17px; height: 17px; flex-shrink: 0; }
 .cardback span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>`);
