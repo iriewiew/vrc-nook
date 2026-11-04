@@ -387,6 +387,7 @@ class Cache:
         self.lock = threading.Lock()
         self._dirty = False
         self.on_fetched = None  # (id, old info, object from the API) after each full load — e.g. to spot a changed bio
+        self.rank_keys = set()  # Users queued by want_ranks (can be dropped again)
 
     def _stale(self, key):
         entry = self.index.get(key, {})
@@ -424,6 +425,22 @@ class Cache:
                 self.f.enqueue((self, "img", key, entry["url"]), front=False)
         if out:
             self.push(out)
+
+    def want_ranks(self, keys):
+        """Queue a full load (/profile) for users whose trust rank isn't known yet: no trustTags from /profile and no tags from a search"""
+        for key in keys:
+            info = self.index.get(key, {}).get("info", {})
+            if "trustTags" in info or info.get("tags"):
+                self.sent.discard(key)
+                self.want([key], network=False)  # Known already — make sure the page has it
+            elif self.fetch_info:
+                self.f.enqueue((self, "info", key, None))  # Front: ahead of the member pictures that loaded with the list
+                self.rank_keys.add(key)
+
+    def drop_ranks(self):
+        """Forget the trust-rank loads still waiting in the queue (the page stopped filtering by rank)"""
+        keys, self.rank_keys = self.rank_keys, set()
+        return self.f.drop(self, "info", keys)
 
     def ingest(self, objs, images=True):
         """Take objects already fetched from the API (e.g. the friend list) — update the data and load only changed images
@@ -532,6 +549,17 @@ class Fetcher:
             self.queue.clear()
             self.queued.clear()
 
+    def drop(self, cache, kind, keys):
+        """Take these waiting tasks out of the queue; returns how many were dropped"""
+        if not keys:
+            return 0
+        with self.cond:
+            keep = deque(t for t in self.queue if not (t[0] is cache and t[1] == kind and t[2] in keys))
+            n = len(self.queue) - len(keep)
+            self.queue = keep
+            self.queued -= {(id(cache), kind, k) for k in keys}
+        return n
+
     def _worker(self):
         while True:
             with self.cond:
@@ -558,6 +586,8 @@ class Fetcher:
                     continue
                 elif e.status == 404 and kind == "info":
                     cache.index[key] = {"ts": time.time(), "info": {}}
+                    cache.sent.discard(key)
+                    cache.want([key], network=False)  # Tell the page it's gone, so it stops waiting for it
             except Exception:
                 log.exception("%s %s crashed", kind, key)
             finally:

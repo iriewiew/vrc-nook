@@ -38,6 +38,7 @@ if sys.stdout is None:
 VERSION = "0.9.0"
 log = logging.getLogger("vrclog")
 UPLOAD_FIELDS = ("animationStyle", "maskTag", "frames", "framesOverTime", "loopStyle")
+RANK_MAX = 1000  # Most users one trust-rank request may queue (the page asks for at most 100 at a time)
 HERE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 
 
@@ -568,6 +569,14 @@ class Api:
 
     def worlds(self, wids):
         self._worlds.want(wids, network=True)
+
+    def need_ranks(self, uids):
+        """Group member lists don't include trust ranks: load the profiles of the users the cache has no rank for"""
+        if isinstance(uids, list):
+            self._users.want_ranks([u for u in uids[:RANK_MAX] if isinstance(u, str) and u.startswith("usr_")])
+
+    def drop_ranks(self):
+        return self._users.drop_ranks()
 
     def search(self, kind, q):
         q = (q or "").strip()

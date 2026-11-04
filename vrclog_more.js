@@ -174,9 +174,9 @@ async function toPng(file, max, square) {
 }
 
 // Generic list row: image (user or thumbnail) + name + details + buttons
-function lrow({ uid, name, thumb, sub, acts = "", onclick = "", cls = "" }) {
-  const pic = uid ? `<span class="slot" data-uid="${esc(uid)}" data-name="${escA(name || "")}"></span>`
-    : `<span class="lthumb" ${thumbAttr(thumb)}></span>`;
+function lrow({ uid, name, thumb, sub, acts = "", onclick = "", cls = "", pre = "" }) {
+  const pic = (pre ? `<span class="lpre" onclick="event.stopPropagation()">${pre}</span>` : "") + (uid ? `<span class="slot" data-uid="${esc(uid)}" data-name="${escA(name || "")}"></span>`
+    : `<span class="lthumb" ${thumbAttr(thumb)}></span>`);
   return `<div class="lrow ${cls}" ${onclick ? `onclick="${esc(onclick)}"` : ""}>${pic}<div class="info"><div class="nm">${esc(name || "")}</div>
     ${sub ? `<div class="sub">${sub}</div>` : ""}</div>${acts ? `<div class="acts" onclick="event.stopPropagation()">${acts}</div>` : ""}</div>`;
 }
@@ -1046,12 +1046,13 @@ tx({
   g_invited: ["ส่งคำเชิญแล้ว", "Invite sent", "招待を送りました"], g_noAdmin: ["ไม่มีสิทธิ์จัดการส่วนนี้", "No permission for this", "この操作の権限がありません"],
   g_cancelled: ["ยกเลิกคำขอแล้ว", "Request canceled", "申請を取り消しました"],
 });
-const GX = { tab: "info", admin: "requests", gallery: null, memberQ: "", memberOff: 0, memberRole: "", reqBlocked: false, auditType: "", auditOff: 0,
+const GX = { tab: "info", admin: "requests", gallery: null, memberQ: "", memberOff: 0, memberRole: "", memberRank: "", reqBlocked: false, auditType: "", auditOff: 0,
   memberN: 50, auditN: 50, auditQ: "", auditUser: "", auditBy: "targetIds", sel: [], selRoles: [], note: "", selInput: "" };
 openGroup = async function (g) {
   profileOpen = null; worldOpen = null; avatarOpen = null;
   groupOpen = { ...g };
-  Object.assign(GX, { tab: "info", admin: "requests", gallery: null, memberQ: "", memberOff: 0, memberRole: "", reqBlocked: false, auditType: "", auditOff: 0, newIcon: null, newBanner: null });
+  RSCAN = null;
+  Object.assign(GX, { tab: "info", admin: "requests", gallery: null, memberQ: "", memberOff: 0, memberRole: "", memberRank: "", reqBlocked: false, auditType: "", auditOff: 0, newIcon: null, newBanner: null });
   dropCache("g_");
   buildGroup();
   $("pOverlay").classList.add("show");
@@ -1084,8 +1085,8 @@ function gLoad(force) {
   if (tab === "info") loadOp("g_ann", "getGroupAnnouncements", { groupId: gid }, force);
   else if (tab === "posts") loadOp("g_posts", "getGroupPosts", { groupId: gid, n: 30 }, force);
   else if (tab === "instances") loadOp("g_inst", "getGroupInstances", { groupId: gid }, force);
-  else if (tab === "members") GX.memberQ
-    ? loadOp("g_mem", "searchGroupMembers", { groupId: gid, query: GX.memberQ, n: GX.memberN, offset: GX.memberOff }, true)
+  else if (tab === "members") GX.memberRank && !GX.memberQ ? rankScan(gid, GX.memberRole)
+    : GX.memberQ ? loadOp("g_mem", "searchGroupMembers", { groupId: gid, query: GX.memberQ, n: GX.memberN, offset: GX.memberOff }, true)
     : loadOp("g_mem", "getGroupMembers", { groupId: gid, n: GX.memberN, offset: GX.memberOff, sort: "joinedAt:desc", ...(GX.memberRole ? { roleId: GX.memberRole } : {}) }, force);
   else if (tab === "gallery" && GX.gallery) loadOp("g_gal_" + GX.gallery, "getGroupGalleryImages", { groupId: gid, groupGalleryId: GX.gallery, n: 60 }, force);
   else if (tab === "events") loadOp("g_evt", "getGroupCalendarEvents", { groupId: gid, n: 30 }, force);
@@ -1177,19 +1178,36 @@ function gBody() {
              <button class="mini-btn" title="${t("inviteMe")}" onclick="doInvite('${esc(i.location)}')">${icon("send")}</button>` })).join(""));
   }
   if (tab === "members") {
-    const c = CACHE.g_mem, roles = g.roles || [];
+    const roles = g.roles || [];
     const canKick = gCan("group-members-remove"), canBan = gCan("group-bans-manage"), canRole = gCan("group-roles-assign");
+    // Trust-rank filter: without a search it goes through the whole member list (rankScan) and pages locally
+    const rk = GX.memberRank, scan = rk && !GX.memberQ ? rankScan(g.id, GX.memberRole) : null;
+    let c = CACHE.g_mem, note = "";
+    if (scan) {
+      const hit = scan.list.filter(m => rankOf(m.userId) === rk);
+      note = rankNote(hit.length, scan.list.length, scan);
+      c = { data: hit.slice(GX.memberOff, GX.memberOff + GX.memberN), loading: !scan.list.length && !scan.done, error: scan.err };
+      if (!c.data.length && (!scan.done || rankWait.size)) c.loading = true;  // No match yet, but ranks are still coming in
+    } else if (rk && c?.data) {
+      needRanks(c.data.map(m => m.userId));
+      const hit = c.data.filter(m => rankOf(m.userId) === rk);
+      note = rankNote(hit.length, c.data.length, { done: true });
+      c = { ...c, data: hit };
+    }
     return `<div class="toolbar"><input class="field grow" id="gmq" placeholder="${t("searchPh")}" value="${escA(GX.memberQ)}"
         onkeydown="if(event.key==='Enter'){GX.memberQ=this.value.trim();GX.memberOff=0;buildGroup();gLoad(true)}">
+        ${rankSelHtml(rk, "GX.memberRank=this.value;GX.memberOff=0;buildGroup();gLoad(true);rankStopSoon()")}
         ${roles.length > 1 && !GX.memberQ ? `<select class="field" style="width:auto" onchange="GX.memberRole=this.value;GX.memberOff=0;buildGroup();gLoad(true)">
           <option value="">${t("g_allRoles")}</option>${roles.map(r => `<option value="${escA(r.id)}" ${GX.memberRole === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select>` : ""}</div>
+      ${note}
       ${stateHtml(c) || c.data.map(m => lrow({ uid: m.userId, name: m.user?.displayName || m.userId,
-        sub: `${t("g_joined", fmtIso(m.joinedAt || m.createdAt, true))}${(m.roleIds || []).length ? " · " + (m.roleIds || []).map(r => esc(roles.find(x => x.id === r)?.name || "")).filter(Boolean).join(", ") : ""}`,
+        sub: `${t("g_joined", fmtIso(m.joinedAt || m.createdAt, true))}${(m.roleIds || []).length ? " · " + (m.roleIds || []).map(r => esc(roles.find(x => x.id === r)?.name || "")).filter(Boolean).join(", ") : ""}${rankTag(m.userId)}`,
         onclick: `showProfile('${esc(m.userId)}')`,
         acts: (canRole && roles.length ? `<button class="mini-btn" title="${t("g_roles")}" onclick="gRolesDialog('${esc(m.userId)}')">${icon("user-cog")}</button>` : "")
           + (canKick && m.userId !== AUTH.id ? `<button class="mini-btn" title="${t("g_kick")}" onclick="confirmBtn(this,()=>gDo('kickGroupMember',{userId:'${esc(m.userId)}'},'done','g_mem'))">${icon("door-open")}</button>` : "")
           + (canBan && m.userId !== AUTH.id ? `<button class="mini-btn" title="${t("g_ban")}" onclick="confirmBtn(this,()=>gDo('banGroupMember',{userId:'${esc(m.userId)}'},'done','g_mem'))">${icon("ban")}</button>` : "") })).join("")}
-      ${gMemberPager(c?.data?.length || 0, !GX.memberQ && !GX.memberRole ? g.memberCount : null)}`;
+      ${scan ? gMemberPager(c.data.length, scan.list.filter(m => rankOf(m.userId) === rk).length || 1)
+        : gMemberPager(CACHE.g_mem?.data?.length || 0, !GX.memberQ && !GX.memberRole ? g.memberCount : null)}`;
   }
   if (tab === "gallery") {
     const gals = g.galleries || [], canManage = gCan("group-galleries-manage");
@@ -1280,6 +1298,7 @@ function gAdminBody() {
 async function gDo(op, params, okKey, cacheKey, reloadGroup) {
   const r = await vrcDo(op, { groupId: groupOpen.id, ...params }, okKey);
   if (r === undefined) return;
+  if (RSCAN && /^(kick|ban)GroupMember$/.test(op)) RSCAN.list = RSCAN.list.filter(m => m.userId !== params.userId);
   closeX();
   if (reloadGroup) return openGroupKeepTab();
   if (cacheKey) { delete CACHE[cacheKey]; gLoad(true); }
@@ -1348,7 +1367,7 @@ async function gAddImageDialog() {
       <div class="iimg" ${thumbAttr(f.url)}></div></div>`).join("") || `<div class="empty-state" style="height:100px">${t("noItems")}</div>`}</div>`, null, true);
 }
 function gRolesDialog(uid) {
-  const mem = (got("g_mem") || []).find(m => m.userId === uid) || {};
+  const mem = [...(got("g_mem") || []), ...(RSCAN?.list || [])].find(m => m.userId === uid) || {};
   const has = new Set(mem.roleIds || []);
   openX(`${t("g_roles")} — ${mem.user?.displayName || uid}`, () => `<div class="opt-list">${(groupOpen.roles || []).filter(r => !r.defaultRole).map(r =>
     `<button class="opt ${has.has(r.id) ? "on" : ""}" onclick="gToggleRole('${esc(uid)}','${esc(r.id)}',${has.has(r.id)})">${icon(has.has(r.id) ? "circle-check" : "circle")}<b>${esc(r.name)}</b></button>`).join("")}</div>`);
@@ -1356,8 +1375,8 @@ function gRolesDialog(uid) {
 async function gToggleRole(uid, rid, on) {
   const r = await vrcDo(on ? "removeGroupMemberRole" : "addGroupMemberRole", { groupId: groupOpen.id, userId: uid, groupRoleId: rid }, "saved");
   if (r === undefined) return;
-  const mem = (got("g_mem") || []).find(m => m.userId === uid);
-  if (mem) mem.roleIds = on ? (mem.roleIds || []).filter(x => x !== rid) : [...(mem.roleIds || []), rid];
+  [...(got("g_mem") || []), ...(RSCAN?.list || [])].filter(m => m.userId === uid)
+    .forEach(mem => mem.roleIds = on ? (mem.roleIds || []).filter(x => x !== rid) : [...(mem.roleIds || []), rid]);
   gRolesDialog(uid); buildGroup();
 }
 function gRoleDialog(rid) {
@@ -4943,11 +4962,11 @@ async function gAuditExport(fmt) {
 }
 
 // ---------- Bulk actions: a list of users (pasted IDs, the user search, or the log), then roles / note / kick / ban / unban for all of them ----------
-async function gSelAdd(ids) {
+async function gSelAdd(ids, quiet) {
   const fresh = [...new Set(ids)].filter(id => /^usr_[\w-]+$/.test(id) && !GX.sel.some(s => s.id === id));
   if (!fresh.length) return;
   GX.sel.push(...fresh.map(id => ({ id, name: id, loading: true })));
-  toast(t("g_added", fresh.length));
+  if (!quiet) toast(t("g_added", fresh.length));
   gBulkRefresh();
   for (const id of fresh) { await gSelLoad(id); await new Promise(res => setTimeout(res, 250)); }
 }
@@ -5055,10 +5074,12 @@ function gMemberPager(shown, total) {
   gUserPicker = function (mode) {
     if (mode !== "ban" && mode !== "pick") return pickerBase(mode);
     const N = 25;
-    const st = { scope: "members", q: "", off: 0, res: null, busy: false, err: false, seq: 0, timer: 0 };
+    const st = { scope: "members", q: "", off: 0, res: null, busy: false, err: false, seq: 0, timer: 0, rank: "" };
+    const scanMode = () => st.rank && st.scope === "members" && !st.q;  // Rank filter over the whole member list (rankScan)
     const load = async () => {
       const seq = ++st.seq, gid = groupOpen?.id;
       if (!gid) return;
+      if (scanMode()) { rankScan(gid, ""); st.busy = false; st.err = false; return draw(); }
       st.busy = true; draw();
       const id = st.q.match(/usr_[\w-]+/)?.[0];
       let r;
@@ -5070,41 +5091,71 @@ function gMemberPager(shown, total) {
       st.busy = false; st.err = "error" in r;
       const list = Array.isArray(r.ok) ? r.ok : r.ok?.results || [];
       // Members come as {userId, user, roleIds}; VRChat users as {id, displayName}
-      st.res = list.map(x => x.userId ? { id: x.userId, name: x.user?.displayName || x.userId, roles: x.roleIds || [], joined: x.joinedAt }
-        : { id: x.id, name: x.displayName || x.id });
+      st.res = list.map(memToRow);
       draw();
     };
+    const memToRow = x => x.userId ? { id: x.userId, name: x.user?.displayName || x.userId, roles: x.roleIds || [], joined: x.joinedAt }
+      : { id: x.id, name: x.displayName || x.id };
     const roleNames = ids => (ids || []).map(r => (groupOpen.roles || []).find(x => x.id === r && !x.defaultRole)?.name).filter(Boolean).join(", ");
-    const row = u => lrow({ uid: u.id, name: u.name, onclick: `showProfile('${esc(u.id)}')`,
-      sub: [roleNames(u.roles), u.joined ? t("g_joined", fmtIso(u.joined, true)) : ""].filter(Boolean).join(" · "),
-      acts: u.id === AUTH.id ? "" : mode === "ban"
-        ? `<button class="btn sm danger" onclick="confirmBtn(this,()=>gDo('banGroupMember',{userId:'${esc(u.id)}'},'done','g_bans'))">${icon("ban")}${t("g_ban")}</button>`
-        : GX.sel.some(s => s.id === u.id) ? `<span class="pcard-note" style="margin:0">${icon("check")}</span>`
-        : btn(t("g_addIds"), `gSelAdd(['${esc(u.id)}']).then(()=>_gmpDraw())`, "primary sm", "user-plus") });
+    const picked = id => GX.sel.some(s => s.id === id);
+    const row = u => lrow({ uid: u.id, name: u.name, onclick: `showProfile('${esc(u.id)}')`, cls: mode === "pick" && picked(u.id) ? "picked" : "",
+      sub: [roleNames(u.roles), u.joined ? t("g_joined", fmtIso(u.joined, true)) : ""].filter(Boolean).join(" · ") + rankTag(u.id),
+      pre: mode === "pick" && u.id !== AUTH.id ? `<input type="checkbox" class="gck" ${picked(u.id) ? "checked" : ""} onchange="_gmpTick('${esc(u.id)}',this.checked)">` : "",
+      acts: mode === "ban" && u.id !== AUTH.id
+        ? `<button class="btn sm danger" onclick="confirmBtn(this,()=>gDo('banGroupMember',{userId:'${esc(u.id)}'},'done','g_bans'))">${icon("ban")}${t("g_ban")}</button>` : "" });
+    // "Select all on this page": the rows drawn now (after the rank filter), without yourself
+    const allBox = list => {
+      const ids = list.map(u => u.id).filter(id => id !== AUTH.id), on = ids.filter(picked).length;
+      st.page = ids;
+      return mode !== "pick" || !ids.length ? "" : `<label class="gmp-all"><input type="checkbox" class="gck" ${on && on === ids.length ? "checked" : ""}
+        onchange="_gmpTickAll(this.checked)" ${on && on < ids.length ? "data-mixed" : ""}>${t("g_pickAll", ids.length)}${on ? `<span class="pcard-note" style="margin:0">${t("g_pickedN", on)}</span>` : ""}</label>`;
+    };
+    window._gmpTick = (id, on) => { on ? gSelAdd([id], true) : gSelRemove(id); draw(); };
+    window._gmpTickAll = on => { on ? gSelAdd(st.page || []) : (GX.sel = GX.sel.filter(s => !(st.page || []).includes(s.id)), gBulkRefresh()); draw(); };
     const draw = () => {
       const box = $("gmpList");
       if (!box) return;
-      const total = st.scope === "members" && !st.q ? groupOpen.memberCount : null;
+      // Rank filter: over the whole member list (paged here), or over the loaded search results
+      const scan = scanMode() ? rankScan(groupOpen.id, "") : null;
+      let res = st.res, note = "", total = st.scope === "members" && !st.q ? groupOpen.memberCount : null;
+      if (scan) {
+        const hit = scan.list.filter(m => rankOf(m.userId) === st.rank);
+        note = rankNote(hit.length, scan.list.length, scan);
+        total = hit.length || 1;
+        res = hit.slice(st.off, st.off + N).map(memToRow);
+      } else if (st.rank && res) {
+        needRanks(res.map(u => u.id));
+        const hit = res.filter(u => rankOf(u.id) === st.rank);
+        note = rankNote(hit.length, res.length, { done: !st.busy });
+        res = hit;
+      }
       const pages = total ? Math.max(1, Math.ceil(total / N)) : null, page = Math.floor(st.off / N) + 1;
-      const more = st.res?.length === N && (!pages || page < pages);
-      box.innerHTML = (st.busy && !st.res ? `<div class="empty-state" style="height:80px">${t("loading")}</div>`
+      const more = (scan ? res.length : st.res?.length) === N && (!pages || page < pages);
+      const busy = scan ? !scan.list.length && !scan.done : st.busy && !st.res;
+      box.innerHTML = note + (busy || (scan && !res.length && (!scan.done || rankWait.size)) ? `<div class="empty-state" style="height:80px">${t("loading")}</div>`
+        : scan ? (scan.err ? `<div class="empty-state" style="height:80px">${t("errGeneric")}</div>`
+          : !res.length ? `<div class="empty-state" style="height:80px">${t("noResults")}</div>` : `${allBox(res)}<div class="gmp-rows">${res.map(row).join("")}</div>`)
         : st.scope === "all" && !st.q ? `<div class="empty-state" style="height:80px">${t("g_allUsersHint")}</div>`
         : st.err ? `<div class="empty-state" style="height:80px">${t("errGeneric")}</div>`
-        : !st.res?.length ? `<div class="empty-state" style="height:80px">${t("noResults")}</div>`
-        : `<div class="gmp-rows ${st.busy ? "busy" : ""}">${st.res.map(row).join("")}</div>`)
+        : !res?.length ? `<div class="empty-state" style="height:80px">${t("noResults")}</div>`
+        : `${allBox(res)}<div class="gmp-rows ${st.busy ? "busy" : ""}">${res.map(row).join("")}</div>`)
         + (st.off || more ? `<div class="form-actions gmp-pager">
             <button class="btn sm" ${st.off ? "" : "disabled"} onclick="_gmpPage(-1)">${icon("chevron-left")}</button>
             <span class="pcard-note" style="margin:0">${pages ? t("g_pageOf", page, pages) : page}</span>
             <button class="btn sm" ${more ? "" : "disabled"} onclick="_gmpPage(1)">${icon("chevron-right")}</button></div>` : "");
       fillSlots(box);
+      box.querySelectorAll("[data-mixed]").forEach(c => c.indeterminate = true);
     };
     window._gmpDraw = draw;
     window._gmpPage = d => { st.off = Math.max(0, st.off + d * N); load(); };
     window._gmpScope = s => { st.scope = s; st.off = 0; st.res = null;
       document.querySelectorAll(".gmp-scope button").forEach(b => b.classList.toggle("on", b.dataset.s === s)); load(); };
+    window._gmpRankOn = false;
+    window._gmpRank = v => { st.rank = v; st.off = 0; window._gmpRankOn = !!v; load(); rankStopSoon(); };
     window._gmpType = v => { st.q = v.trim(); st.off = 0; clearTimeout(st.timer); st.timer = setTimeout(load, 350); };
     openX(t(mode === "ban" ? "g_banUser" : "g_pickUser"), () => `<div class="toolbar" style="margin-bottom:8px">
         <input class="field grow" id="gupq" placeholder="${t("g_userPh")}" autocomplete="off" oninput="_gmpType(this.value)">
+        ${rankSelHtml("", "_gmpRank(this.value)")}
         <div class="segmented sm gmp-scope"><button data-s="members" class="on" onclick="_gmpScope('members')">${t("g_members")}</button>
           <button data-s="all" onclick="_gmpScope('all')">${t("g_allUsers")}</button></div></div>
       <div id="gmpList"></div>`,
@@ -5115,18 +5166,25 @@ function gMemberPager(shown, total) {
 document.head.insertAdjacentHTML("beforeend", `<style>
 .gmp-rows { max-height: min(52vh, 460px); overflow-y: auto; }
 .gmp-rows.busy { opacity: .55; }
+.lpre { display: flex; align-items: center; padding: 0 2px; }
+.gck { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.gmp-all { display: flex; align-items: center; gap: 8px; padding: 4px 12px 8px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.gmp-all .pcard-note { font-weight: 400; }
+.gmp-rows .lrow.picked { background: color-mix(in srgb, var(--accent) 9%, var(--card, transparent)); }
 .gmp-pager { justify-content: center; align-items: center; gap: 10px; }
 .gmp-pager .btn svg { width: 14px; height: 14px; }
 </style>`);
 tx({
   g_allUsers: ["ผู้ใช้ทั้งหมด", "All users", "全ユーザー"],
+  g_pickAll: [n => `เลือกทั้งหมดในหน้านี้ (${n})`, n => `Select all on this page (${n})`, n => `このページをすべて選択 (${n})`],
+  g_pickedN: [n => `เลือกแล้ว ${n}`, n => `${n} selected`, n => `${n} 人選択中`],
   g_allUsersHint: ["พิมพ์ชื่อเพื่อค้นหาผู้ใช้ทุกคนใน VRChat (รวมคนที่ไม่ได้อยู่ในกลุ่ม)", "Type a name to search everyone on VRChat (including people outside the group)", "名前を入力して VRChat の全ユーザーを検索（グループ外の人も）"],
   g_pageOf: [(p, n) => `หน้า ${p} / ${n}`, (p, n) => `Page ${p} of ${n}`, (p, n) => `${p} / ${n} ページ`],
 });
-Object.assign(UPD_I18N.ko, { g_allUsers: "모든 사용자", g_allUsersHint: "이름을 입력해 VRChat 전체 사용자 검색 (그룹 밖 사람 포함)", g_pageOf: (p, n) => `${p} / ${n} 페이지` });
-Object.assign(UPD_I18N.ru, { g_allUsers: "Все пользователи", g_allUsersHint: "Введите имя для поиска по всем в VRChat (включая тех, кто не в группе)", g_pageOf: (p, n) => `Стр. ${p} из ${n}` });
-Object.assign(UPD_I18N.vi, { g_allUsers: "Mọi người dùng", g_allUsersHint: "Nhập tên để tìm mọi người trên VRChat (kể cả người ngoài nhóm)", g_pageOf: (p, n) => `Trang ${p} / ${n}` });
-Object.assign(UPD_I18N.zh, { g_allUsers: "所有用户", g_allUsersHint: "输入名称搜索 VRChat 上的所有人（包括群组外的人）", g_pageOf: (p, n) => `第 ${p} / ${n} 页` });
+Object.assign(UPD_I18N.ko, { g_pickAll: n => `이 페이지 모두 선택 (${n})`, g_pickedN: n => `${n}명 선택됨`, g_allUsers: "모든 사용자", g_allUsersHint: "이름을 입력해 VRChat 전체 사용자 검색 (그룹 밖 사람 포함)", g_pageOf: (p, n) => `${p} / ${n} 페이지` });
+Object.assign(UPD_I18N.ru, { g_pickAll: n => `Выбрать всех на странице (${n})`, g_pickedN: n => `Выбрано: ${n}`, g_allUsers: "Все пользователи", g_allUsersHint: "Введите имя для поиска по всем в VRChat (включая тех, кто не в группе)", g_pageOf: (p, n) => `Стр. ${p} из ${n}` });
+Object.assign(UPD_I18N.vi, { g_pickAll: n => `Chọn tất cả trên trang này (${n})`, g_pickedN: n => `Đã chọn ${n}`, g_allUsers: "Mọi người dùng", g_allUsersHint: "Nhập tên để tìm mọi người trên VRChat (kể cả người ngoài nhóm)", g_pageOf: (p, n) => `Trang ${p} / ${n}` });
+Object.assign(UPD_I18N.zh, { g_pickAll: n => `全选本页 (${n})`, g_pickedN: n => `已选 ${n} 人`, g_allUsers: "所有用户", g_allUsersHint: "输入名称搜索 VRChat 上的所有人（包括群组外的人）", g_pageOf: (p, n) => `第 ${p} / ${n} 页` });
 document.head.insertAdjacentHTML("beforeend", `<style>
 .gfilter { display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px 2px 8px; border-radius: 99px; background: var(--track); font-size: 12px; }
 .gfilter > svg { width: 13px; height: 13px; color: var(--accent); }
@@ -6642,3 +6700,136 @@ Object.assign(UPD_I18N.zh, { nav_battery: "电池", bt_day: "按天", bt_sum: "�
   bt_nHungry: (n, p, k) => `${n} 比其他${k}耗电快 ${p}%`, bt_nEmpty: (n, c) => `${n} 中途没电 ${c} 次`,
   bt_nWear: (n, p) => `${n} 比第一周耗电快 ${p}%（电池可能在老化）`, bt_prevTip: p => `上一时段：${p}%/小时`, bt_noPrev: "无更早数据",
   bt_cmpHint: "条 = 本时段平均耗电（越长越快没电） · 竖线 = 之前相同天数 · 向上箭头 = 耗电变快" });
+
+// ---------- Trust-rank filter (group Members tab, "Select user" / ban picker) ----------
+// VRChat's member lists carry no trust rank, so it comes from the profile cache (trustTags from /profile, tags from a search).
+// Members the cache doesn't know are loaded in the background (one a second) and the list fills in as they arrive.
+// Without a search the filter goes through the member list itself: up to RSCAN_MAX members, newest first, 100 per request.
+const RANK_ORDER = [["visitor", "Visitor", "#8e8e93"], ...[...RANKS].reverse()];
+const RSCAN_MAX = 1000;
+let RSCAN = null;  // {key: groupId|roleId, list: members, done, capped, err}
+const rankWait = new Set(), rankAsked = new Set();
+function rankOf(uid) {
+  const p = PROFILES[uid];
+  if (!p) return null;
+  const tags = [...(p.trustTags || []), ...(p.tags || [])];
+  if (!tags.length && !Array.isArray(p.trustTags)) return null;  // Not loaded from /profile yet: unknown, not Visitor
+  return RANKS.find(([tag]) => tags.includes(tag))?.[0] || "visitor";
+}
+function rankTag(uid) {
+  const r = RANK_ORDER.find(x => x[0] === rankOf(uid));
+  return r ? ` · <span class="rank-tag" style="--rk:${r[2]}">${r[1]}</span>` : "";
+}
+function rankSelHtml(v, onchange) {
+  return `<select class="field" style="width:auto" title="${escA(t("g_rank"))}" onchange="${esc(onchange)}"><option value="">${t("g_allRanks")}</option>
+    ${RANK_ORDER.map(([k, name]) => `<option value="${k}" ${v === k ? "selected" : ""}>${name}</option>`).join("")}</select>`;
+}
+function needRanks(ids) {
+  const ask = ids.filter(id => id && !rankAsked.has(id) && !rankOf(id));
+  if (!ask.length) return;
+  ask.forEach(id => { rankAsked.add(id); rankWait.add(id); });
+  api("need_ranks", ask);
+}
+function rankNote(hit, of, scan) {
+  const wait = rankWait.size, parts = [t("g_rankMatch", hit.toLocaleString(), of.toLocaleString())];
+  if (!scan.done) parts.push(t("g_rankLoading"));
+  if (wait) parts.push(t("g_rankWait", wait));
+  if (scan.capped) parts.push(t("g_rankCap", scan.list.length.toLocaleString()));
+  return `<div class="pcard-note rank-note">${!scan.done || wait ? `<span class="spin">${icon("refresh-cw")}</span>` : icon("funnel")}${parts.join(" · ")}
+    ${scan.capped && scan.done ? `<button class="btn sm" onclick="rankMore()">${icon("chevron-down")}${t("g_rankMore", RSCAN_MAX.toLocaleString())}</button>` : ""}</div>`;
+}
+function rankScan(gid, role) {
+  const key = gid + "|" + (role || "");
+  if (RSCAN?.key === key) return RSCAN;
+  const s = RSCAN = { key, gid, role, list: [], limit: RSCAN_MAX, done: false, capped: false, err: null };
+  rankPages(s);
+  return s;
+}
+// Load member pages until the list ends or reaches s.limit ("Check 1,000 more" raises the limit and calls this again)
+async function rankPages(s) {
+  s.done = false; s.capped = false;
+  while (true) {
+    const r = await vrc("getGroupMembers", { groupId: s.gid, n: 100, offset: s.list.length, sort: "joinedAt:desc", ...(s.role ? { roleId: s.role } : {}) });
+    if (RSCAN !== s) return;
+    if ("error" in r) { s.err = r; break; }
+    const page = Array.isArray(r.ok) ? r.ok : [];
+    const have = new Set(s.list.map(m => m.userId));
+    s.list.push(...page.filter(m => !have.has(m.userId)));  // Someone joining meanwhile shifts the pages by one
+    needRanks(page.map(m => m.userId));
+    rankRedraw();
+    if (page.length < 100) break;
+    if (s.list.length >= s.limit) { s.capped = true; break; }
+    await new Promise(res => setTimeout(res, 400));
+  }
+  s.done = true;
+  rankRedraw();
+}
+function rankMore() {
+  if (!RSCAN?.done || !RSCAN.capped) return;
+  RSCAN.limit = RSCAN.list.length + RSCAN_MAX;
+  rankPages(RSCAN);
+  rankRedraw();
+}
+// Is a list still filtering by rank? (Members tab with a rank chosen, or the picker with one)
+function rankInUse() {
+  return !!(groupOpen && GX.tab === "members" && GX.memberRank && $("pOverlay")?.classList.contains("show"))
+    || !!($("gmpList") && X && window._gmpRankOn);
+}
+// Nothing filters by rank any more: stop loading member pages and drop the rank checks still queued
+function rankStop() {
+  if (rankInUse()) return;
+  RSCAN = null;
+  if (!rankWait.size) return;
+  rankWait.forEach(id => rankAsked.delete(id));  // Not checked: ask again next time
+  rankWait.clear();
+  api("drop_ranks");
+}
+const rankStopSoon = () => setTimeout(rankStop, 0);
+{
+  const cp = closeProfile, cx = closeX, gt = gTab;
+  closeProfile = function () { cp(); rankStopSoon(); };
+  closeX = function () { cx(); rankStopSoon(); };
+  gTab = function (tab) { gt(tab); rankStopSoon(); };
+}
+let rankTimer = 0;
+function rankRedraw() {
+  clearTimeout(rankTimer);
+  rankTimer = setTimeout(() => {
+    if (groupOpen && GX.tab === "members" && GX.memberRank) repaint();
+    if ($("gmpList") && X) window._gmpDraw?.();  // The closed picker stays in the page: don't redraw it (that would start a new scan)
+  }, 250);
+}
+{
+  const base = window.onProfiles;
+  window.onProfiles = list => {
+    base(list);
+    let hit = false;
+    for (const p of list) if (rankWait.delete(p.id)) hit = true;
+    if (hit && !rankInUse()) rankStop();  // Left the list some other way (e.g. opened another card)
+    else if (hit) rankRedraw();
+  };
+}
+document.head.insertAdjacentHTML("beforeend", `<style>
+.rank-tag { color: var(--rk); font-weight: 600; }
+.rank-tag::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--rk); margin-right: 4px; vertical-align: 1px; }
+.rank-note { display: flex; align-items: center; gap: 6px; margin: -4px 2px 8px; }
+.rank-note svg { width: 13px; height: 13px; }
+.rank-note .spin { display: inline-flex; animation: rkspin 1s linear infinite; }
+@keyframes rkspin { to { transform: rotate(360deg); } }
+</style>`);
+tx({
+  g_rank: ["ยศผู้เล่น", "Trust rank", "トラストランク"], g_allRanks: ["ทุกยศ", "All ranks", "すべてのランク"],
+  g_rankMatch: [(n, m) => `ตรง ${n} คน จาก ${m} คน`, (n, m) => `${n} of ${m} match`, (n, m) => `${m} 人中 ${n} 人`],
+  g_rankLoading: ["กำลังโหลดรายชื่อ…", "Loading members…", "メンバーを読み込み中…"],
+  g_rankWait: [n => `กำลังเช็คยศอีก ${n} คน`, n => `checking ${n} more ranks`, n => `あと ${n} 人のランクを確認中`],
+  g_rankCap: [n => `ดูแล้ว ${n} คนที่เข้าล่าสุด`, n => `checked the ${n} newest members`, n => `新しい ${n} 人まで確認`],
+  g_rankMore: [n => `ดูต่ออีก ${n} คน`, n => `Check ${n} more`, n => `さらに ${n} 人確認`],
+});
+Object.assign(UPD_I18N.ko, { g_rank: "신뢰 등급", g_allRanks: "모든 등급", g_rankMatch: (n, m) => `${m}명 중 ${n}명`, g_rankLoading: "멤버 불러오는 중…",
+  g_rankWait: n => `${n}명 등급 확인 중`, g_rankCap: n => `최근 가입한 ${n}명 확인함`, g_rankMore: n => `${n}명 더 확인` });
+Object.assign(UPD_I18N.ru, { g_rank: "Ранг доверия", g_allRanks: "Все ранги", g_rankMatch: (n, m) => `${n} из ${m}`, g_rankLoading: "Загрузка участников…",
+  g_rankWait: n => `проверяется ещё ${n}`, g_rankCap: n => `проверено ${n} новейших участников`, g_rankMore: n => `Проверить ещё ${n}` });
+Object.assign(UPD_I18N.vi, { g_rank: "Cấp tin cậy", g_allRanks: "Mọi cấp", g_rankMatch: (n, m) => `${n} / ${m} người khớp`, g_rankLoading: "Đang tải thành viên…",
+  g_rankWait: n => `đang kiểm tra thêm ${n} người`, g_rankCap: n => `đã kiểm tra ${n} thành viên mới nhất`, g_rankMore: n => `Kiểm tra thêm ${n}` });
+Object.assign(UPD_I18N.zh, { g_rank: "信任等级", g_allRanks: "所有等级", g_rankMatch: (n, m) => `${m} 人中 ${n} 人符合`, g_rankLoading: "正在加载成员…",
+  g_rankWait: n => `还在检查 ${n} 人的等级`, g_rankCap: n => `已检查最新加入的 ${n} 人`, g_rankMore: n => `再检查 ${n} 人` });
