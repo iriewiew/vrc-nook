@@ -5,7 +5,7 @@
 <p align="center">A lightweight, cozy all-in-one VRChat companion for Windows: friends, game log, in-game chatbox, a VR-friendly keyboard and an animated emoji maker.</p>
 
 <p align="center">
-<b>English</b> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.zh.md">中文</a>
+<b>English</b> · <a href="readme/README.th.md">ไทย</a> · <a href="readme/README.ja.md">日本語</a> · <a href="readme/README.ko.md">한국어</a> · <a href="readme/README.ru.md">Русский</a> · <a href="readme/README.vi.md">Tiếng Việt</a> · <a href="readme/README.zh.md">中文</a>
 </p>
 
 ---
@@ -146,9 +146,11 @@ Put it in a folder you can write to, such as Documents. Don't use Program Files,
 
 ```powershell
 pip install -r requirements.txt
-python vrclog_mac.py          # run
+python src/vrclog_mac.py      # run
 .\build.ps1                   # build dist\VRCNook.exe
 ```
+
+The app's source is in `src/` (the icon and exe version info are in `assets/`).
 
 | File | Purpose |
 |---|---|

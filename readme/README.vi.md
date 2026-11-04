@@ -1,16 +1,16 @@
-<p align="center"><img src="docs/icon.png" width="112" alt="VRC Nook"></p>
+<p align="center"><img src="../docs/icon.png" width="112" alt="VRC Nook"></p>
 
 <h1 align="center">VRC Nook</h1>
 
 <p align="center">Ứng dụng đồng hành nhẹ nhàng, ấm cúng, tất cả trong một cho VRChat trên Windows: bạn bè, nhật ký game, Chatbox trong game, bàn phím cho VR và công cụ tạo emoji động.</p>
 
 <p align="center">
-<a href="README.md">English</a> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <b>Tiếng Việt</b> · <a href="README.zh.md">中文</a>
+<a href="../README.md">English</a> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <b>Tiếng Việt</b> · <a href="README.zh.md">中文</a>
 </p>
 
 ---
 
-<p align="center"><img src="docs/screenshots/friends.png" alt="Bạn bè" width="860"></p>
+<p align="center"><img src="../docs/screenshots/friends.png" alt="Bạn bè" width="860"></p>
 
 ## Tải về
 
@@ -22,16 +22,16 @@ Hãy đặt file trong thư mục có quyền ghi như Documents. Đừng dùng 
 ## Ảnh chụp màn hình
 
 <table>
-<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="Bạn bè (giao diện tối)"><br><sub>Bạn bè (giao diện tối)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="Thẻ hồ sơ"><br><sub>Thẻ hồ sơ</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="Bảng tin"><br><sub>Bảng tin</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="Thông báo"><br><sub>Thông báo</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/log.png" alt="Nhật ký game"><br><sub>Nhật ký game</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="Lịch sử thế giới"><br><sub>Lịch sử thế giới</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="Chatbox"><br><sub>Chatbox</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="Bàn phím VR"><br><sub>Bàn phím VR</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="Bàn phím nổi: chế độ Windows"><br><sub>Bàn phím nổi: chế độ Windows</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="Bàn phím nổi: chế độ chat trong game"><br><sub>Bàn phím nổi: chế độ chat trong game</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="Tạo emoji: xem trước hiệu ứng VRChat"><br><sub>Tạo emoji: xem trước hiệu ứng VRChat</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="Tạo emoji: sprite sheet"><br><sub>Tạo emoji: sprite sheet</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="Cài đặt"><br><sub>Cài đặt</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="Giao diện và màu nhấn"><br><sub>Giao diện và màu nhấn</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="Giao diện tiếng Thái"><br><sub>Giao diện tiếng Thái</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="Giao diện tiếng Nhật"><br><sub>Giao diện tiếng Nhật</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/groups-owned.png" alt="Nhóm bạn sở hữu và quản lý"><br><sub>Nhóm bạn sở hữu và quản lý</sub></td><td width="50%"><img src="docs/screenshots/group-manage.png" alt="Tab Quản lý nhóm"><br><sub>Tab Quản lý nhóm</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/crop-banner.png" alt="Cắt và tải lên: đường gióng ảnh bìa nhóm"><br><sub>Cắt và tải lên: đường gióng ảnh bìa nhóm</sub></td><td width="50%"><img src="docs/screenshots/login.png" alt="Đăng nhập có chọn ngôn ngữ"><br><sub>Đăng nhập có chọn ngôn ngữ</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/friends-dark.png" alt="Bạn bè (giao diện tối)"><br><sub>Bạn bè (giao diện tối)</sub></td><td width="50%"><img src="../docs/screenshots/profile.png" alt="Thẻ hồ sơ"><br><sub>Thẻ hồ sơ</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/feed.png" alt="Bảng tin"><br><sub>Bảng tin</sub></td><td width="50%"><img src="../docs/screenshots/notifs.png" alt="Thông báo"><br><sub>Thông báo</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/log.png" alt="Nhật ký game"><br><sub>Nhật ký game</sub></td><td width="50%"><img src="../docs/screenshots/history.png" alt="Lịch sử thế giới"><br><sub>Lịch sử thế giới</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/chat.png" alt="Chatbox"><br><sub>Chatbox</sub></td><td width="50%"><img src="../docs/screenshots/keyboard.png" alt="Bàn phím VR"><br><sub>Bàn phím VR</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/kbfloat.png" alt="Bàn phím nổi: chế độ Windows"><br><sub>Bàn phím nổi: chế độ Windows</sub></td><td width="50%"><img src="../docs/screenshots/kbfloat-chat.png" alt="Bàn phím nổi: chế độ chat trong game"><br><sub>Bàn phím nổi: chế độ chat trong game</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/emoji.png" alt="Tạo emoji: xem trước hiệu ứng VRChat"><br><sub>Tạo emoji: xem trước hiệu ứng VRChat</sub></td><td width="50%"><img src="../docs/screenshots/emoji-sheet.png" alt="Tạo emoji: sprite sheet"><br><sub>Tạo emoji: sprite sheet</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/settings.png" alt="Cài đặt"><br><sub>Cài đặt</sub></td><td width="50%"><img src="../docs/screenshots/theme.png" alt="Giao diện và màu nhấn"><br><sub>Giao diện và màu nhấn</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/friends-th.png" alt="Giao diện tiếng Thái"><br><sub>Giao diện tiếng Thái</sub></td><td width="50%"><img src="../docs/screenshots/friends-ja.png" alt="Giao diện tiếng Nhật"><br><sub>Giao diện tiếng Nhật</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/groups-owned.png" alt="Nhóm bạn sở hữu và quản lý"><br><sub>Nhóm bạn sở hữu và quản lý</sub></td><td width="50%"><img src="../docs/screenshots/group-manage.png" alt="Tab Quản lý nhóm"><br><sub>Tab Quản lý nhóm</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/crop-banner.png" alt="Cắt và tải lên: đường gióng ảnh bìa nhóm"><br><sub>Cắt và tải lên: đường gióng ảnh bìa nhóm</sub></td><td width="50%"><img src="../docs/screenshots/login.png" alt="Đăng nhập có chọn ngôn ngữ"><br><sub>Đăng nhập có chọn ngôn ngữ</sub></td></tr>
 </table>
 
 <sub>Ảnh chụp dùng dữ liệu mẫu giả lập.</sub>
@@ -146,11 +146,11 @@ Hãy đặt file trong thư mục có quyền ghi như Documents. Đừng dùng 
 
 ```powershell
 pip install -r requirements.txt
-python vrclog_mac.py          # chạy
+python src/vrclog_mac.py      # chạy
 .\build.ps1                   # build dist\VRCNook.exe
 ```
 
-Mô tả từng file có trong [README tiếng Anh](README.md#build-from-source).
+Mô tả từng file có trong [README tiếng Anh](../README.md#build-from-source).
 
 ## Ghi công
 
@@ -162,7 +162,7 @@ Mô tả từng file có trong [README tiếng Anh](README.md#build-from-source)
 
 ## Giấy phép
 
-[MIT](LICENSE) © iriewiew
+[MIT](../LICENSE) © iriewiew
 
 > VRC Nook là công cụ do người hâm mộ làm, không liên kết và không được VRChat Inc. chứng thực.
 > Ứng dụng dùng VRChat API, vốn không được hỗ trợ chính thức cho ứng dụng bên thứ ba. Bạn tự chịu rủi ro khi sử dụng và cần tuân thủ Điều khoản dịch vụ của VRChat.

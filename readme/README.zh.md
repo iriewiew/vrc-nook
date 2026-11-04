@@ -1,16 +1,16 @@
-<p align="center"><img src="docs/icon.png" width="112" alt="VRC Nook"></p>
+<p align="center"><img src="../docs/icon.png" width="112" alt="VRC Nook"></p>
 
 <h1 align="center">VRC Nook</h1>
 
 <p align="center">轻量又温馨的 Windows 版 VRChat 一站式助手:好友、游戏日志、游戏内聊天框、VR 友好的键盘和动态表情制作器。</p>
 
 <p align="center">
-<a href="README.md">English</a> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <b>中文</b>
+<a href="../README.md">English</a> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <b>中文</b>
 </p>
 
 ---
 
-<p align="center"><img src="docs/screenshots/friends.png" alt="好友" width="860"></p>
+<p align="center"><img src="../docs/screenshots/friends.png" alt="好友" width="860"></p>
 
 ## 下载
 
@@ -22,16 +22,16 @@
 ## 截图
 
 <table>
-<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="好友(深色主题)"><br><sub>好友(深色主题)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="个人资料卡"><br><sub>个人资料卡</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="动态"><br><sub>动态</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="通知"><br><sub>通知</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/log.png" alt="游戏日志"><br><sub>游戏日志</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="世界历史"><br><sub>世界历史</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="聊天框"><br><sub>聊天框</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="VR 键盘"><br><sub>VR 键盘</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="悬浮键盘:Windows 模式"><br><sub>悬浮键盘:Windows 模式</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="悬浮键盘:游戏聊天模式"><br><sub>悬浮键盘:游戏聊天模式</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="表情制作器:VRChat 特效预览"><br><sub>表情制作器:VRChat 特效预览</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="表情制作器:精灵图"><br><sub>表情制作器:精灵图</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="设置"><br><sub>设置</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="主题与强调色"><br><sub>主题与强调色</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="泰语界面"><br><sub>泰语界面</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="日语界面"><br><sub>日语界面</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/groups-owned.png" alt="拥有和可管理的群组"><br><sub>拥有和可管理的群组</sub></td><td width="50%"><img src="docs/screenshots/group-manage.png" alt="群组管理标签页"><br><sub>群组管理标签页</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/crop-banner.png" alt="裁剪上传：群组横幅参考线"><br><sub>裁剪上传：群组横幅参考线</sub></td><td width="50%"><img src="docs/screenshots/login.png" alt="带语言选择的登录"><br><sub>带语言选择的登录</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/friends-dark.png" alt="好友(深色主题)"><br><sub>好友(深色主题)</sub></td><td width="50%"><img src="../docs/screenshots/profile.png" alt="个人资料卡"><br><sub>个人资料卡</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/feed.png" alt="动态"><br><sub>动态</sub></td><td width="50%"><img src="../docs/screenshots/notifs.png" alt="通知"><br><sub>通知</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/log.png" alt="游戏日志"><br><sub>游戏日志</sub></td><td width="50%"><img src="../docs/screenshots/history.png" alt="世界历史"><br><sub>世界历史</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/chat.png" alt="聊天框"><br><sub>聊天框</sub></td><td width="50%"><img src="../docs/screenshots/keyboard.png" alt="VR 键盘"><br><sub>VR 键盘</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/kbfloat.png" alt="悬浮键盘:Windows 模式"><br><sub>悬浮键盘:Windows 模式</sub></td><td width="50%"><img src="../docs/screenshots/kbfloat-chat.png" alt="悬浮键盘:游戏聊天模式"><br><sub>悬浮键盘:游戏聊天模式</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/emoji.png" alt="表情制作器:VRChat 特效预览"><br><sub>表情制作器:VRChat 特效预览</sub></td><td width="50%"><img src="../docs/screenshots/emoji-sheet.png" alt="表情制作器:精灵图"><br><sub>表情制作器:精灵图</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/settings.png" alt="设置"><br><sub>设置</sub></td><td width="50%"><img src="../docs/screenshots/theme.png" alt="主题与强调色"><br><sub>主题与强调色</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/friends-th.png" alt="泰语界面"><br><sub>泰语界面</sub></td><td width="50%"><img src="../docs/screenshots/friends-ja.png" alt="日语界面"><br><sub>日语界面</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/groups-owned.png" alt="拥有和可管理的群组"><br><sub>拥有和可管理的群组</sub></td><td width="50%"><img src="../docs/screenshots/group-manage.png" alt="群组管理标签页"><br><sub>群组管理标签页</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/crop-banner.png" alt="裁剪上传：群组横幅参考线"><br><sub>裁剪上传：群组横幅参考线</sub></td><td width="50%"><img src="../docs/screenshots/login.png" alt="带语言选择的登录"><br><sub>带语言选择的登录</sub></td></tr>
 </table>
 
 <sub>截图使用的是虚构的演示数据。</sub>
@@ -146,11 +146,11 @@
 
 ```powershell
 pip install -r requirements.txt
-python vrclog_mac.py          # 运行
+python src/vrclog_mac.py      # 运行
 .\build.ps1                   # 构建 dist\VRCNook.exe
 ```
 
-各文件说明请见[英文 README](README.md#build-from-source)。
+各文件说明请见[英文 README](../README.md#build-from-source)。
 
 ## 致谢
 
@@ -162,7 +162,7 @@ python vrclog_mac.py          # 运行
 
 ## 许可证
 
-[MIT](LICENSE) © iriewiew
+[MIT](../LICENSE) © iriewiew
 
 > VRC Nook 是粉丝制作的工具,与 VRChat Inc. 无关,也未获其认可。
 > 本应用使用的 VRChat API 并未正式支持第三方应用。使用风险自负,请遵守 VRChat 服务条款。

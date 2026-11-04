@@ -1,16 +1,16 @@
-<p align="center"><img src="docs/icon.png" width="112" alt="VRC Nook"></p>
+<p align="center"><img src="../docs/icon.png" width="112" alt="VRC Nook"></p>
 
 <h1 align="center">VRC Nook</h1>
 
 <p align="center">Windows 用の軽量で居心地のいい VRChat コンパニオンアプリ。フレンド、ゲームログ、ゲーム内チャットボックス、VR 向けキーボード、アニメーション絵文字メーカーをひとつに。</p>
 
 <p align="center">
-<a href="README.md">English</a> · <a href="README.th.md">ไทย</a> · <b>日本語</b> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.zh.md">中文</a>
+<a href="../README.md">English</a> · <a href="README.th.md">ไทย</a> · <b>日本語</b> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.zh.md">中文</a>
 </p>
 
 ---
 
-<p align="center"><img src="docs/screenshots/friends.png" alt="フレンド" width="860"></p>
+<p align="center"><img src="../docs/screenshots/friends.png" alt="フレンド" width="860"></p>
 
 ## ダウンロード
 
@@ -22,16 +22,16 @@
 ## スクリーンショット
 
 <table>
-<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="フレンド(ダークテーマ)"><br><sub>フレンド(ダークテーマ)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="プロフィールカード"><br><sub>プロフィールカード</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="フィード"><br><sub>フィード</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="通知"><br><sub>通知</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/log.png" alt="ゲームログ"><br><sub>ゲームログ</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="ワールド履歴"><br><sub>ワールド履歴</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="チャットボックス"><br><sub>チャットボックス</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="VR キーボード"><br><sub>VR キーボード</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="フローティングキーボード: Windows モード"><br><sub>フローティングキーボード: Windows モード</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="フローティングキーボード: ゲーム内チャットモード"><br><sub>フローティングキーボード: ゲーム内チャットモード</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="絵文字メーカー: VRChat エフェクトのプレビュー"><br><sub>絵文字メーカー: VRChat エフェクトのプレビュー</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="絵文字メーカー: スプライトシート"><br><sub>絵文字メーカー: スプライトシート</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="設定"><br><sub>設定</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="テーマとアクセントカラー"><br><sub>テーマとアクセントカラー</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="タイ語 UI"><br><sub>タイ語 UI</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="日本語 UI"><br><sub>日本語 UI</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/groups-owned.png" alt="オーナー・管理グループ"><br><sub>オーナー・管理グループ</sub></td><td width="50%"><img src="docs/screenshots/group-manage.png" alt="グループの管理タブ"><br><sub>グループの管理タブ</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/crop-banner.png" alt="切り抜きアップロード: グループバナーのガイド"><br><sub>切り抜きアップロード: グループバナーのガイド</sub></td><td width="50%"><img src="docs/screenshots/login.png" alt="言語選択付きのサインイン"><br><sub>言語選択付きのサインイン</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/friends-dark.png" alt="フレンド(ダークテーマ)"><br><sub>フレンド(ダークテーマ)</sub></td><td width="50%"><img src="../docs/screenshots/profile.png" alt="プロフィールカード"><br><sub>プロフィールカード</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/feed.png" alt="フィード"><br><sub>フィード</sub></td><td width="50%"><img src="../docs/screenshots/notifs.png" alt="通知"><br><sub>通知</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/log.png" alt="ゲームログ"><br><sub>ゲームログ</sub></td><td width="50%"><img src="../docs/screenshots/history.png" alt="ワールド履歴"><br><sub>ワールド履歴</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/chat.png" alt="チャットボックス"><br><sub>チャットボックス</sub></td><td width="50%"><img src="../docs/screenshots/keyboard.png" alt="VR キーボード"><br><sub>VR キーボード</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/kbfloat.png" alt="フローティングキーボード: Windows モード"><br><sub>フローティングキーボード: Windows モード</sub></td><td width="50%"><img src="../docs/screenshots/kbfloat-chat.png" alt="フローティングキーボード: ゲーム内チャットモード"><br><sub>フローティングキーボード: ゲーム内チャットモード</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/emoji.png" alt="絵文字メーカー: VRChat エフェクトのプレビュー"><br><sub>絵文字メーカー: VRChat エフェクトのプレビュー</sub></td><td width="50%"><img src="../docs/screenshots/emoji-sheet.png" alt="絵文字メーカー: スプライトシート"><br><sub>絵文字メーカー: スプライトシート</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/settings.png" alt="設定"><br><sub>設定</sub></td><td width="50%"><img src="../docs/screenshots/theme.png" alt="テーマとアクセントカラー"><br><sub>テーマとアクセントカラー</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/friends-th.png" alt="タイ語 UI"><br><sub>タイ語 UI</sub></td><td width="50%"><img src="../docs/screenshots/friends-ja.png" alt="日本語 UI"><br><sub>日本語 UI</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/groups-owned.png" alt="オーナー・管理グループ"><br><sub>オーナー・管理グループ</sub></td><td width="50%"><img src="../docs/screenshots/group-manage.png" alt="グループの管理タブ"><br><sub>グループの管理タブ</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/crop-banner.png" alt="切り抜きアップロード: グループバナーのガイド"><br><sub>切り抜きアップロード: グループバナーのガイド</sub></td><td width="50%"><img src="../docs/screenshots/login.png" alt="言語選択付きのサインイン"><br><sub>言語選択付きのサインイン</sub></td></tr>
 </table>
 
 <sub>スクリーンショットは架空のデモデータです。</sub>
@@ -146,11 +146,11 @@
 
 ```powershell
 pip install -r requirements.txt
-python vrclog_mac.py          # 実行
+python src/vrclog_mac.py      # 実行
 .\build.ps1                   # dist\VRCNook.exe をビルド
 ```
 
-各ファイルの説明は[英語版 README](README.md#build-from-source) を参照してください。
+各ファイルの説明は[英語版 README](../README.md#build-from-source) を参照してください。
 
 ## クレジット
 
@@ -162,7 +162,7 @@ python vrclog_mac.py          # 実行
 
 ## ライセンス
 
-[MIT](LICENSE) © iriewiew
+[MIT](../LICENSE) © iriewiew
 
 > VRC Nook はファンによる非公式ツールで、VRChat Inc. とは関係がなく、承認も受けていません。
 > サードパーティアプリへの公式サポートがない VRChat API を使用しています。自己責任で、VRChat の利用規約に従ってご利用ください。

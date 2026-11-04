@@ -1,16 +1,16 @@
-<p align="center"><img src="docs/icon.png" width="112" alt="VRC Nook"></p>
+<p align="center"><img src="../docs/icon.png" width="112" alt="VRC Nook"></p>
 
 <h1 align="center">VRC Nook</h1>
 
 <p align="center">Лёгкий и уютный универсальный помощник для VRChat под Windows: друзья, игровой лог, чатбокс в игре, клавиатура для VR и редактор анимированных эмодзи в одном приложении.</p>
 
 <p align="center">
-<a href="README.md">English</a> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <b>Русский</b> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.zh.md">中文</a>
+<a href="../README.md">English</a> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <b>Русский</b> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.zh.md">中文</a>
 </p>
 
 ---
 
-<p align="center"><img src="docs/screenshots/friends.png" alt="Друзья" width="860"></p>
+<p align="center"><img src="../docs/screenshots/friends.png" alt="Друзья" width="860"></p>
 
 ## Загрузка
 
@@ -22,16 +22,16 @@
 ## Скриншоты
 
 <table>
-<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="Друзья (тёмная тема)"><br><sub>Друзья (тёмная тема)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="Карточка профиля"><br><sub>Карточка профиля</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="Лента"><br><sub>Лента</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="Уведомления"><br><sub>Уведомления</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/log.png" alt="Игровой лог"><br><sub>Игровой лог</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="История миров"><br><sub>История миров</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="Чатбокс"><br><sub>Чатбокс</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="VR-клавиатура"><br><sub>VR-клавиатура</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="Плавающая клавиатура: режим Windows"><br><sub>Плавающая клавиатура: режим Windows</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="Плавающая клавиатура: игровой чат"><br><sub>Плавающая клавиатура: игровой чат</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="Редактор эмодзи: превью эффекта VRChat"><br><sub>Редактор эмодзи: превью эффекта VRChat</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="Редактор эмодзи: спрайт-лист"><br><sub>Редактор эмодзи: спрайт-лист</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="Настройки"><br><sub>Настройки</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="Темы и акцентные цвета"><br><sub>Темы и акцентные цвета</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="Интерфейс на тайском"><br><sub>Интерфейс на тайском</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="Интерфейс на японском"><br><sub>Интерфейс на японском</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/groups-owned.png" alt="Ваши группы и те, которыми вы управляете"><br><sub>Ваши группы и те, которыми вы управляете</sub></td><td width="50%"><img src="docs/screenshots/group-manage.png" alt="Вкладка «Управление»"><br><sub>Вкладка «Управление»</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/crop-banner.png" alt="Обрезка перед загрузкой: разметка баннера группы"><br><sub>Обрезка перед загрузкой: разметка баннера группы</sub></td><td width="50%"><img src="docs/screenshots/login.png" alt="Вход с выбором языка"><br><sub>Вход с выбором языка</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/friends-dark.png" alt="Друзья (тёмная тема)"><br><sub>Друзья (тёмная тема)</sub></td><td width="50%"><img src="../docs/screenshots/profile.png" alt="Карточка профиля"><br><sub>Карточка профиля</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/feed.png" alt="Лента"><br><sub>Лента</sub></td><td width="50%"><img src="../docs/screenshots/notifs.png" alt="Уведомления"><br><sub>Уведомления</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/log.png" alt="Игровой лог"><br><sub>Игровой лог</sub></td><td width="50%"><img src="../docs/screenshots/history.png" alt="История миров"><br><sub>История миров</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/chat.png" alt="Чатбокс"><br><sub>Чатбокс</sub></td><td width="50%"><img src="../docs/screenshots/keyboard.png" alt="VR-клавиатура"><br><sub>VR-клавиатура</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/kbfloat.png" alt="Плавающая клавиатура: режим Windows"><br><sub>Плавающая клавиатура: режим Windows</sub></td><td width="50%"><img src="../docs/screenshots/kbfloat-chat.png" alt="Плавающая клавиатура: игровой чат"><br><sub>Плавающая клавиатура: игровой чат</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/emoji.png" alt="Редактор эмодзи: превью эффекта VRChat"><br><sub>Редактор эмодзи: превью эффекта VRChat</sub></td><td width="50%"><img src="../docs/screenshots/emoji-sheet.png" alt="Редактор эмодзи: спрайт-лист"><br><sub>Редактор эмодзи: спрайт-лист</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/settings.png" alt="Настройки"><br><sub>Настройки</sub></td><td width="50%"><img src="../docs/screenshots/theme.png" alt="Темы и акцентные цвета"><br><sub>Темы и акцентные цвета</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/friends-th.png" alt="Интерфейс на тайском"><br><sub>Интерфейс на тайском</sub></td><td width="50%"><img src="../docs/screenshots/friends-ja.png" alt="Интерфейс на японском"><br><sub>Интерфейс на японском</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/groups-owned.png" alt="Ваши группы и те, которыми вы управляете"><br><sub>Ваши группы и те, которыми вы управляете</sub></td><td width="50%"><img src="../docs/screenshots/group-manage.png" alt="Вкладка «Управление»"><br><sub>Вкладка «Управление»</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/crop-banner.png" alt="Обрезка перед загрузкой: разметка баннера группы"><br><sub>Обрезка перед загрузкой: разметка баннера группы</sub></td><td width="50%"><img src="../docs/screenshots/login.png" alt="Вход с выбором языка"><br><sub>Вход с выбором языка</sub></td></tr>
 </table>
 
 <sub>На скриншотах вымышленные демо-данные.</sub>
@@ -146,11 +146,11 @@
 
 ```powershell
 pip install -r requirements.txt
-python vrclog_mac.py          # запуск
+python src/vrclog_mac.py      # запуск
 .\build.ps1                   # сборка dist\VRCNook.exe
 ```
 
-Описание файлов — в [английском README](README.md#build-from-source).
+Описание файлов — в [английском README](../README.md#build-from-source).
 
 ## Благодарности
 
@@ -162,7 +162,7 @@ python vrclog_mac.py          # запуск
 
 ## Лицензия
 
-[MIT](LICENSE) © iriewiew
+[MIT](../LICENSE) © iriewiew
 
 > VRC Nook — фанатский инструмент, он не связан с VRChat Inc. и не одобрен ею.
 > Приложение использует API VRChat, который официально не поддерживается для сторонних приложений. Используйте на свой риск и соблюдайте Условия использования VRChat.

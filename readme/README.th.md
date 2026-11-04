@@ -1,16 +1,16 @@
-<p align="center"><img src="docs/icon.png" width="112" alt="VRC Nook"></p>
+<p align="center"><img src="../docs/icon.png" width="112" alt="VRC Nook"></p>
 
 <h1 align="center">VRC Nook</h1>
 
 <p align="center">แอปคู่ใจน้ำหนักเบาสำหรับ VRChat บน Windows: เพื่อน, game log, แชทขึ้น Chatbox ในเกม, คีย์บอร์ดปุ่มใหญ่สำหรับ VR และเครื่องมือทำอีโมจิเคลื่อนไหว ครบในที่เดียว</p>
 
 <p align="center">
-<a href="README.md">English</a> · <b>ไทย</b> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.zh.md">中文</a>
+<a href="../README.md">English</a> · <b>ไทย</b> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.zh.md">中文</a>
 </p>
 
 ---
 
-<p align="center"><img src="docs/screenshots/friends.png" alt="เพื่อน" width="860"></p>
+<p align="center"><img src="../docs/screenshots/friends.png" alt="เพื่อน" width="860"></p>
 
 ## ดาวน์โหลด
 
@@ -22,16 +22,16 @@
 ## ภาพหน้าจอ
 
 <table>
-<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="เพื่อน (ธีมมืด)"><br><sub>เพื่อน (ธีมมืด)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="การ์ดโปรไฟล์"><br><sub>การ์ดโปรไฟล์</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="Feed"><br><sub>Feed</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="การแจ้งเตือน"><br><sub>การแจ้งเตือน</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/log.png" alt="Game Log"><br><sub>Game Log</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="ประวัติโลก"><br><sub>ประวัติโลก</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="แชทขึ้น Chatbox"><br><sub>แชทขึ้น Chatbox</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="คีย์บอร์ด VR"><br><sub>คีย์บอร์ด VR</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="คีย์บอร์ดลอย: โหมดคีย์บอร์ด Windows"><br><sub>คีย์บอร์ดลอย: โหมดคีย์บอร์ด Windows</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="คีย์บอร์ดลอย: โหมดแชทในเกม"><br><sub>คีย์บอร์ดลอย: โหมดแชทในเกม</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="ทำอีโมจิ: ตัวอย่างเอฟเฟกต์ VRChat"><br><sub>ทำอีโมจิ: ตัวอย่างเอฟเฟกต์ VRChat</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="ทำอีโมจิ: sprite sheet"><br><sub>ทำอีโมจิ: sprite sheet</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="ตั้งค่า"><br><sub>ตั้งค่า</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="ธีมและสีหลัก"><br><sub>ธีมและสีหลัก</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="หน้าแอปภาษาไทย"><br><sub>หน้าแอปภาษาไทย</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="หน้าแอปภาษาญี่ปุ่น"><br><sub>หน้าแอปภาษาญี่ปุ่น</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/groups-owned.png" alt="กลุ่มที่เป็นเจ้าของและจัดการได้"><br><sub>กลุ่มที่เป็นเจ้าของและจัดการได้</sub></td><td width="50%"><img src="docs/screenshots/group-manage.png" alt="แท็บจัดการกลุ่ม"><br><sub>แท็บจัดการกลุ่ม</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/crop-banner.png" alt="ครอปก่อนอัปโหลด: เส้นแนวแบนเนอร์กลุ่ม"><br><sub>ครอปก่อนอัปโหลด: เส้นแนวแบนเนอร์กลุ่ม</sub></td><td width="50%"><img src="docs/screenshots/login.png" alt="หน้าเข้าสู่ระบบพร้อมเลือกภาษา"><br><sub>หน้าเข้าสู่ระบบพร้อมเลือกภาษา</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/friends-dark.png" alt="เพื่อน (ธีมมืด)"><br><sub>เพื่อน (ธีมมืด)</sub></td><td width="50%"><img src="../docs/screenshots/profile.png" alt="การ์ดโปรไฟล์"><br><sub>การ์ดโปรไฟล์</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/feed.png" alt="Feed"><br><sub>Feed</sub></td><td width="50%"><img src="../docs/screenshots/notifs.png" alt="การแจ้งเตือน"><br><sub>การแจ้งเตือน</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/log.png" alt="Game Log"><br><sub>Game Log</sub></td><td width="50%"><img src="../docs/screenshots/history.png" alt="ประวัติโลก"><br><sub>ประวัติโลก</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/chat.png" alt="แชทขึ้น Chatbox"><br><sub>แชทขึ้น Chatbox</sub></td><td width="50%"><img src="../docs/screenshots/keyboard.png" alt="คีย์บอร์ด VR"><br><sub>คีย์บอร์ด VR</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/kbfloat.png" alt="คีย์บอร์ดลอย: โหมดคีย์บอร์ด Windows"><br><sub>คีย์บอร์ดลอย: โหมดคีย์บอร์ด Windows</sub></td><td width="50%"><img src="../docs/screenshots/kbfloat-chat.png" alt="คีย์บอร์ดลอย: โหมดแชทในเกม"><br><sub>คีย์บอร์ดลอย: โหมดแชทในเกม</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/emoji.png" alt="ทำอีโมจิ: ตัวอย่างเอฟเฟกต์ VRChat"><br><sub>ทำอีโมจิ: ตัวอย่างเอฟเฟกต์ VRChat</sub></td><td width="50%"><img src="../docs/screenshots/emoji-sheet.png" alt="ทำอีโมจิ: sprite sheet"><br><sub>ทำอีโมจิ: sprite sheet</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/settings.png" alt="ตั้งค่า"><br><sub>ตั้งค่า</sub></td><td width="50%"><img src="../docs/screenshots/theme.png" alt="ธีมและสีหลัก"><br><sub>ธีมและสีหลัก</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/friends-th.png" alt="หน้าแอปภาษาไทย"><br><sub>หน้าแอปภาษาไทย</sub></td><td width="50%"><img src="../docs/screenshots/friends-ja.png" alt="หน้าแอปภาษาญี่ปุ่น"><br><sub>หน้าแอปภาษาญี่ปุ่น</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/groups-owned.png" alt="กลุ่มที่เป็นเจ้าของและจัดการได้"><br><sub>กลุ่มที่เป็นเจ้าของและจัดการได้</sub></td><td width="50%"><img src="../docs/screenshots/group-manage.png" alt="แท็บจัดการกลุ่ม"><br><sub>แท็บจัดการกลุ่ม</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/crop-banner.png" alt="ครอปก่อนอัปโหลด: เส้นแนวแบนเนอร์กลุ่ม"><br><sub>ครอปก่อนอัปโหลด: เส้นแนวแบนเนอร์กลุ่ม</sub></td><td width="50%"><img src="../docs/screenshots/login.png" alt="หน้าเข้าสู่ระบบพร้อมเลือกภาษา"><br><sub>หน้าเข้าสู่ระบบพร้อมเลือกภาษา</sub></td></tr>
 </table>
 
 <sub>ภาพหน้าจอใช้ข้อมูลตัวอย่างที่สมมติขึ้น</sub>
@@ -146,11 +146,11 @@
 
 ```powershell
 pip install -r requirements.txt
-python vrclog_mac.py          # รัน
+python src/vrclog_mac.py      # รัน
 .\build.ps1                   # สร้าง dist\VRCNook.exe
 ```
 
-ดูคำอธิบายแต่ละไฟล์ได้ใน [README ภาษาอังกฤษ](README.md#build-from-source)
+ดูคำอธิบายแต่ละไฟล์ได้ใน [README ภาษาอังกฤษ](../README.md#build-from-source)
 
 ## เครดิต
 
@@ -162,7 +162,7 @@ python vrclog_mac.py          # รัน
 
 ## License
 
-[MIT](LICENSE) © iriewiew (นำไปใช้ แก้ไข และแจกต่อได้ โดยต้องคงข้อความลิขสิทธิ์ไว้)
+[MIT](../LICENSE) © iriewiew (นำไปใช้ แก้ไข และแจกต่อได้ โดยต้องคงข้อความลิขสิทธิ์ไว้)
 
 > VRC Nook เป็นเครื่องมือที่แฟนสร้างขึ้นเอง ไม่ได้เกี่ยวข้องหรือได้รับการรับรองจาก VRChat Inc.
 > แอปใช้ VRChat API ซึ่ง VRChat ไม่ได้รองรับอย่างเป็นทางการสำหรับแอปภายนอก ใช้งานโดยยอมรับความเสี่ยงเอง และปฏิบัติตามข้อกำหนดการใช้งานของ VRChat

@@ -11,4 +11,4 @@ __pycache__/
 .claude/
 
 # Legacy Tk GUI (superseded by vrclog_mac.py)
-vrclog_gui.py
+src/vrclog_gui.py

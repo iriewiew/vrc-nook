@@ -1,16 +1,16 @@
-<p align="center"><img src="docs/icon.png" width="112" alt="VRC Nook"></p>
+<p align="center"><img src="../docs/icon.png" width="112" alt="VRC Nook"></p>
 
 <h1 align="center">VRC Nook</h1>
 
 <p align="center">Windows용 가볍고 아늑한 올인원 VRChat 도우미 앱: 친구, 게임 로그, 게임 내 채팅박스, VR용 키보드, 움직이는 이모지 제작기를 한곳에.</p>
 
 <p align="center">
-<a href="README.md">English</a> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <b>한국어</b> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.zh.md">中文</a>
+<a href="../README.md">English</a> · <a href="README.th.md">ไทย</a> · <a href="README.ja.md">日本語</a> · <b>한국어</b> · <a href="README.ru.md">Русский</a> · <a href="README.vi.md">Tiếng Việt</a> · <a href="README.zh.md">中文</a>
 </p>
 
 ---
 
-<p align="center"><img src="docs/screenshots/friends.png" alt="친구" width="860"></p>
+<p align="center"><img src="../docs/screenshots/friends.png" alt="친구" width="860"></p>
 
 ## 다운로드
 
@@ -22,16 +22,16 @@
 ## 스크린샷
 
 <table>
-<tr><td width="50%"><img src="docs/screenshots/friends-dark.png" alt="친구 (다크 테마)"><br><sub>친구 (다크 테마)</sub></td><td width="50%"><img src="docs/screenshots/profile.png" alt="프로필 카드"><br><sub>프로필 카드</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/feed.png" alt="피드"><br><sub>피드</sub></td><td width="50%"><img src="docs/screenshots/notifs.png" alt="알림"><br><sub>알림</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/log.png" alt="게임 로그"><br><sub>게임 로그</sub></td><td width="50%"><img src="docs/screenshots/history.png" alt="월드 기록"><br><sub>월드 기록</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/chat.png" alt="채팅박스"><br><sub>채팅박스</sub></td><td width="50%"><img src="docs/screenshots/keyboard.png" alt="VR 키보드"><br><sub>VR 키보드</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/kbfloat.png" alt="플로팅 키보드: Windows 모드"><br><sub>플로팅 키보드: Windows 모드</sub></td><td width="50%"><img src="docs/screenshots/kbfloat-chat.png" alt="플로팅 키보드: 게임 채팅 모드"><br><sub>플로팅 키보드: 게임 채팅 모드</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/emoji.png" alt="이모지 제작기: VRChat 효과 미리보기"><br><sub>이모지 제작기: VRChat 효과 미리보기</sub></td><td width="50%"><img src="docs/screenshots/emoji-sheet.png" alt="이모지 제작기: 스프라이트 시트"><br><sub>이모지 제작기: 스프라이트 시트</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/settings.png" alt="설정"><br><sub>설정</sub></td><td width="50%"><img src="docs/screenshots/theme.png" alt="테마와 강조 색상"><br><sub>테마와 강조 색상</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/friends-th.png" alt="태국어 UI"><br><sub>태국어 UI</sub></td><td width="50%"><img src="docs/screenshots/friends-ja.png" alt="일본어 UI"><br><sub>일본어 UI</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/groups-owned.png" alt="소유·관리 그룹"><br><sub>소유·관리 그룹</sub></td><td width="50%"><img src="docs/screenshots/group-manage.png" alt="그룹 관리 탭"><br><sub>그룹 관리 탭</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/crop-banner.png" alt="자르고 업로드: 그룹 배너 가이드"><br><sub>자르고 업로드: 그룹 배너 가이드</sub></td><td width="50%"><img src="docs/screenshots/login.png" alt="언어 선택이 있는 로그인"><br><sub>언어 선택이 있는 로그인</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/friends-dark.png" alt="친구 (다크 테마)"><br><sub>친구 (다크 테마)</sub></td><td width="50%"><img src="../docs/screenshots/profile.png" alt="프로필 카드"><br><sub>프로필 카드</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/feed.png" alt="피드"><br><sub>피드</sub></td><td width="50%"><img src="../docs/screenshots/notifs.png" alt="알림"><br><sub>알림</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/log.png" alt="게임 로그"><br><sub>게임 로그</sub></td><td width="50%"><img src="../docs/screenshots/history.png" alt="월드 기록"><br><sub>월드 기록</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/chat.png" alt="채팅박스"><br><sub>채팅박스</sub></td><td width="50%"><img src="../docs/screenshots/keyboard.png" alt="VR 키보드"><br><sub>VR 키보드</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/kbfloat.png" alt="플로팅 키보드: Windows 모드"><br><sub>플로팅 키보드: Windows 모드</sub></td><td width="50%"><img src="../docs/screenshots/kbfloat-chat.png" alt="플로팅 키보드: 게임 채팅 모드"><br><sub>플로팅 키보드: 게임 채팅 모드</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/emoji.png" alt="이모지 제작기: VRChat 효과 미리보기"><br><sub>이모지 제작기: VRChat 효과 미리보기</sub></td><td width="50%"><img src="../docs/screenshots/emoji-sheet.png" alt="이모지 제작기: 스프라이트 시트"><br><sub>이모지 제작기: 스프라이트 시트</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/settings.png" alt="설정"><br><sub>설정</sub></td><td width="50%"><img src="../docs/screenshots/theme.png" alt="테마와 강조 색상"><br><sub>테마와 강조 색상</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/friends-th.png" alt="태국어 UI"><br><sub>태국어 UI</sub></td><td width="50%"><img src="../docs/screenshots/friends-ja.png" alt="일본어 UI"><br><sub>일본어 UI</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/groups-owned.png" alt="소유·관리 그룹"><br><sub>소유·관리 그룹</sub></td><td width="50%"><img src="../docs/screenshots/group-manage.png" alt="그룹 관리 탭"><br><sub>그룹 관리 탭</sub></td></tr>
+<tr><td width="50%"><img src="../docs/screenshots/crop-banner.png" alt="자르고 업로드: 그룹 배너 가이드"><br><sub>자르고 업로드: 그룹 배너 가이드</sub></td><td width="50%"><img src="../docs/screenshots/login.png" alt="언어 선택이 있는 로그인"><br><sub>언어 선택이 있는 로그인</sub></td></tr>
 </table>
 
 <sub>스크린샷은 가상의 데모 데이터입니다.</sub>
@@ -146,11 +146,11 @@
 
 ```powershell
 pip install -r requirements.txt
-python vrclog_mac.py          # 실행
+python src/vrclog_mac.py      # 실행
 .\build.ps1                   # dist\VRCNook.exe 빌드
 ```
 
-파일별 설명은 [영어 README](README.md#build-from-source)를 참고하세요.
+파일별 설명은 [영어 README](../README.md#build-from-source)를 참고하세요.
 
 ## 크레딧
 
@@ -162,7 +162,7 @@ python vrclog_mac.py          # 실행
 
 ## 라이선스
 
-[MIT](LICENSE) © iriewiew
+[MIT](../LICENSE) © iriewiew
 
 > VRC Nook은 팬이 만든 비공식 도구이며 VRChat Inc.와 관련이 없고 승인받지 않았습니다.
 > 서드파티 앱을 공식 지원하지 않는 VRChat API를 사용합니다. 사용에 따른 책임은 본인에게 있으며 VRChat 이용 약관을 지켜 주세요.
