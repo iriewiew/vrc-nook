@@ -1295,7 +1295,7 @@ function profileExtras(uid) {
     `<div class="link-row" style="cursor:default">${icon("pencil")}<span style="color:var(--text)">${esc(n.name)}</span><span style="margin-left:auto;flex-shrink:0">${fmtDate(n.first).slice(0, 10)}${n.last && n.last.slice(0, 10) !== n.first.slice(0, 10) ? " – " + fmtDate(n.last).slice(0, 10) : ""}</span></div>`).join("")}</div></div>`;
   const e = x.enc || {};
   if (uid !== AUTH.id) html += `<div class="pcard-section"><div class="lbl">${t("encounters")}</div><div class="locline">${icon("history")}<span class="w wrap">${
-    e.count ? t("met", e.count, fmtDate(e.first), fmtDate(e.last)) : t("neverMet")}</span></div></div>`;
+    e.count ? t("met", e.count, fmtDate(e.first, true), fmtDate(e.last, true)) : t("neverMet")}</span></div></div>`;
   if (uid !== AUTH.id) html += `<div class="pcard-section"><div class="lbl">${t("memo")}</div>
     <textarea class="memo" placeholder="${t("memoPh")}" onchange="api('set_memo','${uid}',this.value);PEXTRA['${uid}'].memo=this.value">${esc(x.memo)}</textarea></div>`;
   return html;
@@ -1579,7 +1579,7 @@ function joinButtons(loc) {
 }
 async function doLaunch(loc) { const r = await api("launch", loc); toast(r?.ok ? t("launched") : t("errGeneric")); }
 async function doInvite(loc) { const r = await api("invite_self", loc); toast(r?.ok ? t("inviteSent") : t("errGeneric")); }
-function fmtDate(ts) { const m = (ts || "").match(/^(\d{4})\.(\d\d)\.(\d\d) (\d\d:\d\d)/); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}` : ts || ""; }
+function fmtDate(ts, sec) { const m = (ts || "").match(/^(\d{4})\.(\d\d)\.(\d\d) (\d\d:\d\d)(:\d\d)?/); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}${sec && m[5] || ""}` : ts || ""; }
 function fmtShort(ts) { const m = (ts || "").match(/^\d{4}\.(\d\d)\.(\d\d) (\d\d:\d\d)/); return m ? `${m[2]}/${m[1]} ${m[3]}` : ts || ""; }
 function tsDate(ts) { return new Date(ts.replace(/^(\d{4})\.(\d\d)\.(\d\d) /, "$1-$2-$3T")); }
 function fmtDur(ms) { const m = Math.max(1, Math.round(ms / 60000)); return m < 60 ? t("mins", m) : t("hours", Math.floor(m / 60), m % 60); }

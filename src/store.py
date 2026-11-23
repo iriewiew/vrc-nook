@@ -111,7 +111,20 @@ class Store:
         if end:
             sql += " AND t < ?"
             args.append(end)
-        return [{"u": u, "name": n, "t": t} for u, n, t in self._query(sql + " GROUP BY uid ORDER BY MIN(t)", args)]
+        players = [{"u": u, "name": n, "t": t} for u, n, t in self._query(sql + " GROUP BY uid ORDER BY MIN(t)", args)]
+        # When each one was there: [join, leave] pairs (a leave missing = still there at the end of the visit)
+        sql = "SELECT t, kind, uid FROM gamelog WHERE kind IN ('join', 'leave') AND t >= ?" + (" AND t < ?" if end else "") + " ORDER BY t"
+        spans, open_ = {}, {}
+        for t, kind, uid in self._query(sql, args):
+            if kind == "join":
+                open_.setdefault(uid, t)
+            elif uid in open_:
+                spans.setdefault(uid, []).append([open_.pop(uid), t])
+        for uid, t in open_.items():
+            spans.setdefault(uid, []).append([t, end or ""])
+        for p in players:
+            p["spans"] = spans.get(p["u"], [])
+        return players
 
     # ---------- feed ----------
     def add_feed(self, entry):

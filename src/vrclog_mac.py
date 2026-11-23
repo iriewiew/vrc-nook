@@ -1,6 +1,7 @@
 """VRC Nook — macOS Tahoe (Liquid Glass) style UI with pywebview + HTML"""
 import asyncio
 import base64
+import bisect
 import ctypes
 import json
 import logging
@@ -20,6 +21,7 @@ import webview
 import battlog
 import chatinfo
 import osc
+import suspects
 import vkbd
 import vrc_api
 import tray
@@ -279,6 +281,68 @@ class Api:
         self._banners.want([uid], network=False, force=True)
         return {"enc": self._store.encounters(uid), "memo": self._store.memo(uid), "friend": self._social.friend(uid),
                 "names": self._store.names(uid)}
+
+    # ---------- Suspicious accounts (suspects.py): ripper / cheat-ad bots ----------
+    def suspects_check(self, uids, not_bots=(), names=None):
+        """{uid: {level, why}} for the players given (players in the room) — from the cached profiles
+        names: uid -> name for people whose profile isn't cached (default: the players in the room now)"""
+        skip = set(not_bots or ())
+        with self._users.lock:
+            infos = {u: (self._users.index.get(u) or {}).get("info") for u in uids or [] if isinstance(u, str) and u not in skip}
+        if names is None:
+            names = dict(self._pump.room.players) if self._pump else {}
+        out = {}
+        for uid, info in infos.items():
+            hit = suspects.check(uid, info, names.get(uid))
+            if hit:
+                out[uid] = hit
+        return out
+
+    def users_by_name(self, names):
+        """{name: [userId, …]} for display names VRC Nook has seen (cached profiles + game log), matched without case;
+        a name several people share gives several IDs, an unknown one an empty list"""
+        want = {str(n).strip().lower(): str(n).strip() for n in names or [] if str(n).strip()}
+        found = {n: set() for n in want.values()}
+        with self._users.lock:
+            pairs = [(u, (e.get("info") or {}).get("displayName") or "") for u, e in self._users.index.items() if u.startswith("usr_")]
+        pairs += self._store._query("SELECT DISTINCT uid, value FROM gamelog WHERE kind = 'join' AND uid LIKE 'usr_%'")
+        for uid, name in pairs:
+            key = (name or "").strip().lower()
+            if key in want:
+                found[want[key]].add(uid)
+        return {n: sorted(v) for n, v in found.items()}
+
+    def suspects_list(self, not_bots=()):
+        """Everyone VRC Nook has seen who looks like a bot: cached profiles + names from the game log, newest sighting first"""
+        skip = set(not_bots or ())
+        seen = {uid: (name, first, last, n) for uid, name, first, last, n in self._store._query(
+            "SELECT uid, MAX(value), MIN(t), MAX(t), COUNT(*) FROM gamelog WHERE kind = 'join' AND uid LIKE 'usr_%' GROUP BY uid")}
+        with self._users.lock:
+            infos = {u: e.get("info") for u, e in self._users.index.items() if u.startswith("usr_")}
+        # The world you were in each time they joined
+        worlds = self._store._query("SELECT t, value FROM gamelog WHERE kind = 'world' ORDER BY t")
+        wtimes = [w[0] for w in worlds]
+        where = {}
+        for t, uid in self._store._query("SELECT t, uid FROM gamelog WHERE kind = 'join' AND uid LIKE 'usr_%' ORDER BY t"):
+            i = bisect.bisect_right(wtimes, t)
+            if i:
+                w = where.setdefault(uid, {})
+                w[worlds[i - 1][1]] = w.get(worlds[i - 1][1], 0) + 1
+        out = []
+        for uid in set(infos) | set(seen):
+            if uid in skip:
+                continue
+            s = seen.get(uid)
+            info = infos.get(uid)
+            hit = suspects.check(uid, info, s[0] if s else None)
+            if hit:
+                out.append({"id": uid, "name": (info or {}).get("displayName") or (s[0] if s else uid), **hit,
+                            "rank": "visitor" if (info or {}).get("trustTags") == [] else None,
+                            "bio": ((info or {}).get("bio") or "")[:200], "first": s[1] if s else "", "last": s[2] if s else "", "times": s[3] if s else 0,
+                            "worlds": sorted(where.get(uid, {}).items(), key=lambda x: -x[1])})
+        out.sort(key=lambda x: x["last"], reverse=True)  # Newest sighting first, never seen last…
+        out.sort(key=lambda x: x["level"] != "confirmed")  # …with the confirmed ones on top (stable sort keeps that order)
+        return out
 
     def frames(self, tids, animated=False):
         tids = [t for t in tids if re.fullmatch(r"invt_[\w-]+", t or "")]
@@ -611,9 +675,12 @@ class Api:
     def history(self):
         return self._store.history()
 
-    def visit_players(self, start, end):
+    def visit_players(self, start, end, not_bots=()):
         players = self._store.visit_players(start, end)
         self._users.want([p["u"] for p in players], network=False)
+        names = {p["u"]: p["name"] for p in players}
+        for uid, hit in self.suspects_check(list(names), not_bots, names).items():  # Flag bots in the visit's list and timeline
+            next(p for p in players if p["u"] == uid)["sus"] = hit["level"]
         return players
 
     def feed(self):

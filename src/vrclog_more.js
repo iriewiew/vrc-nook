@@ -5011,8 +5011,8 @@ function gBulkHtml() {
     onclick="${danger ? `confirmBtn(this,()=>gBulkRun('${op}'))` : `gBulkRun('${op}')`}">${icon(ic)}${label}</button>`;
   return `<div class="gbulk">
     <div class="lbl">${t("g_userIds")}</div>
-    <div class="toolbar"><input class="field grow" id="gselIn" placeholder="${escA(t("g_userIdsPh"))}" value="${escA(GX.selInput)}"
-        oninput="GX.selInput=this.value" onkeydown="if(event.key==='Enter')gSelPaste()">
+    <div class="toolbar gsel-in"><textarea class="field grow" id="gselIn" rows="3" placeholder="${escA(t("g_userIdsPh"))}"
+        oninput="GX.selInput=this.value" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();gSelPaste()}">${esc(GX.selInput)}</textarea>
       ${btn(t("g_addIds"), "gSelPaste()", "sm", "user-plus")}${btn(t("g_pickUser"), "gUserPicker('pick')", "sm", "search")}</div>
     <div class="lbl">${t("g_selected", n)}${n ? `<button class="mini-btn" title="${t("g_clearSel")}" onclick="GX.sel=[];GX.note='';gBulkRefresh()">${icon("trash-2")}</button>` : ""}</div>
     ${n ? GX.sel.map(s => lrow({ uid: s.id, name: s.name, onclick: `showProfile('${esc(s.id)}')`,
@@ -5030,12 +5030,35 @@ function gBulkHtml() {
       ${canKick ? act(t("g_kick"), "door-open", "kick", "", true) : ""}
       ${canBan ? act(t("g_ban"), "ban", "ban", "", true) + act(t("g_unban"), "user-check", "unban") : ""}</div></div>`;
 }
-function gSelPaste() {
-  const ids = GX.selInput.match(/usr_[\w-]+/g) || [];
-  if (!ids.length) return toast(t("g_noIds"));
+// Many at once: IDs anywhere in the text (links, a pasted spreadsheet column), and display names one per line (or per cell
+// when rows are pasted with tabs) — names are looked up among the people VRC Nook has seen
+const USR_ID = /usr_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|usr_[0-9A-Za-z]{10}(?![\w-])/g;
+async function gSelPaste() {
+  const text = GX.selInput || "", ids = text.match(USR_ID) || [], names = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (line.match(USR_ID)) continue;  // A line with an ID: the ID is enough
+    for (const cell of line.split("\t")) {
+      const n = cell.trim();
+      if (n && !/^https?:\/\//.test(n)) names.push(n);
+    }
+  }
+  if (!ids.length && !names.length) return toast(t("g_noIds"));
   GX.selInput = "";
   if ($("gselIn")) $("gselIn").value = "";
-  gSelAdd(ids);
+  let missing = [], shared = [];
+  if (names.length) {
+    const found = await api("users_by_name", [...new Set(names)]) || {};
+    for (const [n, list] of Object.entries(found)) {
+      if (list.length === 1) ids.push(list[0]);
+      else (list.length ? shared : missing).push(n);
+    }
+  }
+  if (missing.length || shared.length) {  // Put back what couldn't be added, so it can be fixed (or replaced by IDs)
+    GX.selInput = [...missing, ...shared].join("\n");
+    if ($("gselIn")) $("gselIn").value = GX.selInput;
+    toast([missing.length ? t("g_namesMissing", missing.length) : "", shared.length ? t("g_namesShared", shared.length) : ""].filter(Boolean).join(" · "));
+  }
+  if (ids.length) gSelAdd(ids, !!(missing.length || shared.length));
 }
 function gSelRole(id) { GX.selRoles = GX.selRoles.includes(id) ? GX.selRoles.filter(x => x !== id) : [...GX.selRoles, id]; gBulkRefresh(); }
 // One action for every selected user, one at a time; then a count of what worked and fresh info for each (never on yourself, except a note)
@@ -5218,8 +5241,10 @@ tx({
   g_export: ["ส่งออก", "Export", "エクスポート"],
   g_exporting: [n => `กำลังโหลด log… ${n}`, n => `Loading the log… ${n}`, n => `ログを読み込み中… ${n}`],
   g_exported: [n => `ส่งออกแล้ว ${n} รายการ`, n => `Exported ${n} entries`, n => `${n} 件をエクスポートしました`],
-  g_userIds: ["User ID", "User ID", "ユーザー ID"],
-  g_userIdsPh: ["วาง usr_… ได้หลายอัน (ลิงก์หรือข้อความที่มี ID ก็ได้)", "Paste one or more usr_… (links or any text with IDs work too)", "usr_… を複数貼り付け（リンクや ID を含む文章でも可）"],
+  g_userIds: ["User ID หรือชื่อผู้เล่น", "User IDs or names", "ユーザー ID または名前"],
+  g_userIdsPh: ["วาง usr_… หรือชื่อผู้เล่นได้หลายอัน (ชื่อละบรรทัด, ลิงก์, หรือคอลัมน์จาก Excel/Google Sheets) · Enter = เพิ่ม", "Paste many usr_… or display names (one name per line, links, or a column from Excel / Google Sheets) · Enter adds them", "usr_… や表示名を複数貼り付け（1 行に 1 名・リンク・Excel / スプレッドシートの列）・Enter で追加"],
+  g_namesMissing: [n => `หาไม่เจอ ${n} ชื่อ (ใช้ได้เฉพาะคนที่ VRC Nook เคยเห็น · ใส่ usr_… แทนได้)`, n => `${n} name(s) not found (only people VRC Nook has seen · use their usr_… instead)`, n => `${n} 件の名前が見つかりません（VRC Nook が見た人のみ・usr_… を使ってください）`],
+  g_namesShared: [n => `${n} ชื่อมีหลายคนใช้ ใส่ usr_… แทน`, n => `${n} name(s) are used by several people: use their usr_…`, n => `${n} 件は同名が複数います：usr_… を使ってください`],
   g_addIds: ["เพิ่ม", "Add", "追加"], g_pickUser: ["เลือกผู้ใช้", "Select user", "ユーザーを選択"],
   g_noIds: ["ไม่พบ usr_… ในข้อความ", "No usr_… found in that text", "usr_… が見つかりません"],
   g_selected: [n => `ผู้ใช้ที่เลือก (${n})`, n => `Selected users (${n})`, n => `選択したユーザー (${n})`],
@@ -5233,32 +5258,32 @@ tx({
 });
 Object.assign(UPD_I18N.ko, { g_bulk: "일괄 작업", g_auditPh: "로그 검색(이름, 설명, 유형) 또는 usr_… 로 VRChat 검색", g_byTarget: "대상", g_byActor: "실행자",
   g_filterUser: "이 사용자의 로그", g_addSel: "일괄 작업에 추가", g_added: n => `일괄 작업에 ${n}명 추가`, g_matchN: (n, m) => `불러온 ${m}개 중 ${n}개 일치`,
-  g_export: "내보내기", g_exporting: n => `로그 불러오는 중… ${n}`, g_exported: n => `${n}개 내보냄`, g_userIds: "사용자 ID",
-  g_userIdsPh: "usr_… 를 여러 개 붙여넣기 (링크나 ID가 든 글도 가능)", g_addIds: "추가", g_pickUser: "사용자 선택", g_noIds: "usr_… 를 찾지 못했습니다",
+  g_export: "내보내기", g_exporting: n => `로그 불러오는 중… ${n}`, g_exported: n => `${n}개 내보냄`, g_userIds: "사용자 ID 또는 이름",
+  g_userIdsPh: "usr_… 나 표시 이름을 여러 개 붙여넣기 (한 줄에 하나, 링크, 엑셀·구글 시트 열) · Enter로 추가", g_namesMissing: n => `이름 ${n}개를 찾지 못함 (VRC Nook이 본 사람만 · usr_… 를 쓰세요)`, g_namesShared: n => `이름 ${n}개는 여러 명이 사용 중: usr_… 를 쓰세요`, g_addIds: "추가", g_pickUser: "사용자 선택", g_noIds: "usr_… 를 찾지 못했습니다",
   g_selected: n => `선택한 사용자 (${n})`, g_clearSel: "목록 지우기", g_noneSel: "선택한 사용자가 없습니다", g_member: "멤버", g_notMember: "멤버 아님",
   g_note: "관리자 메모", g_notePh: "그룹 관리자만 볼 수 있습니다", g_noteMulti: "선택한 모두에게 이 메모를 저장합니다 (기존 메모 대체)",
   g_selRoles: "역할", g_actions: "작업", g_addRoles: "역할 추가", g_removeRoles: "역할 제거", g_saveNote: "메모 저장",
   g_bulkDone: (ok, f) => `성공 ${ok}${f ? ` · 실패 ${f}` : ""}` });
 Object.assign(UPD_I18N.ru, { g_bulk: "Массовые действия", g_auditPh: "Поиск по журналу (имя, описание, тип) или usr_… для поиска в VRChat", g_byTarget: "Цель", g_byActor: "Кто сделал",
   g_filterUser: "Журнал этого пользователя", g_addSel: "Добавить в массовые действия", g_added: n => `Добавлено: ${n}`, g_matchN: (n, m) => `Совпадает ${n} из ${m} загруженных`,
-  g_export: "Экспорт", g_exporting: n => `Загрузка журнала… ${n}`, g_exported: n => `Экспортировано: ${n}`, g_userIds: "ID пользователей",
-  g_userIdsPh: "Вставьте один или несколько usr_… (подойдут ссылки и любой текст с ID)", g_addIds: "Добавить", g_pickUser: "Выбрать пользователя", g_noIds: "usr_… не найдено",
+  g_export: "Экспорт", g_exporting: n => `Загрузка журнала… ${n}`, g_exported: n => `Экспортировано: ${n}`, g_userIds: "ID или имена пользователей",
+  g_userIdsPh: "Вставьте несколько usr_… или имён (по одному в строке, ссылки или столбец из Excel / Google Таблиц) · Enter — добавить", g_namesMissing: n => `Не найдено имён: ${n} (только те, кого видел VRC Nook · используйте usr_…)`, g_namesShared: n => `Имена (${n}) есть у нескольких людей: используйте usr_…`, g_addIds: "Добавить", g_pickUser: "Выбрать пользователя", g_noIds: "usr_… не найдено",
   g_selected: n => `Выбрано (${n})`, g_clearSel: "Очистить список", g_noneSel: "Никто не выбран", g_member: "Участник", g_notMember: "Не участник",
   g_note: "Заметка модератора", g_notePh: "Видна только менеджерам группы", g_noteMulti: "Сохранит эту заметку всем выбранным (заменит прежнюю)",
   g_selRoles: "Роли", g_actions: "Действия", g_addRoles: "Добавить роли", g_removeRoles: "Убрать роли", g_saveNote: "Сохранить заметку",
   g_bulkDone: (ok, f) => `Готово ${ok}${f ? ` · ошибок ${f}` : ""}` });
 Object.assign(UPD_I18N.vi, { g_bulk: "Thao tác hàng loạt", g_auditPh: "Tìm trong nhật ký (tên, mô tả, loại) hoặc usr_… để tìm trên VRChat", g_byTarget: "Đối tượng", g_byActor: "Người thực hiện",
   g_filterUser: "Nhật ký của người này", g_addSel: "Thêm vào thao tác hàng loạt", g_added: n => `Đã thêm ${n} người`, g_matchN: (n, m) => `${n} / ${m} mục đã tải khớp`,
-  g_export: "Xuất", g_exporting: n => `Đang tải nhật ký… ${n}`, g_exported: n => `Đã xuất ${n} mục`, g_userIds: "User ID",
-  g_userIdsPh: "Dán một hoặc nhiều usr_… (liên kết hay văn bản có ID đều được)", g_addIds: "Thêm", g_pickUser: "Chọn người dùng", g_noIds: "Không tìm thấy usr_…",
+  g_export: "Xuất", g_exporting: n => `Đang tải nhật ký… ${n}`, g_exported: n => `Đã xuất ${n} mục`, g_userIds: "User ID hoặc tên",
+  g_userIdsPh: "Dán nhiều usr_… hoặc tên hiển thị (mỗi dòng một tên, liên kết, hoặc cột từ Excel / Google Sheets) · Enter để thêm", g_namesMissing: n => `Không tìm thấy ${n} tên (chỉ người VRC Nook đã thấy · hãy dùng usr_…)`, g_namesShared: n => `${n} tên có nhiều người dùng: hãy dùng usr_…`, g_addIds: "Thêm", g_pickUser: "Chọn người dùng", g_noIds: "Không tìm thấy usr_…",
   g_selected: n => `Đã chọn (${n})`, g_clearSel: "Xóa danh sách", g_noneSel: "Chưa chọn ai", g_member: "Thành viên", g_notMember: "Không phải thành viên",
   g_note: "Ghi chú quản lý", g_notePh: "Chỉ quản lý nhóm thấy được", g_noteMulti: "Lưu ghi chú này cho mọi người đã chọn (thay ghi chú cũ)",
   g_selRoles: "Vai trò", g_actions: "Thao tác", g_addRoles: "Thêm vai trò", g_removeRoles: "Gỡ vai trò", g_saveNote: "Lưu ghi chú",
   g_bulkDone: (ok, f) => `Thành công ${ok}${f ? ` · thất bại ${f}` : ""}` });
 Object.assign(UPD_I18N.zh, { g_bulk: "批量操作", g_auditPh: "搜索日志（名称、描述、类型），或输入 usr_… 在 VRChat 中搜索", g_byTarget: "对象", g_byActor: "执行者",
   g_filterUser: "查看此用户的日志", g_addSel: "加入批量操作", g_added: n => `已加入 ${n} 人`, g_matchN: (n, m) => `已加载的 ${m} 条中有 ${n} 条匹配`,
-  g_export: "导出", g_exporting: n => `正在加载日志… ${n}`, g_exported: n => `已导出 ${n} 条`, g_userIds: "用户 ID",
-  g_userIdsPh: "粘贴一个或多个 usr_…（链接或含 ID 的文字也可以）", g_addIds: "添加", g_pickUser: "选择用户", g_noIds: "未找到 usr_…",
+  g_export: "导出", g_exporting: n => `正在加载日志… ${n}`, g_exported: n => `已导出 ${n} 条`, g_userIds: "用户 ID 或名称",
+  g_userIdsPh: "粘贴多个 usr_… 或显示名称（每行一个、链接、或 Excel / Google 表格的一列）· 按 Enter 添加", g_namesMissing: n => `找不到 ${n} 个名字（仅限 VRC Nook 见过的人 · 请改用 usr_…）`, g_namesShared: n => `${n} 个名字有多人使用：请改用 usr_…`, g_addIds: "添加", g_pickUser: "选择用户", g_noIds: "未找到 usr_…",
   g_selected: n => `已选用户 (${n})`, g_clearSel: "清空列表", g_noneSel: "尚未选择用户", g_member: "成员", g_notMember: "不是成员",
   g_note: "管理员备注", g_notePh: "仅群组管理员可见", g_noteMulti: "将此备注保存给所有已选用户（覆盖原备注）",
   g_selRoles: "角色", g_actions: "操作", g_addRoles: "添加角色", g_removeRoles: "移除角色", g_saveNote: "保存备注",
@@ -6769,7 +6794,7 @@ function rankSecPer() {
   const secs = (Date.now() - RPROG.t0) / 1000;
   return RPROG.done >= 5 && secs > 0 ? secs / RPROG.done : SEC_PER_CHECK;
 }
-function fmtDur(sec) {
+function fmtSecs(sec) {  // Rank-check ETA in seconds (fmtDur in the page takes milliseconds: a different function)
   sec = Math.max(0, Math.round(sec));
   const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
   return h ? t("dur_hm", h, m) : sec >= 60 ? t("dur_m", Math.max(1, m)) : t("dur_lt1m");
@@ -6788,11 +6813,11 @@ function rankNote(hit, of, scan) {
   let body = "";
   if (scan.rate) body += `<div class="rank-ask">${icon("info")}<span>${t("g_rankRate")}</span></div>`;
   if (scan.list && !scan.done && total) body += rankBar(t("g_rankLoadBar"), scan.list.length, scan.all ? total : Math.min(total, scan.limit));
-  if (wait) body += rankBar(t("g_rankCheckBar"), RPROG.done, RPROG.total, `<span class="rank-eta">${t("g_rankEta", fmtDur(wait * rankSecPer()))}</span>`);
+  if (wait) body += rankBar(t("g_rankCheckBar"), RPROG.done, RPROG.total, `<span class="rank-eta">${t("g_rankEta", fmtSecs(wait * rankSecPer()))}</span>`);
   if (scan.ask) {
     const left = Math.max(0, total - scan.list.length), ratio = scan.list.length ? (scan.queued || 0) / scan.list.length : 1;
     const checks = Math.round(wait + left * ratio), secs = Math.max(checks * rankSecPer(), left / 100 * 2.3);  // Pages and rank checks run side by side
-    body += `<div class="rank-ask">${icon("info")}<span>${t("g_rankAllAsk", checks.toLocaleString(), fmtDur(secs))}</span>
+    body += `<div class="rank-ask">${icon("info")}<span>${t("g_rankAllAsk", checks.toLocaleString(), fmtSecs(secs))}</span>
       <button class="btn sm primary" onclick="rankAll(true)">${t("g_rankAllGo")}</button><button class="btn sm" onclick="rankAll(false)">${t("cancel")}</button></div>`;
   } else if (scan.list && scan.done && !scan.all && (scan.capped || !wait && scan.list.some(m => !rankOf(m.userId)))) {
     body += `<div class="rank-acts">${scan.capped ? `<button class="btn sm" onclick="rankMore()">${icon("chevron-down")}${t("g_rankMore", RSCAN_MAX.toLocaleString())}</button>` : ""}
@@ -7072,3 +7097,334 @@ Object.assign(UPD_I18N.ko, { upd_nightly: "나이틀리 빌드 받기 (베타)",
 Object.assign(UPD_I18N.ru, { upd_nightly: "Получать ночные сборки (бета)", upd_nightlyHint: "Новое раньше всех, но возможны ошибки · если выключить, со следующим стабильным выпуском вернётесь на стабильную версию" });
 Object.assign(UPD_I18N.vi, { upd_nightly: "Nhận bản nightly (thử nghiệm)", upd_nightlyHint: "Có tính năng mới sớm nhưng có thể có lỗi · tắt đi thì sẽ quay lại bản ổn định từ bản ổn định kế tiếp" });
 Object.assign(UPD_I18N.zh, { upd_nightly: "接收每夜构建（测试版）", upd_nightlyHint: "抢先体验新功能，但可能有问题 · 关闭后会在下一个正式版时回到正式版" });
+
+
+// ---------- Suspicious people: ripper / cheat-ad bots (rules in suspects.py) — alert when one joins your room, block by hand or
+// automatically, and a page listing every one VRC Nook has seen ----------
+tx({
+  nav_suspects: ["บุคคลน่าสงสัย", "Suspicious people", "不審なユーザー"],
+  sus_confirmed: ["บอทแน่นอน", "Bot", "ボット確定"], sus_suspected: ["น่าสงสัย", "Suspected", "疑わしい"],
+  sus_whyAd: ["bio โฆษณาโปรแกรมโกงหรือขโมยอวตาร", "Bio advertises cheats or avatar ripping", "プロフィールでチート・アバター盗用を宣伝"],
+  sus_whyName: ["Visitor + ชื่อแบบเดียวกับบอท", "Visitor with a bot-style name", "Visitor・ボット風の名前"],
+  sus_whyNameOnly: ["ชื่อแบบเดียวกับบอท (ยังไม่ได้โหลดโปรไฟล์)", "Bot-style name (profile not loaded yet)", "ボット風の名前（プロフィール未取得）"],
+  sus_seen: [(n, d) => `เจอในห้อง ${n} ครั้ง · ล่าสุด ${d}`, (n, d) => `In your room ${n}× · last ${d}`, (n, d) => `同じルーム ${n} 回・最終 ${d}`],
+  sus_notSeen: ["ยังไม่เคยอยู่ห้องเดียวกัน", "Never in your room", "同じルームになったことはありません"],
+  sus_join: [n => `${n} เข้ามาในห้อง`, n => `${n} joined your room`, n => `${n} がルームに参加`],
+  sus_autoBlocked: [n => `บล็อก ${n} อัตโนมัติแล้ว`, n => `Blocked ${n} automatically`, n => `${n} を自動ブロックしました`],
+  sus_block: ["บล็อก", "Block", "ブロック"], sus_blocked: ["บล็อกแล้ว", "Blocked", "ブロック済み"], sus_unblock: ["เลิกบล็อก", "Unblock", "ブロック解除"],
+  sus_notBot: ["ไม่ใช่บอท", "Not a bot", "ボットではない"],
+  sus_notBotDone: [n => `${n} จะไม่ถูกนับเป็นบุคคลน่าสงสัยอีก`, n => `${n} won't be flagged again`, n => `${n} は今後表示しません`],
+  sus_notBotN: [n => `ทำเครื่องหมายว่าไม่ใช่บอท ${n} คน`, n => `${n} marked as not a bot`, n => `ボットではない: ${n} 人`],
+  sus_notBotReset: ["ล้างรายการ", "Clear list", "リセット"],
+  sus_blockAll: [n => `บล็อกบอทแน่นอนทั้งหมด (${n})`, n => `Block all bots (${n})`, n => `ボット確定を全てブロック（${n}）`],
+  sus_blockingAll: [(a, b) => `กำลังบล็อก ${a}/${b}…`, (a, b) => `Blocking ${a}/${b}…`, (a, b) => `ブロック中 ${a}/${b}…`],
+  sus_notify: ["แจ้งเตือนเมื่อบุคคลน่าสงสัยเข้าห้อง", "Alert when a suspicious person joins your room", "不審なユーザーが参加したら通知"],
+  sus_notifyHint: ["ในแอป, การแจ้งเตือนของ Windows และใน VR (ถ้าเปิด VR overlay)", "In the app, as a Windows notification, and in VR when the VR overlay is on",
+    "アプリ内・Windows 通知・VR（VR オーバーレイ有効時）"],
+  sus_auto: ["บล็อกอัตโนมัติ", "Block automatically", "自動ブロック"],
+  sus_autoHint: ["บล็อกทันทีที่เข้าห้องเดียวกับคุณ · \"น่าสงสัย\" อาจจับคนจริงผิดได้", "Blocks them as soon as they join your room · \"Suspected\" can catch a real person by mistake",
+    "同じルームに来た時点でブロック・「疑わしい」は実在の人を誤検出することがあります"],
+  sus_autoOff: ["ปิด", "Off", "オフ"], sus_autoConfirmed: ["เฉพาะบอทแน่นอน", "Bots only", "ボット確定のみ"], sus_autoAll: ["ทั้งหมด", "Bots + suspected", "疑わしいも含む"],
+  sus_none: ["ยังไม่เจอบุคคลน่าสงสัย", "No suspicious people found", "不審なユーザーは見つかっていません"],
+});
+Object.assign(UPD_I18N.ko, { nav_suspects: "의심 사용자", sus_confirmed: "봇 확실", sus_suspected: "의심", sus_whyAd: "프로필에서 치트·아바타 도용 광고", sus_whyName: "Visitor + 봇 같은 이름", sus_whyNameOnly: "봇 같은 이름 (프로필 미확인)", sus_seen: (n, d) => `같은 방 ${n}회 · 마지막 ${d}`, sus_notSeen: "같은 방에 있었던 적 없음", sus_join: n => `${n} 님이 방에 들어옴`, sus_autoBlocked: n => `${n} 자동 차단함`, sus_block: "차단", sus_blocked: "차단됨", sus_unblock: "차단 해제", sus_notBot: "봇 아님", sus_notBotDone: n => `${n} 님은 다시 표시하지 않음`, sus_notBotN: n => `봇 아님 ${n}명`, sus_notBotReset: "초기화", sus_blockAll: n => `봇 모두 차단 (${n})`, sus_blockingAll: (a, b) => `차단 중 ${a}/${b}…`, sus_notify: "의심 사용자가 방에 들어오면 알림", sus_notifyHint: "앱 안, Windows 알림, VR (VR 오버레이 켰을 때)", sus_auto: "자동 차단", sus_autoHint: "같은 방에 오면 바로 차단 · '의심'은 실제 사람을 잘못 잡을 수 있음", sus_autoOff: "끄기", sus_autoConfirmed: "봇만", sus_autoAll: "의심 포함", sus_none: "의심 사용자 없음" });
+Object.assign(UPD_I18N.ru, { nav_suspects: "Подозрительные", sus_confirmed: "Бот", sus_suspected: "Подозрение", sus_whyAd: "В профиле реклама читов или кражи аватаров", sus_whyName: "Visitor с именем как у ботов", sus_whyNameOnly: "Имя как у ботов (профиль не загружен)", sus_seen: (n, d) => `В вашей комнате ${n}× · последний раз ${d}`, sus_notSeen: "Не был в вашей комнате", sus_join: n => `${n} зашёл в вашу комнату`, sus_autoBlocked: n => `${n} заблокирован автоматически`, sus_block: "Заблокировать", sus_blocked: "Заблокирован", sus_unblock: "Разблокировать", sus_notBot: "Не бот", sus_notBotDone: n => `${n} больше не будет отмечен`, sus_notBotN: n => `Отмечено «не бот»: ${n}`, sus_notBotReset: "Сбросить", sus_blockAll: n => `Заблокировать всех ботов (${n})`, sus_blockingAll: (a, b) => `Блокировка ${a}/${b}…`, sus_notify: "Оповещать, когда подозрительный заходит в комнату", sus_notifyHint: "В приложении, уведомлением Windows и в VR (если включён VR-оверлей)", sus_auto: "Блокировать автоматически", sus_autoHint: "Блокирует сразу при входе в вашу комнату · «Подозрение» может ошибиться на живом человеке", sus_autoOff: "Выкл", sus_autoConfirmed: "Только боты", sus_autoAll: "И подозрительные", sus_none: "Подозрительных нет" });
+Object.assign(UPD_I18N.vi, { nav_suspects: "Người đáng ngờ", sus_confirmed: "Bot chắc chắn", sus_suspected: "Đáng ngờ", sus_whyAd: "Hồ sơ quảng cáo hack hoặc trộm avatar", sus_whyName: "Visitor có tên kiểu bot", sus_whyNameOnly: "Tên kiểu bot (chưa tải hồ sơ)", sus_seen: (n, d) => `Ở phòng bạn ${n} lần · gần nhất ${d}`, sus_notSeen: "Chưa từng ở phòng bạn", sus_join: n => `${n} vào phòng bạn`, sus_autoBlocked: n => `Đã tự động chặn ${n}`, sus_block: "Chặn", sus_blocked: "Đã chặn", sus_unblock: "Bỏ chặn", sus_notBot: "Không phải bot", sus_notBotDone: n => `${n} sẽ không bị đánh dấu nữa`, sus_notBotN: n => `Đã đánh dấu không phải bot: ${n}`, sus_notBotReset: "Xóa danh sách", sus_blockAll: n => `Chặn tất cả bot (${n})`, sus_blockingAll: (a, b) => `Đang chặn ${a}/${b}…`, sus_notify: "Báo khi người đáng ngờ vào phòng", sus_notifyHint: "Trong ứng dụng, thông báo Windows và trong VR (khi bật VR overlay)", sus_auto: "Tự động chặn", sus_autoHint: "Chặn ngay khi vào phòng bạn · 'Đáng ngờ' có thể bắt nhầm người thật", sus_autoOff: "Tắt", sus_autoConfirmed: "Chỉ bot", sus_autoAll: "Cả đáng ngờ", sus_none: "Không có người đáng ngờ" });
+Object.assign(UPD_I18N.zh, { nav_suspects: "可疑用户", sus_confirmed: "确定是机器人", sus_suspected: "可疑", sus_whyAd: "简介在推销外挂或盗模", sus_whyName: "Visitor + 机器人式名字", sus_whyNameOnly: "机器人式名字（未加载资料）", sus_seen: (n, d) => `同房间 ${n} 次 · 最近 ${d}`, sus_notSeen: "未曾同房间", sus_join: n => `${n} 进入了你的房间`, sus_autoBlocked: n => `已自动屏蔽 ${n}`, sus_block: "屏蔽", sus_blocked: "已屏蔽", sus_unblock: "取消屏蔽", sus_notBot: "不是机器人", sus_notBotDone: n => `不再标记 ${n}`, sus_notBotN: n => `已标记不是机器人：${n} 人`, sus_notBotReset: "清空", sus_blockAll: n => `屏蔽所有机器人（${n}）`, sus_blockingAll: (a, b) => `正在屏蔽 ${a}/${b}…`, sus_notify: "可疑用户进入房间时提醒", sus_notifyHint: "应用内、Windows 通知、VR（开启 VR 叠加层时）", sus_auto: "自动屏蔽", sus_autoHint: "进入你的房间就屏蔽 ·「可疑」可能误判真人", sus_autoOff: "关", sus_autoConfirmed: "仅机器人", sus_autoAll: "含可疑", sus_none: "没有可疑用户" });
+Object.assign(DEFAULTS, { susNotify: true, susAuto: "off" });
+
+const SUS = { room: {}, alerted: new Set(), list: null, loading: false, timer: 0, queue: Promise.resolve(), bulk: null };
+const susNotBots = () => S.notBots || [];
+const susName = uid => PROFILES[uid]?.displayName || (lastBatch?.players || []).find(p => p[0] === uid)?.[1] || SUS.list?.find(x => x.id === uid)?.name || uid;
+const susLive = h => h && h.why !== "nameOnly";  // A name alone waits for the profile (loaded for everyone in the room)
+function susCheckSoon() { clearTimeout(SUS.timer); SUS.timer = setTimeout(susCheck, 700); }
+async function susCheck() {
+  if (!AUTH.loggedIn) return;
+  const ids = (lastBatch?.players || []).map(p => p[0]).filter(u => u && u !== AUTH.id);
+  SUS.room = ids.length ? await api("suspects_check", ids, susNotBots()) || {} : {};
+  const loc = myLoc();
+  for (const [uid, h] of Object.entries(SUS.room)) {
+    if (!susLive(h) || SUS.alerted.has(loc + "|" + uid)) continue;
+    SUS.alerted.add(loc + "|" + uid);
+    susAlert(uid, h);
+  }
+  susMark();
+}
+function susAlert(uid, h) {
+  const auto = S.susAuto === "all" || (S.susAuto === "confirmed" && h.level === "confirmed");
+  const say = msg => {
+    toast(msg);
+    winNotify("VRC Nook", msg);
+    if (vrOn()) vrToast(susName(uid), msg, { uid, ic: "shield-alert", color: "red" });
+  };
+  if (auto) SUS.queue = SUS.queue.then(async () => { if (await susBlock(uid, true) === "new") say(t("sus_autoBlocked", susName(uid))); });
+  else if (S.susNotify) say(`${t(h.level === "confirmed" ? "sus_confirmed" : "sus_suspected")}: ${t("sus_join", susName(uid))}`);
+  SUS.list = null;  // The page re-reads its list (a new sighting)
+}
+// Block one user: "new" = blocked now, "had" = already blocked, null = failed
+async function susBlock(uid, quiet) {
+  if (!MODS.list) { MODS.loading = false; await loadMods(true); }
+  if (modsOf(uid).has("block")) return "had";
+  const r = await vrc("moderateUser", { moderated: uid, type: "block" });
+  if ("error" in r) { if (!quiet) apiError(r); return null; }
+  MODS.list = [...(MODS.list || []), { type: "block", targetUserId: uid, targetDisplayName: susName(uid), created: new Date().toISOString() }];
+  repaint();
+  await new Promise(res => setTimeout(res, 1200));  // Several bots often arrive together: don't fire blocks back to back
+  return "new";
+}
+async function susBlockOne(uid) { if (await susBlock(uid) === "new") toast(t("sus_blocked")); }
+async function susBlockAll() {
+  const ids = (SUS.list || []).filter(x => x.level === "confirmed" && !modsOf(x.id).has("block")).map(x => x.id);
+  SUS.bulk = [0, ids.length];
+  repaint();
+  for (const uid of ids) {
+    if (!SUS.bulk) break;
+    await susBlock(uid, true);
+    SUS.bulk[0]++;
+    repaint();
+  }
+  SUS.bulk = null;
+  await loadMods(true);
+  toast(t("done"));
+}
+function susNotBot(uid) {
+  S.notBots = [...new Set([...susNotBots(), uid])];
+  save();
+  toast(t("sus_notBotDone", susName(uid)));
+  if (SUS.list) SUS.list = SUS.list.filter(x => x.id !== uid);
+  delete SUS.room[uid];
+  lastPlayers = ""; renderPlayers(lastBatch?.players || []);
+  repaint();
+}
+function susNotBotReset() { S.notBots = []; save(); SUS.list = null; susCheckSoon(); repaint(); }
+// A shield on the player's row in "Players in Room"
+function susMark() {
+  $("players")?.querySelectorAll(".player").forEach(row => {
+    row.querySelector(".sus-tag")?.remove();
+    const h = SUS.room[row.title];
+    if (!susLive(h)) return;
+    row.querySelector(".pname")?.insertAdjacentHTML("afterend", `<span class="sus-tag ${h.level}" title="${escA(t(h.level === "confirmed" ? "sus_confirmed" : "sus_suspected"))}">${icon("shield-alert")}</span>`);
+  });
+}
+const _renderPlayersSus = renderPlayers;
+renderPlayers = function (list) { _renderPlayersSus(list); susMark(); susCheckSoon(); };
+
+// The page
+NAV.suspects = ["shield-alert", "red"];
+VIEWS.splice(VIEWS.indexOf("safety") + 1, 0, "suspects");
+$("jump").insertAdjacentHTML("beforebegin", `<div class="view" id="v_suspects"></div>`);
+async function susLoad() {
+  SUS.loading = true;
+  SUS.list = await api("suspects_list", susNotBots()) || [];
+  SUS.loading = false;
+  repaint();
+}
+VIEW_REFRESH.suspects = () => { SUS.list = null; susLoad(); };
+function renderSuspects() {
+  const el = $("v_suspects");
+  if (!AUTH.loggedIn) return needLogin(el);
+  if (!MODS.list && !MODS.loading) loadMods();
+  if (!SUS.list && !SUS.loading) susLoad();
+  const opts = "";
+  if (!SUS.list) return el.innerHTML = opts + stateHtml({ loading: true }, "", 160);
+  const list = SUS.list.filter(x => !query || (x.name || "").toLowerCase().includes(query) || x.id.includes(query));
+  const toBlock = SUS.list.filter(x => x.level === "confirmed" && !modsOf(x.id).has("block")).length;
+  const nb = susNotBots().length;
+  const bar = `<div class="toolbar"><span class="sus-count">${list.length.toLocaleString()} ${t("nav_suspects").toLowerCase()}</span><span class="grow"></span>
+    ${nb ? `<span class="sus-nb">${t("sus_notBotN", nb)} · <span class="link" onclick="susNotBotReset()">${t("sus_notBotReset")}</span></span>` : ""}
+    ${list.length ? `<button class="btn sm" onclick="susExport()">${icon("download")}CSV</button>` : ""}
+    ${SUS.bulk ? `<button class="btn sm" onclick="SUS.bulk=null">${icon("x")}${t("sus_blockingAll", SUS.bulk[0], SUS.bulk[1])}</button>`
+      : toBlock ? `<button class="btn sm danger" onclick="confirmBtn(this,()=>susBlockAll())">${icon("shield-ban")}${t("sus_blockAll", toBlock)}</button>` : ""}</div>`;
+  const pg = paged("suspects", list);
+  const rows = pg.items.map(x => {
+    const blocked = modsOf(x.id).has("block");
+    const sub = `<span class="sus-pill ${x.level}">${t(x.level === "confirmed" ? "sus_confirmed" : "sus_suspected")}</span> ${t({ ad: "sus_whyAd", name: "sus_whyName", nameOnly: "sus_whyNameOnly" }[x.why])}
+      · ${x.last ? t("sus_seen", x.times, fmtDate(x.last)) : t("sus_notSeen")}${x.bio ? `<div class="sus-bio">${esc(x.bio)}</div>` : ""}`;
+    const acts = (blocked ? btn(t("sus_unblock"), `modToggle('${esc(x.id)}','block')`, "sm")
+      : btn(t("sus_block"), `susBlockOne('${esc(x.id)}')`, "sm danger", "shield-ban")) + btn(t("sus_notBot"), `susNotBot('${esc(x.id)}')`, "sm", "user-check");
+    return lrow({ uid: x.id, name: x.name, sub, acts, onclick: `showProfile('${esc(x.id)}')`, cls: blocked ? "sus-done" : "" });
+  }).join("");
+  el.innerHTML = opts + bar + (list.length ? rows + pg.bar : `<div class="empty-state" style="height:160px">${t("sus_none")}</div>`);
+  fillSlots(el);
+}
+VIEW_RENDER.suspects = renderSuspects;
+// The list as shown (search applied) as a CSV file, e.g. to report them to VRChat or share with other group moderators
+async function susExport() {
+  const list = (SUS.list || []).filter(x => !query || (x.name || "").toLowerCase().includes(query) || x.id.includes(query));
+  const cell = v => { const s = String(v ?? ""); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const why = { ad: "bio advertises cheats / avatar ripping", name: "Visitor with a bot-style name", nameOnly: "bot-style name (profile not loaded)" };
+  const cols = ["level", "displayName", "userId", "reason", "rank", "blocked", "bio", "seenInRoom", "firstSeen", "lastSeen", "worlds", "profile"];
+  const rows = list.map(x => [x.level === "confirmed" ? "bot" : "suspected", x.name, x.id, why[x.why] || x.why, x.rank || "", modsOf(x.id).has("block") ? "yes" : "",
+    (x.bio || "").replace(/\s+/g, " "), x.times || 0, x.first || "", x.last || "", (x.worlds || []).map(([w, n]) => n > 1 ? `${w} ×${n}` : w).join(" · "), `https://vrchat.com/home/user/${x.id}`]);
+  const text = [cols.join(","), ...rows.map(r => r.map(cell).join(","))].join("\r\n");
+  const r = await api("save_text", `vrcnook_suspicious_${new Date().toISOString().slice(0, 10)}.csv`, text);
+  if (r?.ok) toast(t("g_exported", rows.length));
+}
+// Its switches live in Settings (a section before "Data")
+const _buildSettingsSus = buildSettings;
+buildSettings = function () {
+  _buildSettingsSus();
+  if (settingsView !== "main") return;
+  const anchor = [...$("sheet").querySelectorAll(".sec-title")].find(el => el.textContent === t("data"));
+  anchor?.insertAdjacentHTML("beforebegin", `<div class="sec-title" id="secSuspects">${t("nav_suspects")}</div><div class="card">
+    ${srow("bell", "orange", t("sus_notify"), sw("susNotify"), t("sus_notifyHint"))}
+    ${srow("shield-ban", "red", t("sus_auto"), seg("susAuto", { off: t("sus_autoOff"), confirmed: t("sus_autoConfirmed"), all: t("sus_autoAll") }), t("sus_autoHint"))}</div>`);
+};
+const _setSSus = setS;
+setS = async function (key, value) { await _setSSus(key, value); if (key === "susAuto" || key === "susNotify") repaint(); };
+document.head.insertAdjacentHTML("beforeend", `<style>
+.player .sus-tag { display: inline-grid; place-items: center; flex-shrink: 0; margin-left: -4px; }
+.player .sus-tag svg { width: 13px; height: 13px; }
+.sus-tag.confirmed, .sus-pill.confirmed { color: var(--red); }
+.sus-tag.suspected, .sus-pill.suspected { color: var(--orange); }
+.sus-pill { display: inline-block; padding: 0 7px; border-radius: 99px; font-size: 11px; font-weight: 600; margin-right: 2px;
+            background: color-mix(in srgb, currentColor 14%, transparent); }
+.sus-bio { margin-top: 2px; font-size: 11.5px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lrow.sus-done { opacity: .6; }
+.sus-count { font-size: 12.5px; font-weight: 600; color: var(--text2); }
+.sus-nb { font-size: 12px; color: var(--text2); }
+</style>`);
+document.head.insertAdjacentHTML("beforeend", `<style>
+.gsel-in { align-items: flex-start; }
+.gsel-in textarea { resize: vertical; min-height: 34px; font: inherit; }
+</style>`);
+
+
+// ---------- History: a timeline of who was in the room when, and suspicious people marked; the Suspicious people page says where
+// each was seen ----------
+tx({
+  hv_timeline: ["ไทม์ไลน์", "Timeline", "タイムライン"], hv_list: ["รายชื่อ", "List", "一覧"],
+  hv_person: ["คนปกติ", "Player", "プレイヤー"], hv_stay: ["อยู่", "stayed", "滞在"],
+  hv_sec: [n => `${n} วินาที`, n => `${n} s`, n => `${n} 秒`],
+  sus_where: ["เจอที่", "Seen in", "見かけた場所"],
+});
+Object.assign(UPD_I18N.ko, { hv_timeline: "타임라인", hv_list: "목록", hv_person: "플레이어", hv_stay: "머문 시간", hv_sec: n => `${n}초`, sus_where: "본 곳" });
+Object.assign(UPD_I18N.ru, { hv_timeline: "Хронология", hv_list: "Список", hv_person: "Игрок", hv_stay: "пробыл", hv_sec: n => `${n} с`, sus_where: "Где видели" });
+Object.assign(UPD_I18N.vi, { hv_timeline: "Dòng thời gian", hv_list: "Danh sách", hv_person: "Người chơi", hv_stay: "ở lại", hv_sec: n => `${n} giây`, sus_where: "Gặp ở" });
+Object.assign(UPD_I18N.zh, { hv_timeline: "时间线", hv_list: "列表", hv_person: "玩家", hv_stay: "停留", hv_sec: n => `${n} 秒`, sus_where: "出现过的地方" });
+Object.assign(DEFAULTS, { histView: "timeline" });
+
+const hvHms = d => d.toTimeString().slice(0, 8);
+const hvLen = ms => ms < 60000 ? t("hv_sec", Math.max(1, Math.round(ms / 1000))) : fmtDur(ms);
+function hvSet(view, key) { S.histView = view; save(); const v = historyData?.find(x => x.t === key); const row = [...document.querySelectorAll("#v_history .hrow")].find(r => r.dataset.t === key); if (v && row) fillVisit(v, row); }
+// Ticks every 5 min … 1 day, so that a visit gets about 4–7 of them
+function hvTicks(t0, t1) {
+  const span = (t1 - t0) / 60000;
+  const step = [5, 10, 15, 30, 60, 120, 180, 360, 720, 1440].find(m => span / m <= 7) || 2880;
+  const out = [], first = new Date(t0);
+  first.setSeconds(0, 0);
+  first.setMinutes(Math.ceil((first.getHours() * 60 + first.getMinutes()) / step) * step - first.getHours() * 60);
+  for (let x = +first; x <= t1; x += step * 60000) if (x >= t0) out.push(x);
+  return out;
+}
+function hvTimeline(v, ps) {
+  const t0 = +tsDate(v.t), ongoing = !v.end && v === historyData?.[0], t1 = v.end ? +tsDate(v.end) : ongoing ? Date.now() : Math.max(t0 + 60000, ...ps.flatMap(p => p.spans.map(s => +tsDate(s[1] || s[0]))));
+  const W = Math.max(1, t1 - t0), pct = x => Math.min(100, Math.max(0, (x - t0) / W * 100));
+  const multiDay = new Date(t0).toDateString() !== new Date(t1).toDateString();
+  const ticks = hvTicks(t0, t1).map(x => `<span class="hv-tick${pct(x) > 88 ? " end" : ""}" style="left:${pct(x)}%"><i>${multiDay && new Date(x).getHours() === 0 ? new Date(x).toLocaleDateString(S.lang, { day: "numeric", month: "short" }) : new Date(x).toTimeString().slice(0, 5)}</i></span>`).join("");
+  const grid = hvTicks(t0, t1).map(x => `<span class="hv-grid" style="left:${pct(x)}%"></span>`).join("");
+  const rows = ps.map(p => {
+    const cls = p.sus === "confirmed" ? "bot" : p.sus ? "sus" : "";
+    const bars = p.spans.map(([a, b]) => {
+      const A = +tsDate(a), B = b ? +tsDate(b) : t1;
+      return `<span class="hv-bar ${cls}" style="left:${pct(A)}%;width:max(4px,${pct(B) - pct(A)}%)" data-a="${A}" data-b="${B}"></span>`;
+    }).join("");
+    return `<div class="hv-row" data-u="${esc(p.u)}" data-n="${escA(p.name)}"><div class="hv-name ${cls}" title="${escA(p.name)}">${cls ? icon("shield-alert") : ""}<span>${esc(p.name)}</span></div>
+      <div class="hv-track">${grid}${bars}</div></div>`;
+  }).join("");
+  const kinds = new Set(ps.map(p => p.sus === "confirmed" ? "bot" : p.sus ? "sus" : ""));
+  const legend = `<div class="hv-legend"><span><i class="hv-key"></i>${t("hv_person")}</span>${kinds.has("bot") ? `<span><i class="hv-key bot"></i>${icon("shield-alert")}${t("sus_confirmed")}</span>` : ""}${kinds.has("sus") ? `<span><i class="hv-key sus"></i>${icon("shield-alert")}${t("sus_suspected")}</span>` : ""}</div>`;
+  return `${legend}<div class="hv-axisbox"><div class="hv-axis"><div class="hv-name"></div><div class="hv-track">${ticks}</div></div></div><div class="hv-chart">${rows}</div>`;
+}
+const _fillVisitHv = fillVisit;
+fillVisit = async function (v, row) {
+  row.dataset.t = v.t;
+  const body = row.querySelector(".hbody");
+  if (!histPlayers[v.t]) { body.textContent = t("loading"); histPlayers[v.t] = (await api("visit_players", v.t, v.end, susNotBots())) || []; }
+  const ps = histPlayers[v.t];
+  if (!ps.length) return _fillVisitHv(v, row);
+  const view = S.histView === "list" ? "list" : "timeline";
+  const tabs = `<div class="segmented hv-tabs">${["timeline", "list"].map(k => `<button class="${view === k ? "on" : ""}" onclick="event.stopPropagation();hvSet('${k}','${esc(v.t)}')">${t("hv_" + k)}</button>`).join("")}</div>`;
+  if (view === "list") {
+    await _fillVisitHv(v, row);
+    body.insertAdjacentHTML("afterbegin", tabs);
+    body.querySelectorAll(".chip").forEach((c, i) => {  // Same order as ps
+      const p = ps[i];
+      if (p?.sus) { c.classList.add(p.sus === "confirmed" ? "bot" : "sus"); c.insertAdjacentHTML("beforeend", icon("shield-alert")); }
+    });
+    return;
+  }
+  body.innerHTML = tabs + hvTimeline(v, ps);
+  body.querySelectorAll(".hv-row").forEach(r => r.onclick = () => showProfile(r.dataset.u, r.dataset.n));
+  const tip = $("hvTip") || document.body.appendChild(Object.assign(document.createElement("div"), { id: "hvTip", className: "hv-tip" }));
+  body.querySelectorAll(".hv-bar").forEach(b => {
+    b.onmousemove = e => {
+      const a = +b.dataset.a, z = +b.dataset.b, n = b.closest(".hv-row").dataset.n;
+      tip.innerHTML = `<b>${esc(n)}</b><span>${hvHms(new Date(a))} – ${hvHms(new Date(z))}</span><span>${t("hv_stay")} ${hvLen(z - a)}</span>`;
+      tip.style.display = "grid";
+      const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8), y = e.clientY + 16 + tip.offsetHeight > innerHeight ? e.clientY - tip.offsetHeight - 10 : e.clientY + 16;
+      tip.style.left = x + "px"; tip.style.top = y + "px";
+    };
+    b.onmouseleave = () => tip.style.display = "none";
+  });
+};
+// The tooltip belongs to a timeline: gone when the page changes under it
+const _renderViewHv = renderView;
+renderView = function () { const tip = $("hvTip"); if (tip) tip.style.display = "none"; return _renderViewHv(); };
+// Suspicious people page: where each one was seen, and a summary over all of them
+const _renderSuspectsHv = renderSuspects;
+renderSuspects = function () {
+  _renderSuspectsHv();
+  const el = $("v_suspects");
+  if (!SUS.list || !el.querySelector(".toolbar")) return;
+  const total = {};
+  for (const x of SUS.list) for (const [w, n] of x.worlds || []) total[w] = (total[w] || 0) + n;
+  const top = Object.entries(total).sort((a, b) => b[1] - a[1]);
+  if (top.length) el.querySelector(".toolbar").insertAdjacentHTML("afterend", `<div class="sus-worlds">${icon("map-pin")}<span>${t("sus_where")}:</span>${top.map(([w, n]) =>
+    `<span class="chip sus-w"><span>${esc(w)}</span><b>${n}</b></span>`).join("")}</div>`);
+  el.querySelectorAll(".lrow").forEach(r => {
+    const id = r.querySelector("[data-uid]")?.dataset.uid || r.getAttribute("onclick")?.match(/usr_[\w-]+/)?.[0];
+    const x = SUS.list.find(s => s.id === id);
+    if (x?.worlds?.length) r.querySelector(".sub")?.insertAdjacentHTML("beforeend", `<div class="sus-bio">${icon("map-pin")} ${x.worlds.map(([w, n]) => `${esc(w)}${n > 1 ? ` ×${n}` : ""}`).join(" · ")}</div>`);
+  });
+};
+VIEW_RENDER.suspects = renderSuspects;
+document.head.insertAdjacentHTML("beforeend", `<style>
+.hv-tabs { margin: 2px 0 8px; width: max-content; }
+.hv-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--text2); margin: 0 0 6px; }
+.hv-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.hv-legend svg { width: 12px; height: 12px; }
+.hv-key { width: 14px; height: 6px; border-radius: 3px; background: var(--accent); display: inline-block; }
+.hv-key.bot, .hv-bar.bot { background: var(--red); }
+.hv-key.sus, .hv-bar.sus { background: var(--orange); }
+/* The time axis sits outside the scrolling rows; both keep the scrollbar's space so the ticks line up with the bars */
+.hv-axisbox, .hv-chart { scrollbar-gutter: stable; overflow-x: hidden; }
+.hv-axisbox { overflow-y: hidden; }
+.hv-chart { max-height: 360px; overflow-y: auto; }
+.hv-axis, .hv-row { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 8px; }
+.hv-axis { height: 22px; }
+.hv-row { height: 20px; cursor: pointer; border-radius: 6px; }
+.hv-row:hover { background: var(--hover); }
+.hv-name { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 11.5px; color: var(--text); padding-left: 4px; }
+.hv-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv-name svg { width: 12px; height: 12px; flex-shrink: 0; }
+.hv-name.bot svg { color: var(--red); } .hv-name.sus svg { color: var(--orange); }
+.hv-track { position: relative; height: 100%; }
+.hv-grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--sep); }
+.hv-tick { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--sep); }
+.hv-tick.end i { left: auto; right: 3px; }
+.hv-tick i { position: absolute; top: 4px; left: 3px; font: 10.5px var(--font); font-style: normal; color: var(--text3, var(--text2)); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hv-bar { position: absolute; top: 7px; height: 6px; border-radius: 3px; background: var(--accent); }
+.hv-row:hover .hv-bar { filter: brightness(1.1); }
+.hv-tip { position: fixed; z-index: 9999; display: none; gap: 1px; padding: 7px 10px; border-radius: 10px; font-size: 11.5px; pointer-events: none;
+          background: var(--sheet); backdrop-filter: blur(20px); color: var(--text2); border: 1px solid var(--sep); box-shadow: 0 6px 18px rgba(0,0,0,.18); font-variant-numeric: tabular-nums; }
+.hv-tip b { color: var(--text); font-weight: 600; }
+.chip.bot svg:last-child { color: var(--red); width: 12px; height: 12px; } .chip.sus svg:last-child { color: var(--orange); width: 12px; height: 12px; }
+.chip.bot { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--red) 55%, transparent); }
+.chip.sus { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--orange) 55%, transparent); }
+.sus-worlds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -2px 0 12px; font-size: 12px; color: var(--text2); }
+.sus-worlds > svg { width: 13px; height: 13px; }
+.sus-w { cursor: default; padding: 3px 10px; gap: 6px; }
+.sus-w b { font-weight: 700; color: var(--text); }
+.sus-bio svg { display: inline-block; width: 11px; height: 11px; vertical-align: -1px; }
+</style>`);
