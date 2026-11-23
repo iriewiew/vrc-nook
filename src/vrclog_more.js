@@ -5039,9 +5039,11 @@ function gBulkHtml() {
   const roles = (groupOpen.roles || []).filter(r => !r.defaultRole);
   const canRole = gCan("group-roles-assign") && roles.length, canKick = gCan("group-members-remove"), canBan = gCan("group-bans-manage"),
     canNote = gCan("group-members-manage");
-  const n = GX.sel.length, none = n ? "" : "disabled";
+  const n = GX.sel.length, run = GX.run, none = n && !run ? "" : "disabled";
   const roleName = id => (groupOpen.roles || []).find(r => r.id === id)?.name || "";
-  const act = (label, ic, op, extra = "", danger) => `<button class="btn sm ${danger ? "danger" : ""}" ${none || extra}
+  const act = (label, ic, op, extra = "", danger) => run?.kind === op
+    ? `<button class="btn sm busy ${danger ? "danger" : ""}" disabled><span class="btn-spin">${icon("refresh-cw")}</span>${label} ${run.done}/${run.total}</button>`
+    : `<button class="btn sm ${danger ? "danger" : ""}" ${none || extra}
     onclick="${danger ? `confirmBtn(this,()=>gBulkRun('${op}'))` : `gBulkRun('${op}')`}">${icon(ic)}${label}</button>`;
   return `<div class="gbulk">
     <div class="lbl">${t("g_userIds")}</div>
@@ -5049,10 +5051,10 @@ function gBulkHtml() {
         oninput="GX.selInput=this.value" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();gSelPaste()}">${esc(GX.selInput)}</textarea>
       ${btn(t("g_addIds"), "gSelPaste()", "sm", "user-plus")}${btn(t("g_pickUser"), "gUserPicker('pick')", "sm", "search")}</div>
     <div class="lbl">${t("g_selected", n)}${GX.sel.some(s => s.banned) ? `<span class="gsel-ban">· ${icon("ban")}${t("g_nBanned", GX.sel.filter(s => s.banned).length)}</span>
-      <span class="link" onclick="gSelDropBanned()">${t("g_dropBanned")}</span>` : ""}${n ? `<button class="btn sm gsel-csv" onclick="gSelCsv()">${icon("download")}CSV</button><button class="mini-btn" title="${t("g_clearSel")}" onclick="GX.sel=[];GX.note='';gBulkRefresh()">${icon("trash-2")}</button>` : ""}</div>
+      <span class="link" onclick="gSelDropBanned()">${t("g_dropBanned")}</span>` : ""}${n ? `<button class="btn sm gsel-csv" onclick="gSelCsv()">${icon("download")}CSV</button><button class="mini-btn" title="${t("g_clearSel")}" ${run ? "disabled" : ""} onclick="GX.sel=[];GX.note='';gBulkRefresh()">${icon("trash-2")}</button>` : ""}</div>
     ${n ? GX.sel.map(s => lrow({ uid: s.id, name: s.name, onclick: `showProfile('${esc(s.id)}')`,
         sub: s.loading ? t("loading") : `${s.banned ? `<span class="gsel-ban">${icon("ban")}${t("g_isBanned")}${s.bannedAt ? ` · ${fmtIso(s.bannedAt)}` : ""}</span>` : s.member ? (s.roles || []).map(r => esc(roleName(r))).filter(Boolean).join(", ") || t("g_member") : t("g_notMember")}${s.note ? ` · ${icon("notebook-pen")}${esc(s.note.slice(0, 60))}` : ""}`,
-        acts: `<button class="mini-btn" title="${t("remove")}" onclick="gSelRemove('${esc(s.id)}')">${icon("x")}</button>` })).join("")
+        acts: `<button class="mini-btn" title="${t("remove")}" ${run ? "disabled" : ""} onclick="gSelRemove('${esc(s.id)}')">${icon("x")}</button>` })).join("")
       : `<div class="empty-state" style="height:60px">${t("g_noneSel")}</div>`}
     ${canNote ? `<div class="lbl">${t("g_note")}</div><textarea class="field" id="gnote" rows="3" maxlength="1000" placeholder="${escA(t("g_notePh"))}"
         oninput="GX.note=this.value">${esc(GX.note)}</textarea>${n > 1 ? `<div class="pcard-note">${t("g_noteMulti")}</div>` : ""}` : ""}
@@ -5099,7 +5101,10 @@ function gSelRole(id) { GX.selRoles = GX.selRoles.includes(id) ? GX.selRoles.fil
 // One action for every selected user, one at a time; then a count of what worked and fresh info for each (never on yourself, except a note)
 async function gBulkRun(kind) {
   const gid = groupOpen?.id, users = GX.sel.filter(s => s.id !== AUTH.id || kind === "note");
-  if (!gid || !users.length) return;
+  if (!gid || !users.length || GX.run) return;
+  try { await gBulkRunAll(kind, gid, users); } finally { GX.run = null; gBulkRefresh(); }
+}
+async function gBulkRunAll(kind, gid, users) {
   const calls = [];
   for (const s of users) {
     if (kind === "addRoles" || kind === "removeRoles")
@@ -5108,16 +5113,19 @@ async function gBulkRun(kind) {
     else calls.push([{ kick: "kickGroupMember", ban: "banGroupMember", unban: "unbanGroupMember" }[kind], { userId: s.id }]);
   }
   let ok = 0, fail = 0;
+  GX.run = { kind, done: 0, total: calls.length + users.length };  // The calls, then reading everyone back
+  gBulkRefresh();
   for (const [op, p] of calls) {
     const r = await vrc(op, { groupId: gid, ...p });
     "error" in r ? fail++ : ok++;
+    GX.run.done++; gBulkRefresh();
     await new Promise(res => setTimeout(res, 300));
   }
   toast(t("g_bulkDone", ok, fail));
   ["g_mem", "g_bans", "g_audit"].forEach(k => delete CACHE[k]);
   users.forEach(s => s.loading = true);
   gBulkRefresh();
-  for (const s of users) { await gSelLoad(s.id); await new Promise(res => setTimeout(res, 250)); }
+  for (const s of users) { await gSelLoad(s.id); GX.run.done++; gBulkRefresh(); await new Promise(res => setTimeout(res, 250)); }
 }
 // Members tab: page buttons, "page X of Y" (when the total is known: all members, no search or role filter) and how many per page
 function gMemberPager(shown, total) {
@@ -7519,4 +7527,9 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .gsel-ban svg { width: 12px; height: 12px; }
 .lbl .gsel-ban { margin-left: 6px; }
 .gbulk .lbl .gsel-csv { margin-left: auto; font-weight: 500; } .lbl .link { margin-left: 8px; font-weight: 500; }
+</style>`);
+document.head.insertAdjacentHTML("beforeend", `<style>
+.btn-spin { display: inline-flex; animation: rkspin 1s linear infinite; }
+.btn.busy, .mini-btn.busy { cursor: progress; opacity: .75; }
+.mini-btn:disabled { opacity: .35; pointer-events: none; }
 </style>`);

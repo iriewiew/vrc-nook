@@ -1981,9 +1981,22 @@ window.onThumbs = (list) => {
 };
 function apiError(r) { toast(r?.error === 401 ? t("needLogin") : `${t("errGeneric")}${r?.message ? " — " + r.message : ""}`); }
 function confirmBtn(btn, action) {  // First click = ask, second click within 3 s = do it
-  if (btn.dataset.armed) { delete btn.dataset.armed; action(); return; }
+  if (btn.disabled) return;
+  if (btn.dataset.armed) {
+    delete btn.dataset.armed;
+    btn.classList.remove("armed");
+    const done = action();
+    if (done && typeof done.then === "function") {  // Still working: busy until it's finished (the page may redraw the button meanwhile)
+      btn.disabled = true; btn.classList.add("busy");
+      btn.innerHTML = `<span class="btn-spin">${icon("refresh-cw")}</span>` + (btn.dataset.label || "");
+      const end = () => { btn.disabled = false; btn.classList.remove("busy"); btn.innerHTML = btn.dataset.label || ""; };
+      done.then(end, end);
+    }
+    return;
+  }
   btn.dataset.armed = "1";
   const old = btn.innerHTML;
+  btn.dataset.label = old;
   btn.classList.add("armed");
   btn.innerHTML = t("confirm");
   setTimeout(() => { if (btn.dataset.armed) { delete btn.dataset.armed; btn.classList.remove("armed"); btn.innerHTML = old; } }, 3000);
