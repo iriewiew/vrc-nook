@@ -7422,6 +7422,12 @@ tx({
   hv_sec: [n => `${n} วินาที`, n => `${n} s`, n => `${n} 秒`],
   sus_where: ["เจอที่", "Seen in", "見かけた場所"],
 });
+tx({ hv_blockedAt: [n => `บล็อกตอน ${n}`, n => `Blocked at ${n}`, n => `${n} にブロック`], hv_blockedBefore: [n => `บล็อกไว้ตั้งแต่ ${n}`, n => `Blocked since ${n}`, n => `${n} からブロック中`],
+  hv_blockedKey: ["บล็อกตอนนั้น", "Blocked here", "ここでブロック"] });
+Object.assign(UPD_I18N.ko, { hv_blockedAt: n => `${n}에 차단`, hv_blockedBefore: n => `${n}부터 차단 중`, hv_blockedKey: "여기서 차단" });
+Object.assign(UPD_I18N.ru, { hv_blockedAt: n => `Заблокирован в ${n}`, hv_blockedBefore: n => `Заблокирован с ${n}`, hv_blockedKey: "Заблокирован здесь" });
+Object.assign(UPD_I18N.vi, { hv_blockedAt: n => `Đã chặn lúc ${n}`, hv_blockedBefore: n => `Đã chặn từ ${n}`, hv_blockedKey: "Chặn tại đây" });
+Object.assign(UPD_I18N.zh, { hv_blockedAt: n => `${n} 屏蔽`, hv_blockedBefore: n => `自 ${n} 起已屏蔽`, hv_blockedKey: "在此屏蔽" });
 tx({ hv_visits: [n => `เข้า ${n} ครั้ง`, n => n === 1 ? "1 visit" : `${n} visits`, n => `${n} 回入室`], hv_total: ["รวม", "total", "合計"] });
 Object.assign(UPD_I18N.ko, { hv_visits: n => `${n}회 입장`, hv_total: "합계" });
 Object.assign(UPD_I18N.ru, { hv_visits: n => `заходов: ${n}`, hv_total: "всего" });
@@ -7459,6 +7465,7 @@ function hvTicks(t0, t1) {
   for (let x = +first; x <= t1; x += step * 60000) if (x >= t0) out.push(x);
   return out;
 }
+const hvBlockedAt = uid => { const m = (MODS.list || []).find(x => x.type === "block" && x.targetUserId === uid); return m?.created ? +new Date(m.created) : null; };
 function hvTimeline(v, ps) {
   const t0 = +tsDate(v.t), ongoing = !v.end && v === historyData?.[0], t1 = v.end ? +tsDate(v.end) : ongoing ? Date.now() : Math.max(t0 + 60000, ...ps.flatMap(p => p.spans.map(s => +tsDate(s[1] || s[0]))));
   const W = Math.max(1, t1 - t0), pct = x => Math.min(100, Math.max(0, (x - t0) / W * 100));
@@ -7471,11 +7478,13 @@ function hvTimeline(v, ps) {
       const A = +tsDate(a), B = b ? +tsDate(b) : t1;
       return `<span class="hv-bar ${cls}" style="left:${pct(A)}%;width:max(4px,${pct(B) - pct(A)}%)" data-a="${A}" data-b="${B}"></span>`;
     }).join("");
+    const blk = hvBlockedAt(p.u), blkMark = blk && blk >= t0 && blk <= t1 ? `<span class="hv-blk" style="left:${pct(blk)}%">${icon("shield-ban")}</span>` : "";
     return `<div class="hv-row" data-u="${esc(p.u)}" data-n="${escA(p.name)}"><div class="hv-name ${cls}">${cls ? icon("shield-alert") : ""}<span>${esc(p.name)}</span></div>
-      <div class="hv-track">${grid}${bars}</div></div>`;
+      <div class="hv-track">${grid}${bars}${blkMark}</div></div>`;
   }).join("");
   const nBot = ps.filter(p => p.sus === "confirmed").length, nSus = ps.filter(p => p.sus && p.sus !== "confirmed").length;
-  const legend = `<div class="hv-legend"><span><i class="hv-key"></i>${t("hv_person")}</span>${nBot ? `<span><i class="hv-key bot"></i>${icon("shield-alert")}${t("sus_confirmed")} (${nBot})</span>` : ""}${nSus ? `<span><i class="hv-key sus"></i>${icon("shield-alert")}${t("sus_suspected")} (${nSus})</span>` : ""}</div>`;
+  const nBlk = ps.filter(p => { const b = hvBlockedAt(p.u); return b && b >= t0 && b <= t1; }).length;
+  const legend = `<div class="hv-legend"><span><i class="hv-key"></i>${t("hv_person")}</span>${nBot ? `<span><i class="hv-key bot"></i>${icon("shield-alert")}${t("sus_confirmed")} (${nBot})</span>` : ""}${nSus ? `<span><i class="hv-key sus"></i>${icon("shield-alert")}${t("sus_suspected")} (${nSus})</span>` : ""}${nBlk ? `<span class="hv-legend-blk">${icon("shield-ban")}${t("hv_blockedKey")} (${nBlk})</span>` : ""}</div>`;
   return `${legend}<div class="hv-wrap"><div class="hv-axisbox"><div class="hv-axis"><div class="hv-name"></div><div class="hv-track">${ticks}</div></div></div><div class="hv-chart" data-t0="${t0}" data-t1="${t1}">${rows}</div><div class="hv-cross"></div></div>`;
 }
 const _fillVisitHv = fillVisit;
@@ -7489,6 +7498,7 @@ fillVisit = async function (v, row) {
   }
   const ps = histPlayers[v.t];
   if (!ps.length) return _fillVisitHv(v, row);
+  if (!MODS.list && !MODS.loading) loadMods();
   hvSortPlayers(ps);  // In place: the list view reads histPlayers too
   const view = S.histView === "list" ? "list" : "timeline";
   const tabs = `<div class="hv-top"><div class="segmented hv-tabs">${["timeline", "list"].map(k => `<button class="${view === k ? "on" : ""}" onclick="event.stopPropagation();hvSet('${k}','${esc(v.t)}')">${t("hv_" + k)}</button>`).join("")}</div>
@@ -7525,7 +7535,10 @@ fillVisit = async function (v, row) {
     const cls = p.sus === "confirmed" ? "bot" : p.sus ? "sus" : "";
     const MAX = 12;
     tip.innerHTML = `<span class="hv-tip-stay"><b class="${cls}">${cls ? icon("shield-alert") : ""}${esc(p.name)}</b></span>
-      <b>${t("hv_visits", stays.length)} · ${t("hv_total")} ${hvLen(total)}</b>
+      <b>${t("hv_visits", stays.length)} · ${t("hv_total")} ${hvLen(total)}</b>${(() => {
+        const blk = hvBlockedAt(p.u);
+        return !blk ? "" : `<span class="hv-tip-blk">${icon("shield-ban")}${blk < t0 ? t("hv_blockedBefore", fmtIso(new Date(blk).toISOString())) : t("hv_blockedAt", hvHms(new Date(blk)))}</span>`;
+      })()}
       <div class="hv-tip-stays">${stays.slice(0, MAX).map(([a, z], i) => `<span><i>${i + 1}.</i>${hvHms(new Date(a))} – ${hvHms(new Date(z))}</span><em>${hvLen(z - a)}</em>`).join("")}
       ${stays.length > MAX ? `<span class="more">+${stays.length - MAX}</span>` : ""}</div>`;
     place(e);
@@ -7544,7 +7557,8 @@ fillVisit = async function (v, row) {
     here.sort((a, b) => rank(a) - rank(b));
     const MAX = 20, mark = p => p.sus ? `<i class="${p.sus === "confirmed" ? "bot" : "sus"}">${icon("shield-alert")}</i>` : "";
     const bar = e.target.closest(".hv-bar");
-    const stay = bar ? (() => { const a = +bar.dataset.a, z = +bar.dataset.b; return `<span class="hv-tip-stay"><b>${esc(bar.closest(".hv-row").dataset.n)}</b> ${hvHms(new Date(a))} – ${hvHms(new Date(z))} · ${t("hv_stay")} ${hvLen(z - a)}</span>`; })() : "";
+    const stay = bar ? (() => { const a = +bar.dataset.a, z = +bar.dataset.b; const blk = hvBlockedAt(bar.closest(".hv-row").dataset.u), inStay = blk && blk >= a - 5000 && blk <= z + 5000;
+      return `<span class="hv-tip-stay"><b>${esc(bar.closest(".hv-row").dataset.n)}</b> ${hvHms(new Date(a))} – ${hvHms(new Date(z))} · ${t("hv_stay")} ${hvLen(z - a)}${inStay ? `<span class="hv-tip-blk">${icon("shield-ban")}${t("hv_blockedAt", hvHms(new Date(blk)))}</span>` : ""}</span>`; })() : "";
     tip.innerHTML = `${stay}<b>${hvHms(new Date(at))} · ${t("hv_inRoom", here.length)}</b><div class="hv-tip-list">${here.slice(0, MAX).map(p =>
       `<span class="${p.sus ? (p.sus === "confirmed" ? "bot" : "sus") : ""}">${mark(p)}${esc(p.name)}</span>`).join("")}${here.length > MAX ? `<span class="more">+${here.length - MAX}</span>` : ""}</div>`;
     place(e);
@@ -7615,6 +7629,11 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .hv-tip-list span.bot { color: var(--red); font-weight: 600; } .hv-tip-list span.sus { color: var(--orange); font-weight: 600; }
 .hv-tip-list i { display: inline-flex; } .hv-tip-list svg { width: 11px; height: 11px; }
 .hv-tip-list .more { color: var(--text2); }
+.hv-blk { position: absolute; top: 2px; bottom: 2px; width: 0; border-left: 2px solid var(--red); pointer-events: none; z-index: 1; }
+.hv-blk svg { position: absolute; left: 3px; top: 50%; transform: translateY(-50%); color: var(--red); }
+.hv-blk svg { width: 11px; height: 11px; }
+.hv-legend-blk svg { color: var(--red); }
+.hv-tip-blk { display: flex; align-items: center; gap: 4px; color: var(--red); font-weight: 600; margin-top: 2px; } .hv-tip-blk svg { width: 12px; height: 12px; }
 .hv-tip-stay b { display: inline-flex; align-items: center; gap: 4px; } .hv-tip-stay svg { width: 12px; height: 12px; }
 .hv-tip-stay b.bot { color: var(--red); } .hv-tip-stay b.sus { color: var(--orange); }
 .hv-tip-stays { display: grid; grid-template-columns: auto auto; gap: 1px 14px; margin-top: 3px; font-variant-numeric: tabular-nums; }
