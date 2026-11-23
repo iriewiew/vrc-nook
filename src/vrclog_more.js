@@ -4977,13 +4977,15 @@ async function gSelAdd(ids, quiet) {
   gBulkRefresh();
   for (const id of fresh) { await gSelLoad(id); await new Promise(res => setTimeout(res, 250)); }
 }
-// Member info for one selected user: name, roles and manager note (or "not a member", then just the name)
+// Member info for one selected user: name, roles and manager note (or "not a member", then just the name), and whether they're banned
 async function gSelLoad(id) {
   const s = GX.sel.find(x => x.id === id);
   if (!s || !groupOpen) return;
   const r = await vrc("getGroupMember", { groupId: groupOpen.id, userId: id });
   const m = r.ok && typeof r.ok === "object" && r.ok.membershipStatus === "member" ? r.ok : null;
   Object.assign(s, m ? { member: true, roles: m.roleIds || [], note: m.managerNotes || "" } : { member: false, roles: [], note: "" });
+  s.banned = r.ok?.membershipStatus === "banned";  // The member record says so, with the date
+  s.bannedAt = s.banned ? r.ok.bannedAt || "" : "";
   // The member record has no name — take it from the profiles already loaded, or ask for the profile
   let name = m?.user?.displayName || PROFILES[id]?.displayName;
   if (!name) name = (await vrc("getUser", { userId: id })).ok?.displayName;
@@ -4993,6 +4995,7 @@ async function gSelLoad(id) {
   gBulkRefresh();
 }
 function gSelRemove(id) { GX.sel = GX.sel.filter(s => s.id !== id); gBulkRefresh(); }
+function gSelDropBanned() { GX.sel = GX.sel.filter(s => !s.banned); gBulkRefresh(); }
 function gBulkRefresh() {  // Redraw only this section, so text being typed elsewhere on the card stays
   const box = document.querySelector(".gadm-main .gbulk");
   if (!box) return;
@@ -5014,9 +5017,10 @@ function gBulkHtml() {
     <div class="toolbar gsel-in"><textarea class="field grow" id="gselIn" rows="3" placeholder="${escA(t("g_userIdsPh"))}"
         oninput="GX.selInput=this.value" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();gSelPaste()}">${esc(GX.selInput)}</textarea>
       ${btn(t("g_addIds"), "gSelPaste()", "sm", "user-plus")}${btn(t("g_pickUser"), "gUserPicker('pick')", "sm", "search")}</div>
-    <div class="lbl">${t("g_selected", n)}${n ? `<button class="mini-btn" title="${t("g_clearSel")}" onclick="GX.sel=[];GX.note='';gBulkRefresh()">${icon("trash-2")}</button>` : ""}</div>
+    <div class="lbl">${t("g_selected", n)}${GX.sel.some(s => s.banned) ? `<span class="gsel-ban">· ${icon("ban")}${t("g_nBanned", GX.sel.filter(s => s.banned).length)}</span>
+      <span class="link" onclick="gSelDropBanned()">${t("g_dropBanned")}</span>` : ""}${n ? `<button class="mini-btn" title="${t("g_clearSel")}" onclick="GX.sel=[];GX.note='';gBulkRefresh()">${icon("trash-2")}</button>` : ""}</div>
     ${n ? GX.sel.map(s => lrow({ uid: s.id, name: s.name, onclick: `showProfile('${esc(s.id)}')`,
-        sub: s.loading ? t("loading") : `${s.member ? (s.roles || []).map(r => esc(roleName(r))).filter(Boolean).join(", ") || t("g_member") : t("g_notMember")}${s.note ? ` · ${icon("notebook-pen")}${esc(s.note.slice(0, 60))}` : ""}`,
+        sub: s.loading ? t("loading") : `${s.banned ? `<span class="gsel-ban">${icon("ban")}${t("g_isBanned")}${s.bannedAt ? ` · ${fmtIso(s.bannedAt)}` : ""}</span>` : s.member ? (s.roles || []).map(r => esc(roleName(r))).filter(Boolean).join(", ") || t("g_member") : t("g_notMember")}${s.note ? ` · ${icon("notebook-pen")}${esc(s.note.slice(0, 60))}` : ""}`,
         acts: `<button class="mini-btn" title="${t("remove")}" onclick="gSelRemove('${esc(s.id)}')">${icon("x")}</button>` })).join("")
       : `<div class="empty-state" style="height:60px">${t("g_noneSel")}</div>`}
     ${canNote ? `<div class="lbl">${t("g_note")}</div><textarea class="field" id="gnote" rows="3" maxlength="1000" placeholder="${escA(t("g_notePh"))}"
@@ -5250,6 +5254,8 @@ tx({
   g_selected: [n => `ผู้ใช้ที่เลือก (${n})`, n => `Selected users (${n})`, n => `選択したユーザー (${n})`],
   g_clearSel: ["ล้างรายการ", "Clear list", "リストをクリア"], g_noneSel: ["ยังไม่ได้เลือกผู้ใช้", "No users selected", "ユーザーが選択されていません"],
   g_member: ["สมาชิก", "Member", "メンバー"], g_notMember: ["ไม่ได้เป็นสมาชิก", "Not a member", "メンバーではありません"],
+  g_isBanned: ["แบนแล้ว", "Banned", "BAN済み"], g_nBanned: [n => `แบนแล้ว ${n} คน`, n => `${n} already banned`, n => `${n}人はBAN済み`],
+  g_dropBanned: ["เอาออกจากรายการ", "Remove them from the list", "リストから外す"],
   g_note: ["โน้ตผู้ดูแล", "Manager note", "管理メモ"], g_notePh: ["เห็นเฉพาะผู้ดูแลกลุ่ม", "Only group managers can see this", "グループ管理者のみ表示されます"],
   g_noteMulti: ["บันทึกโน้ตนี้ให้ทุกคนที่เลือก (แทนที่โน้ตเดิม)", "Saves this note for everyone selected (replacing their note)", "選択した全員にこのメモを保存します（既存のメモは置き換え）"],
   g_selRoles: ["บทบาท", "Roles", "ロール"], g_actions: ["การดำเนินการ", "Actions", "操作"],
@@ -5260,7 +5266,7 @@ Object.assign(UPD_I18N.ko, { g_bulk: "일괄 작업", g_auditPh: "로그 검색(
   g_filterUser: "이 사용자의 로그", g_addSel: "일괄 작업에 추가", g_added: n => `일괄 작업에 ${n}명 추가`, g_matchN: (n, m) => `불러온 ${m}개 중 ${n}개 일치`,
   g_export: "내보내기", g_exporting: n => `로그 불러오는 중… ${n}`, g_exported: n => `${n}개 내보냄`, g_userIds: "사용자 ID 또는 이름",
   g_userIdsPh: "usr_… 나 표시 이름을 여러 개 붙여넣기 (한 줄에 하나, 링크, 엑셀·구글 시트 열) · Enter로 추가", g_namesMissing: n => `이름 ${n}개를 찾지 못함 (VRC Nook이 본 사람만 · usr_… 를 쓰세요)`, g_namesShared: n => `이름 ${n}개는 여러 명이 사용 중: usr_… 를 쓰세요`, g_addIds: "추가", g_pickUser: "사용자 선택", g_noIds: "usr_… 를 찾지 못했습니다",
-  g_selected: n => `선택한 사용자 (${n})`, g_clearSel: "목록 지우기", g_noneSel: "선택한 사용자가 없습니다", g_member: "멤버", g_notMember: "멤버 아님",
+  g_selected: n => `선택한 사용자 (${n})`, g_clearSel: "목록 지우기", g_noneSel: "선택한 사용자가 없습니다", g_member: "멤버", g_notMember: "멤버 아님", g_isBanned: "차단됨", g_nBanned: n => `${n}명 이미 차단됨`, g_dropBanned: "목록에서 빼기",
   g_note: "관리자 메모", g_notePh: "그룹 관리자만 볼 수 있습니다", g_noteMulti: "선택한 모두에게 이 메모를 저장합니다 (기존 메모 대체)",
   g_selRoles: "역할", g_actions: "작업", g_addRoles: "역할 추가", g_removeRoles: "역할 제거", g_saveNote: "메모 저장",
   g_bulkDone: (ok, f) => `성공 ${ok}${f ? ` · 실패 ${f}` : ""}` });
@@ -5268,7 +5274,7 @@ Object.assign(UPD_I18N.ru, { g_bulk: "Массовые действия", g_audi
   g_filterUser: "Журнал этого пользователя", g_addSel: "Добавить в массовые действия", g_added: n => `Добавлено: ${n}`, g_matchN: (n, m) => `Совпадает ${n} из ${m} загруженных`,
   g_export: "Экспорт", g_exporting: n => `Загрузка журнала… ${n}`, g_exported: n => `Экспортировано: ${n}`, g_userIds: "ID или имена пользователей",
   g_userIdsPh: "Вставьте несколько usr_… или имён (по одному в строке, ссылки или столбец из Excel / Google Таблиц) · Enter — добавить", g_namesMissing: n => `Не найдено имён: ${n} (только те, кого видел VRC Nook · используйте usr_…)`, g_namesShared: n => `Имена (${n}) есть у нескольких людей: используйте usr_…`, g_addIds: "Добавить", g_pickUser: "Выбрать пользователя", g_noIds: "usr_… не найдено",
-  g_selected: n => `Выбрано (${n})`, g_clearSel: "Очистить список", g_noneSel: "Никто не выбран", g_member: "Участник", g_notMember: "Не участник",
+  g_selected: n => `Выбрано (${n})`, g_clearSel: "Очистить список", g_noneSel: "Никто не выбран", g_member: "Участник", g_notMember: "Не участник", g_isBanned: "Забанен", g_nBanned: n => `Уже забанены: ${n}`, g_dropBanned: "Убрать из списка",
   g_note: "Заметка модератора", g_notePh: "Видна только менеджерам группы", g_noteMulti: "Сохранит эту заметку всем выбранным (заменит прежнюю)",
   g_selRoles: "Роли", g_actions: "Действия", g_addRoles: "Добавить роли", g_removeRoles: "Убрать роли", g_saveNote: "Сохранить заметку",
   g_bulkDone: (ok, f) => `Готово ${ok}${f ? ` · ошибок ${f}` : ""}` });
@@ -5276,7 +5282,7 @@ Object.assign(UPD_I18N.vi, { g_bulk: "Thao tác hàng loạt", g_auditPh: "Tìm 
   g_filterUser: "Nhật ký của người này", g_addSel: "Thêm vào thao tác hàng loạt", g_added: n => `Đã thêm ${n} người`, g_matchN: (n, m) => `${n} / ${m} mục đã tải khớp`,
   g_export: "Xuất", g_exporting: n => `Đang tải nhật ký… ${n}`, g_exported: n => `Đã xuất ${n} mục`, g_userIds: "User ID hoặc tên",
   g_userIdsPh: "Dán nhiều usr_… hoặc tên hiển thị (mỗi dòng một tên, liên kết, hoặc cột từ Excel / Google Sheets) · Enter để thêm", g_namesMissing: n => `Không tìm thấy ${n} tên (chỉ người VRC Nook đã thấy · hãy dùng usr_…)`, g_namesShared: n => `${n} tên có nhiều người dùng: hãy dùng usr_…`, g_addIds: "Thêm", g_pickUser: "Chọn người dùng", g_noIds: "Không tìm thấy usr_…",
-  g_selected: n => `Đã chọn (${n})`, g_clearSel: "Xóa danh sách", g_noneSel: "Chưa chọn ai", g_member: "Thành viên", g_notMember: "Không phải thành viên",
+  g_selected: n => `Đã chọn (${n})`, g_clearSel: "Xóa danh sách", g_noneSel: "Chưa chọn ai", g_member: "Thành viên", g_notMember: "Không phải thành viên", g_isBanned: "Đã cấm", g_nBanned: n => `${n} người đã bị cấm`, g_dropBanned: "Bỏ khỏi danh sách",
   g_note: "Ghi chú quản lý", g_notePh: "Chỉ quản lý nhóm thấy được", g_noteMulti: "Lưu ghi chú này cho mọi người đã chọn (thay ghi chú cũ)",
   g_selRoles: "Vai trò", g_actions: "Thao tác", g_addRoles: "Thêm vai trò", g_removeRoles: "Gỡ vai trò", g_saveNote: "Lưu ghi chú",
   g_bulkDone: (ok, f) => `Thành công ${ok}${f ? ` · thất bại ${f}` : ""}` });
@@ -5284,7 +5290,7 @@ Object.assign(UPD_I18N.zh, { g_bulk: "批量操作", g_auditPh: "搜索日志（
   g_filterUser: "查看此用户的日志", g_addSel: "加入批量操作", g_added: n => `已加入 ${n} 人`, g_matchN: (n, m) => `已加载的 ${m} 条中有 ${n} 条匹配`,
   g_export: "导出", g_exporting: n => `正在加载日志… ${n}`, g_exported: n => `已导出 ${n} 条`, g_userIds: "用户 ID 或名称",
   g_userIdsPh: "粘贴多个 usr_… 或显示名称（每行一个、链接、或 Excel / Google 表格的一列）· 按 Enter 添加", g_namesMissing: n => `找不到 ${n} 个名字（仅限 VRC Nook 见过的人 · 请改用 usr_…）`, g_namesShared: n => `${n} 个名字有多人使用：请改用 usr_…`, g_addIds: "添加", g_pickUser: "选择用户", g_noIds: "未找到 usr_…",
-  g_selected: n => `已选用户 (${n})`, g_clearSel: "清空列表", g_noneSel: "尚未选择用户", g_member: "成员", g_notMember: "不是成员",
+  g_selected: n => `已选用户 (${n})`, g_clearSel: "清空列表", g_noneSel: "尚未选择用户", g_member: "成员", g_notMember: "不是成员", g_isBanned: "已封禁", g_nBanned: n => `${n} 人已被封禁`, g_dropBanned: "从列表移除",
   g_note: "管理员备注", g_notePh: "仅群组管理员可见", g_noteMulti: "将此备注保存给所有已选用户（覆盖原备注）",
   g_selRoles: "角色", g_actions: "操作", g_addRoles: "添加角色", g_removeRoles: "移除角色", g_saveNote: "保存备注",
   g_bulkDone: (ok, f) => `成功 ${ok}${f ? ` · 失败 ${f}` : ""}` });
@@ -7460,4 +7466,9 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .sus-w svg { width: 11px; height: 11px; }
 .sus-w b { font-weight: 700; color: var(--text); }
 .sus-bio svg { display: inline-block; width: 11px; height: 11px; vertical-align: -1px; }
+</style>`);
+document.head.insertAdjacentHTML("beforeend", `<style>
+.gsel-ban { color: var(--red); font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
+.gsel-ban svg { width: 12px; height: 12px; }
+.lbl .gsel-ban { margin-left: 6px; } .lbl .link { margin-left: 8px; font-weight: 500; }
 </style>`);
