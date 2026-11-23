@@ -5015,6 +5015,17 @@ async function gSelLoad(id) {
   gBulkRefresh();
 }
 function gSelRemove(id) { GX.sel = GX.sel.filter(s => s.id !== id); gBulkRefresh(); }
+// The selected users as CSV: name, ID, member / banned / not a member, ban date, roles, manager note
+async function gSelCsv() {
+  const cell = v => { const x = String(v ?? ""); return /[",\n\r]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
+  const roleName = id => (groupOpen.roles || []).find(r => r.id === id && !r.defaultRole)?.name || "";
+  const cols = ["displayName", "userId", "status", "bannedAt", "roles", "managerNote", "profile"];
+  const rows = GX.sel.map(s => [s.name, s.id, s.loading ? "" : s.banned ? "banned" : s.member ? "member" : "not a member", s.bannedAt || "",
+    (s.roles || []).map(roleName).filter(Boolean).join(", "), (s.note || "").replace(/\s+/g, " "), `https://vrchat.com/home/user/${s.id}`]);
+  const name = `${(groupOpen.shortCode || "group").replace(/[\\/:*?"<>|\s]+/g, "-")}_selected_${new Date().toISOString().slice(0, 10)}.csv`;
+  const r = await api("save_text", name, [cols.join(","), ...rows.map(x => x.map(cell).join(","))].join("\r\n"));
+  if (r?.ok) toast(t("g_exported", rows.length));
+}
 function gSelDropBanned() { GX.sel = GX.sel.filter(s => !s.banned); gBulkRefresh(); }
 function gBulkRefresh() {  // Redraw only this section, so text being typed elsewhere on the card stays
   const box = document.querySelector(".gadm-main .gbulk");
@@ -5038,7 +5049,7 @@ function gBulkHtml() {
         oninput="GX.selInput=this.value" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();gSelPaste()}">${esc(GX.selInput)}</textarea>
       ${btn(t("g_addIds"), "gSelPaste()", "sm", "user-plus")}${btn(t("g_pickUser"), "gUserPicker('pick')", "sm", "search")}</div>
     <div class="lbl">${t("g_selected", n)}${GX.sel.some(s => s.banned) ? `<span class="gsel-ban">· ${icon("ban")}${t("g_nBanned", GX.sel.filter(s => s.banned).length)}</span>
-      <span class="link" onclick="gSelDropBanned()">${t("g_dropBanned")}</span>` : ""}${n ? `<button class="mini-btn" title="${t("g_clearSel")}" onclick="GX.sel=[];GX.note='';gBulkRefresh()">${icon("trash-2")}</button>` : ""}</div>
+      <span class="link" onclick="gSelDropBanned()">${t("g_dropBanned")}</span>` : ""}${n ? `<button class="btn sm gsel-csv" onclick="gSelCsv()">${icon("download")}CSV</button><button class="mini-btn" title="${t("g_clearSel")}" onclick="GX.sel=[];GX.note='';gBulkRefresh()">${icon("trash-2")}</button>` : ""}</div>
     ${n ? GX.sel.map(s => lrow({ uid: s.id, name: s.name, onclick: `showProfile('${esc(s.id)}')`,
         sub: s.loading ? t("loading") : `${s.banned ? `<span class="gsel-ban">${icon("ban")}${t("g_isBanned")}${s.bannedAt ? ` · ${fmtIso(s.bannedAt)}` : ""}</span>` : s.member ? (s.roles || []).map(r => esc(roleName(r))).filter(Boolean).join(", ") || t("g_member") : t("g_notMember")}${s.note ? ` · ${icon("notebook-pen")}${esc(s.note.slice(0, 60))}` : ""}`,
         acts: `<button class="mini-btn" title="${t("remove")}" onclick="gSelRemove('${esc(s.id)}')">${icon("x")}</button>` })).join("")
@@ -5178,7 +5189,8 @@ function gMemberPager(shown, total) {
         const hit = scan.list.filter(m => rankOf(m.userId) === st.rank);
         note = rankNote(hit.length, scan.list.length, scan);
         total = hit.length || 1;
-        res = hit.slice(st.off, st.off + N).map(memToRow);
+        st.all = hit.map(memToRow);  // CSV: every match of the scan, not just this page
+        res = st.all.slice(st.off, st.off + N);
         rankImages(res.map(u => u.id));
       } else if (st.rank && res) {
         needRanks(res.map(u => u.id));
@@ -5186,6 +5198,7 @@ function gMemberPager(shown, total) {
         note = rankNote(hit.length, res.length, { done: !st.busy });
         res = hit;
       }
+      if (!scan) st.all = res || [];
       const pages = total ? Math.max(1, Math.ceil(total / N)) : null, page = Math.floor(st.off / N) + 1;
       const more = (scan ? res.length : st.res?.length) === N && (!pages || page < pages);
       const busy = scan ? !scan.list.length && !scan.done : st.busy && !st.res;
@@ -5206,6 +5219,18 @@ function gMemberPager(shown, total) {
       if (rows) rows.scrollTop = keep;
     };
     window._gmpDraw = draw;
+    // CSV of what the list shows: all matches of a whole-group rank scan, else the rows loaded now
+    window._gmpCsv = async () => {
+      const list = st.all || [];
+      if (!list.length) return toast(t("noResults"));
+      const cell = v => { const x = String(v ?? ""); return /[",\n\r]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; };
+      const rankName = id => RANK_ORDER.find(([k]) => k === rankOf(id))?.[1] || "";
+      const cols = ["displayName", "userId", "rank", "roles", "joinedAt", "selected", "profile"];
+      const rows = list.map(u => [u.name, u.id, rankName(u.id), roleNames(u.roles), u.joined || "", picked(u.id) ? "yes" : "", `https://vrchat.com/home/user/${u.id}`]);
+      const tag = [groupOpen.shortCode || "group", st.scope === "all" ? "users" : "members", st.rank, st.q].filter(Boolean).join("_").replace(/[\\/:*?"<>|\s]+/g, "-");
+      const r = await api("save_text", `${tag}_${new Date().toISOString().slice(0, 10)}.csv`, [cols.join(","), ...rows.map(x => x.map(cell).join(","))].join("\r\n"));
+      if (r?.ok) toast(t("g_exported", rows.length));
+    };
     window._gmpPage = d => { st.top = true; st.off = Math.max(0, st.off + d * N); load(); };
     window._gmpScope = s => { st.top = true; st.scope = s; st.off = 0; st.res = null;
       document.querySelectorAll(".gmp-scope button").forEach(b => b.classList.toggle("on", b.dataset.s === s)); load(); };
@@ -5217,7 +5242,8 @@ function gMemberPager(shown, total) {
         <input class="field grow" id="gupq" placeholder="${t("g_userPh")}" autocomplete="off" value="${escA(st.q)}" oninput="_gmpType(this.value)">
         ${rankSelHtml(st.rank, "_gmpRank(this.value)")}
         <div class="segmented sm gmp-scope">${[["members", "g_members"], ["all", "g_allUsers"]].map(([k, l]) =>
-          `<button data-s="${k}" class="${st.scope === k ? "on" : ""}" onclick="_gmpScope('${k}')">${t(l)}</button>`).join("")}</div></div>
+          `<button data-s="${k}" class="${st.scope === k ? "on" : ""}" onclick="_gmpScope('${k}')">${t(l)}</button>`).join("")}</div>
+        <button class="btn sm" title="${escA(t("g_csvHint"))}" onclick="_gmpCsv()">${icon("download")}CSV</button></div>
       <div id="gmpList"></div>`,
     () => { if (st.res || st.rank) draw(); $("gupq").focus(); });
     load();
@@ -5236,15 +5262,16 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 </style>`);
 tx({
   g_allUsers: ["ผู้ใช้ทั้งหมด", "All users", "全ユーザー"],
+  g_csvHint: ["บันทึกรายชื่อที่แสดงเป็น CSV (กรองยศทั้งกลุ่ม = ทุกคนที่ตรง)", "Save the list shown as CSV (a whole-group rank filter saves every match)", "表示中のリストを CSV で保存（グループ全体のランク絞り込みは一致した全員）"],
   g_pickAll: [n => `เลือกทั้งหมดในหน้านี้ (${n})`, n => `Select all on this page (${n})`, n => `このページをすべて選択 (${n})`],
   g_pickedN: [n => `เลือกแล้ว ${n}`, n => `${n} selected`, n => `${n} 人選択中`],
   g_allUsersHint: ["พิมพ์ชื่อเพื่อค้นหาผู้ใช้ทุกคนใน VRChat (รวมคนที่ไม่ได้อยู่ในกลุ่ม)", "Type a name to search everyone on VRChat (including people outside the group)", "名前を入力して VRChat の全ユーザーを検索（グループ外の人も）"],
   g_pageOf: [(p, n) => `หน้า ${p} / ${n}`, (p, n) => `Page ${p} of ${n}`, (p, n) => `${p} / ${n} ページ`],
 });
-Object.assign(UPD_I18N.ko, { g_pickAll: n => `이 페이지 모두 선택 (${n})`, g_pickedN: n => `${n}명 선택됨`, g_allUsers: "모든 사용자", g_allUsersHint: "이름을 입력해 VRChat 전체 사용자 검색 (그룹 밖 사람 포함)", g_pageOf: (p, n) => `${p} / ${n} 페이지` });
-Object.assign(UPD_I18N.ru, { g_pickAll: n => `Выбрать всех на странице (${n})`, g_pickedN: n => `Выбрано: ${n}`, g_allUsers: "Все пользователи", g_allUsersHint: "Введите имя для поиска по всем в VRChat (включая тех, кто не в группе)", g_pageOf: (p, n) => `Стр. ${p} из ${n}` });
-Object.assign(UPD_I18N.vi, { g_pickAll: n => `Chọn tất cả trên trang này (${n})`, g_pickedN: n => `Đã chọn ${n}`, g_allUsers: "Mọi người dùng", g_allUsersHint: "Nhập tên để tìm mọi người trên VRChat (kể cả người ngoài nhóm)", g_pageOf: (p, n) => `Trang ${p} / ${n}` });
-Object.assign(UPD_I18N.zh, { g_pickAll: n => `全选本页 (${n})`, g_pickedN: n => `已选 ${n} 人`, g_allUsers: "所有用户", g_allUsersHint: "输入名称搜索 VRChat 上的所有人（包括群组外的人）", g_pageOf: (p, n) => `第 ${p} / ${n} 页` });
+Object.assign(UPD_I18N.ko, { g_csvHint: "표시된 목록을 CSV로 저장 (그룹 전체 등급 필터는 일치하는 모두)", g_pickAll: n => `이 페이지 모두 선택 (${n})`, g_pickedN: n => `${n}명 선택됨`, g_allUsers: "모든 사용자", g_allUsersHint: "이름을 입력해 VRChat 전체 사용자 검색 (그룹 밖 사람 포함)", g_pageOf: (p, n) => `${p} / ${n} 페이지` });
+Object.assign(UPD_I18N.ru, { g_csvHint: "Сохранить список в CSV (фильтр по рангу по всей группе — все совпадения)", g_pickAll: n => `Выбрать всех на странице (${n})`, g_pickedN: n => `Выбрано: ${n}`, g_allUsers: "Все пользователи", g_allUsersHint: "Введите имя для поиска по всем в VRChat (включая тех, кто не в группе)", g_pageOf: (p, n) => `Стр. ${p} из ${n}` });
+Object.assign(UPD_I18N.vi, { g_csvHint: "Lưu danh sách đang hiện ra CSV (lọc hạng cả nhóm = mọi người khớp)", g_pickAll: n => `Chọn tất cả trên trang này (${n})`, g_pickedN: n => `Đã chọn ${n}`, g_allUsers: "Mọi người dùng", g_allUsersHint: "Nhập tên để tìm mọi người trên VRChat (kể cả người ngoài nhóm)", g_pageOf: (p, n) => `Trang ${p} / ${n}` });
+Object.assign(UPD_I18N.zh, { g_csvHint: "将显示的列表保存为 CSV（全群组等级筛选 = 所有匹配者）", g_pickAll: n => `全选本页 (${n})`, g_pickedN: n => `已选 ${n} 人`, g_allUsers: "所有用户", g_allUsersHint: "输入名称搜索 VRChat 上的所有人（包括群组外的人）", g_pageOf: (p, n) => `第 ${p} / ${n} 页` });
 document.head.insertAdjacentHTML("beforeend", `<style>
 .gfilter { display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px 2px 8px; border-radius: 99px; background: var(--track); font-size: 12px; }
 .gfilter > svg { width: 13px; height: 13px; color: var(--accent); }
@@ -7490,5 +7517,6 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 document.head.insertAdjacentHTML("beforeend", `<style>
 .gsel-ban { color: var(--red); font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
 .gsel-ban svg { width: 12px; height: 12px; }
-.lbl .gsel-ban { margin-left: 6px; } .lbl .link { margin-left: 8px; font-weight: 500; }
+.lbl .gsel-ban { margin-left: 6px; }
+.gbulk .lbl .gsel-csv { margin-left: auto; font-weight: 500; } .lbl .link { margin-left: 8px; font-weight: 500; }
 </style>`);

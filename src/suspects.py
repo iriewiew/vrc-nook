@@ -5,8 +5,9 @@ Two levels:
   suspected: a Visitor whose name has the bots' made-up shape ("Kyvo5rexth", "D3raxolorirsh", "victor.kaya69032")
 Display names end with " " + the last 4 characters of the user ID when VRChat adds that itself (a name shared by many people),
 and VRChat shows "." in names as "․" (U+2024): neither says anything about the person, so both are ignored.
-Checked against ~29,000 users seen by VRC Nook: the bio rule matched only bots; the name rule needs the Visitor rank,
-because normal people use names like "Lilith4u" too."""
+Checked against ~29,000 users seen by VRC Nook: the bio rule matched only bots. The name rules need the " xxxx" VRChat adds
+and must not hit anyone with a rank: every bot seen so far has the suffix, while real people with bot-like names mostly don't
+("Maple7n", "Heaven08w", "Ken001kop") — so a name without the suffix is never flagged, whatever its rank."""
 import re
 
 SPAM = re.compile(r"hexed|oversee\s*(?:[.․]|[(（\[]\s*dot\s*[)）\]])|avatar\s*bot\b.*\d[\d,]*\s*downloads", re.I | re.S)
@@ -32,7 +33,9 @@ def check(uid, info=None, name=None):
         return {"level": "confirmed", "why": "ad"}
     tags = info.get("trustTags")
     base = base_name(name, uid)
-    if tags == [] and base != name and NAME_END.match(base):
+    if base == name or tags:  # No " xxxx" from VRChat, or a rank: a real person, whatever the name looks like
+        return None
+    if tags == [] and NAME_END.match(base):
         return {"level": "suspected", "why": "name"}
     if NAME.match(base):
         if tags == []:
