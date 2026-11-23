@@ -76,6 +76,7 @@ KINDS = [
     K("world", "🌍", "1;96", r"\[Behaviour\] Entering Room: (.+)", desc="Entered a world"),
     K("instance", "  ↳", "90", r"\[Behaviour\] Joining (wrld_\S+)", desc="instance ID"),
     K("left", "🚪", "96", r"\[Behaviour\] OnLeftRoom$", lambda m: ("Left the room", ""), desc="You left the room"),
+    K("quit", "⏏️", "96", r"VRCApplication: HandleApplicationQuit", lambda m: ("Closed VRChat", ""), desc="VRChat closed"),
     K("join", "➕", "92", r"\[Behaviour\] OnPlayerJoined (.+?) \((usr_[\w-]+)\)", lambda m: (m[1], m[2]), desc="Player joined"),
     K("leave", "➖", "91", r"\[Behaviour\] OnPlayerLeft (.+?) \((usr_[\w-]+)\)", lambda m: (m[1], m[2]), desc="Player left"),
     K("avatar", "👤", "36", r"\[Behaviour\] Switching (.+) to avatar (.+)",
@@ -220,6 +221,10 @@ class Room:
         elif ev.kind == "left":
             self.players.clear()
             self.location = ""
+        elif ev.kind == "quit":  # The game closed: nobody is in a room with you any more
+            self.players.clear()
+            self.location = ""
+            self.world = "-"
         elif ev.kind == "join":
             self.players[ev.user_id] = ev.value
         elif ev.kind == "leave":

@@ -602,14 +602,14 @@ function icon(name) {
 // ---------- Event type data ----------
 const KIND_STYLE = {  // [icon, color]
   world: ["globe", "blue"], instance: ["hash", "gray"], join: ["user-plus", "green"], leave: ["user-minus", "red"],
-  left: ["door-open", "teal"], disconnect: ["unplug", "red"], travel: ["compass", "teal"], world_load: ["timer", "gray"],
+  left: ["door-open", "teal"], quit: ["log-out", "gray"], disconnect: ["unplug", "red"], travel: ["compass", "teal"], world_load: ["timer", "gray"],
   avatar: ["shirt", "indigo"], avatar_load: ["package", "indigo"], perf: ["shield-alert", "orange"], moderation: ["shield-check", "gray"],
   video: ["clapperboard", "purple"], video_title: ["music", "pink"], video_err: ["triangle-alert", "orange"], download: ["download", "gray"],
   screenshot: ["camera", "blue"], sticker: ["sticker", "pink"], item: ["gift", "purple"], pickup: ["hand", "brown"], store: ["shopping-bag", "mint"],
   notify: ["bell", "orange"], login: ["key-round", "green"], net: ["wifi-off", "yellow"], mic: ["mic", "gray"], udon_err: ["bug", "red"], error: ["circle-alert", "red"],
 };
 const GROUPS = [
-  ["g_room", ["world", "instance", "join", "leave", "left", "disconnect", "travel", "world_load"]],
+  ["g_room", ["world", "instance", "join", "leave", "left", "quit", "disconnect", "travel", "world_load"]],
   ["g_avatar", ["avatar", "avatar_load", "perf", "moderation"]],
   ["g_media", ["video", "video_title", "video_err", "download"]],
   ["g_activity", ["screenshot", "sticker", "item", "pickup", "store"]],
@@ -637,14 +637,14 @@ const I18N = {
     openFolder: "โฟลเดอร์ log ของ VRChat", open: "เปิด", resetAll: "รีเซ็ตการตั้งค่าทั้งหมด", reset: "รีเซ็ต", confirm: "กดอีกครั้งเพื่อยืนยัน",
     resetDone: "รีเซ็ตการตั้งค่าแล้ว", version: v => `เวอร์ชัน ${v}`, credits: "ไอคอนโดย Lucide (ISC License)", madeBy: "สร้างโดย",
     wp: { tahoe: "Tahoe", ocean: "มหาสมุทร", sunset: "พระอาทิตย์ตก", forest: "ป่า", graphite: "กราไฟต์" },
-    kinds: { world: "เข้าโลก", instance: "Instance ID", join: "มีคนเข้า", leave: "มีคนออก", left: "ตัวเองออกจากห้อง",
+    kinds: { world: "เข้าโลก", instance: "Instance ID", join: "มีคนเข้า", leave: "มีคนออก", left: "ตัวเองออกจากห้อง", quit: "ปิดเกม",
       disconnect: "หลุดการเชื่อมต่อ", travel: "กำลังย้ายโลก", world_load: "เวลาโหลดโลก", avatar: "เปลี่ยนอวตาร",
       avatar_load: "โหลดอวตาร + เจ้าของ", perf: "อวตารถูกบล็อก (performance)", moderation: "ตั้งค่าแสดงอวตาร",
       video: "เปิดวิดีโอ", video_title: "ชื่อวิดีโอ (YTTL)", video_err: "วิดีโอ error", download: "โหลดรูป/ข้อความจาก URL",
       screenshot: "ถ่ายรูป", sticker: "สติกเกอร์", item: "ไอเทม (prop)", pickup: "หยิบของ", store: "ร้านค้าในโลก",
       notify: "แจ้งเตือน", login: "Login", net: "การเชื่อมต่อ API หลุด", mic: "เปลี่ยนไมค์", udon_err: "Udon script error", error: "Error อื่นๆ" },
     fmt: {
-      left: () => "ออกจากห้อง", video_title: (t, v) => t === "title" ? v : `โดย ${v}`, sticker: (u, n) => `${n} วางสติกเกอร์`,
+      left: () => "ออกจากห้อง", quit: () => "ปิด VRChat แล้ว", video_title: (t, v) => t === "title" ? v : `โดย ${v}`, sticker: (u, n) => `${n} วางสติกเกอร์`,
       notify: (u, t) => u ? `${t} จาก ${u}` : t, login: n => `Login เป็น ${n}`, item: n => `${n} วางไอเทม`,
       disconnect: r => `หลุดจากห้อง (${r})`, net: () => "การเชื่อมต่อ API หลุด — เพื่อน/แจ้งเตือนอาจไม่อัปเดต",
       perf: () => "อวตารถูกบล็อกโดย performance limit", udon_err: () => "Udon script ของโลกเกิด error",
@@ -669,14 +669,14 @@ const I18N = {
     openFolder: "VRChat log folder", open: "Open", resetAll: "Reset all settings", reset: "Reset", confirm: "Click again to confirm",
     resetDone: "Settings reset", version: v => `Version ${v}`, credits: "Icons by Lucide (ISC License)", madeBy: "Created by",
     wp: { tahoe: "Tahoe", ocean: "Ocean", sunset: "Sunset", forest: "Forest", graphite: "Graphite" },
-    kinds: { world: "Joined world", instance: "Instance ID", join: "Player joined", leave: "Player left", left: "Left room",
+    kinds: { world: "Joined world", instance: "Instance ID", join: "Player joined", leave: "Player left", left: "Left room", quit: "Closed VRChat",
       disconnect: "Disconnected", travel: "Traveling", world_load: "World load time", avatar: "Avatar changed",
       avatar_load: "Avatar loaded + owner", perf: "Avatar blocked (performance)", moderation: "Avatar visibility",
       video: "Video opened", video_title: "Video title (YTTL)", video_err: "Video error", download: "URL downloads",
       screenshot: "Screenshot", sticker: "Sticker", item: "Item (prop)", pickup: "Pickup", store: "World store",
       notify: "Notification", login: "Login", net: "API connection lost", mic: "Microphone changed", udon_err: "Udon script error", error: "Other errors" },
     fmt: {
-      left: () => "Left the room", video_title: (t, v) => t === "title" ? v : `by ${v}`, sticker: (u, n) => `${n} placed a sticker`,
+      left: () => "Left the room", quit: () => "Closed VRChat", video_title: (t, v) => t === "title" ? v : `by ${v}`, sticker: (u, n) => `${n} placed a sticker`,
       notify: (u, t) => u ? `${t} from ${u}` : t, login: n => `Logged in as ${n}`, item: n => `${n} spawned an item`,
       disconnect: r => `Disconnected (${r})`, net: () => "API connection lost — friends/notifications may not update",
       perf: () => "Avatar blocked by performance limits", udon_err: () => "World Udon script error",
@@ -701,14 +701,14 @@ const I18N = {
     openFolder: "VRChat のログフォルダ", open: "開く", resetAll: "すべての設定をリセット", reset: "リセット", confirm: "もう一度押して確定",
     resetDone: "設定をリセットしました", version: v => `バージョン ${v}`, credits: "アイコン: Lucide (ISC License)", madeBy: "作成者",
     wp: { tahoe: "Tahoe", ocean: "オーシャン", sunset: "サンセット", forest: "フォレスト", graphite: "グラファイト" },
-    kinds: { world: "ワールド入室", instance: "インスタンスID", join: "プレイヤー参加", leave: "プレイヤー退出", left: "ルーム退出",
+    kinds: { world: "ワールド入室", instance: "インスタンスID", join: "プレイヤー参加", leave: "プレイヤー退出", left: "ルーム退出", quit: "VRChat 終了",
       disconnect: "切断", travel: "ワールド移動中", world_load: "ワールド読み込み時間", avatar: "アバター変更",
       avatar_load: "アバター読み込み + 作者", perf: "アバターブロック (パフォーマンス)", moderation: "アバター表示設定",
       video: "動画再生", video_title: "動画タイトル (YTTL)", video_err: "動画エラー", download: "URLダウンロード",
       screenshot: "スクリーンショット", sticker: "ステッカー", item: "アイテム (prop)", pickup: "ピックアップ", store: "ワールドストア",
       notify: "通知", login: "ログイン", net: "API接続切断", mic: "マイク変更", udon_err: "Udonスクリプトエラー", error: "その他のエラー" },
     fmt: {
-      left: () => "ルームを退出", video_title: (t, v) => t === "title" ? v : `投稿者: ${v}`, sticker: (u, n) => `${n} がステッカーを貼りました`,
+      left: () => "ルームを退出", quit: () => "VRChat を終了しました", video_title: (t, v) => t === "title" ? v : `投稿者: ${v}`, sticker: (u, n) => `${n} がステッカーを貼りました`,
       notify: (u, t) => u ? `${u} から ${t}` : t, login: n => `${n} としてログイン`, item: n => `${n} がアイテムを出しました`,
       disconnect: r => `切断されました (${r})`, net: () => "API接続が切れました — フレンド/通知が更新されない可能性があります",
       perf: () => "パフォーマンス制限でアバターがブロックされました", udon_err: () => "ワールドのUdonスクリプトでエラー",
@@ -1035,6 +1035,10 @@ window.onBatch = (b) => {
   renderPlayers(b.players);
   for (const e of b.events) {  // Attach the instance to the world header so the world info can be opened
     if (e.k === "world") lastWorldEv = e;
+    else if (e.k === "quit" && historyData?.[0] && !historyData[0].end && historyData[0].t < e.t) {  // The visit going on has ended
+      historyData[0].end = e.t; delete histPlayers[historyData[0].t];
+      if (view === "history") renderView();
+    }
     else if (e.k === "instance" && lastWorldEv && !lastWorldEv.loc) lastWorldEv.loc = e.v;
   }
   if (b.events.length) {

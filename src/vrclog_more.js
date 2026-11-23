@@ -7397,10 +7397,10 @@ Object.assign(DEFAULTS, { histView: "timeline" });
 const hvHms = d => d.toTimeString().slice(0, 8);
 const hvLen = ms => ms < 60000 ? t("hv_sec", Math.max(1, Math.round(ms / 1000))) : fmtDur(ms);
 function hvSet(view, key) { S.histView = view; save(); const v = historyData?.find(x => x.t === key); const row = [...document.querySelectorAll("#v_history .hrow")].find(r => r.dataset.t === key); if (v && row) fillVisit(v, row); }
-// Ticks every 5 min … 1 day, so that a visit gets about 4–7 of them
+// Ticks every 1 min … 1 day, so that a visit gets about 4–7 of them (a visit of a few minutes gets minute ticks)
 function hvTicks(t0, t1) {
   const span = (t1 - t0) / 60000;
-  const step = [5, 10, 15, 30, 60, 120, 180, 360, 720, 1440].find(m => span / m <= 7) || 2880;
+  const step = [1, 2, 5, 10,15, 30, 60, 120, 180, 360, 720, 1440].find(m => span / m <= 7) || 2880;
   const out = [], first = new Date(t0);
   first.setSeconds(0, 0);
   first.setMinutes(Math.ceil((first.getHours() * 60 + first.getMinutes()) / step) * step - first.getHours() * 60);

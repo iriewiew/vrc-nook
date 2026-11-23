@@ -56,6 +56,7 @@ class Store:
 
     def import_logs(self, skip=None):
         """Import every old log file not imported yet (skipping the file currently being read live)"""
+        self._backfill_quits(skip)
         done = dict(self._query("SELECT file, size FROM imported"))
         for f in vrclog.LOG_DIR.glob("output_log_*.txt"):
             if f == skip:
@@ -73,6 +74,22 @@ class Store:
                     batch = []
             self.add_events(batch)
             self._exec("INSERT OR REPLACE INTO imported VALUES (?,?)", (f.name, size))
+
+    def _backfill_quits(self, skip=None):
+        """Once: the "VRChat closed" line from logs imported before it was read (it ends the last visit of each session)"""
+        if self._query("SELECT 1 FROM imported WHERE file = '#quits'"):
+            return
+        for f in vrclog.LOG_DIR.glob("output_log_*.txt"):
+            if f == skip:
+                continue
+            events = []
+            for line in vrclog.read_lines(f):
+                if "HandleApplicationQuit" in line:
+                    ev = vrclog.parse_line(line)
+                    if ev and ev.kind == "quit":
+                        events.append(ev)
+            self.add_events(events)
+        self._exec("INSERT OR REPLACE INTO imported VALUES (?,?)", ("#quits", 0))
 
     def encounters(self, uid):
         first, last, count = self._query(
@@ -92,6 +109,15 @@ class Store:
                 visits[-1]["loc"] = value
         for i, v in enumerate(visits):
             v["end"] = visits[i + 1]["t"] if i + 1 < len(visits) else ""
+        if visits:
+            # Closing VRChat writes no "left the room" — without this the last visit before it ran on until the next one
+            stops = [t for (t,) in self._query("SELECT t FROM gamelog WHERE kind IN ('quit', 'login') AND t > ? ORDER BY t", (visits[0]["t"],))]
+            k = 0
+            for v in visits:
+                while k < len(stops) and stops[k] <= v["t"]:
+                    k += 1
+                if k < len(stops) and (not v["end"] or stops[k] < v["end"]):
+                    v["end"] = stops[k]
         if visits:
             joins = self._query("SELECT t, uid FROM gamelog WHERE kind = 'join' AND t >= ? ORDER BY t", (visits[0]["t"],))
             j = 0
