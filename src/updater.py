@@ -81,14 +81,29 @@ def exe_path():
 
 
 def cleanup():
-    """Delete old exes left over from the previous update"""
+    """Delete old exes left over from the previous update; after an update, make Windows show the new exe's icon"""
     exe = exe_path()
     if exe:
+        updated = "--updated" in sys.argv or exe.with_name(exe.name + ".old").exists()
         for p in (exe.with_name(exe.name + ".old"), exe.with_name(exe.name + ".new")):
             try:
                 p.unlink(missing_ok=True)
             except OSError:
                 pass  # The old one hasn't fully exited yet — delete it next time
+        if updated:
+            refresh_icon(exe)
+
+
+def refresh_icon(exe):
+    """Explorer keeps the icon it read from a file at that path: an exe swapped in place by the updater went on showing the
+    old version's icon (on the desktop, in shortcuts) until the cache happened to be rebuilt. Tell the shell it changed."""
+    try:
+        import ctypes
+        shell = ctypes.windll.shell32
+        shell.SHChangeNotify(0x00002000, 0x0005, ctypes.c_wchar_p(str(exe)), None)  # SHCNE_UPDATEITEM, SHCNF_PATHW: this file
+        shell.SHChangeNotify(0x08000000, 0x0000, None, None)  # SHCNE_ASSOCCHANGED: icons in shortcuts to it as well
+    except Exception as e:
+        log.debug("icon refresh failed: %s", e)
 
 
 def check(current, nightly=False):
