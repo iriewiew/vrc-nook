@@ -7306,7 +7306,15 @@ VIEW_REFRESH.suspects = () => { SUS.list = null; susLoad(); };
 const susMatch = x => (!query || (x.name || "").toLowerCase().includes(query) || x.id.includes(query))
   && (!SUS.world || (x.worlds || []).some(([w]) => w === SUS.world));
 function susWorld(i) { const w = SUS.worldsTop?.[i]; SUS.world = SUS.world === w ? null : w; repaint(); }
-const susShown = tab => (SUS.list || []).filter(x => susMatch(x) && modsOf(x.id).has("block") === (tab === "blocked"));
+const susSortKey = () => ["level", "time", "name"].includes(S.susSort) ? S.susSort : "level";
+const susShown = tab => {
+  const list = (SUS.list || []).filter(x => susMatch(x) && modsOf(x.id).has("block") === (tab === "blocked"));
+  const key = susSortKey();  // "level": the order it comes in (bots first, then newest sighting)
+  if (key === "time") list.sort((a, b) => (b.last || "").localeCompare(a.last || ""));
+  else if (key === "name") list.sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
+  return list;
+};
+function susSort(key) { S.susSort = key; save(); repaint(); }
 function susTab(tab) { SUS.tab = tab; repaint(); }
 function renderSuspects() {
   const el = $("v_suspects");
@@ -7319,6 +7327,7 @@ function renderSuspects() {
   const nOpen = susShown("open").length, nBots = susShown("open").filter(x => x.level === "confirmed").length, nBlocked = susShown("blocked").length;
   const nb = susNotBots().length;
   const bar = `<div class="toolbar">${tabsHtml({ open: `${t("sus_tabOpen")} <b class="sus-n">${nOpen.toLocaleString()}</b>`, blocked: `${t("sus_blocked")} <b class="sus-n">${nBlocked.toLocaleString()}</b>` }, tab, "susTab")}
+    ${sortSel(susSortKey(), ["level", "time", "name"], "susSort(this.value)")}
     <span class="grow"></span>
     ${nb ? `<span class="sus-nb">${t("sus_notBotN", nb)} · <span class="link" onclick="susNotBotReset()">${t("sus_notBotReset")}</span></span>` : ""}
     ${list.length ? `<button class="btn sm" onclick="susExport()">${icon("download")}CSV</button>` : ""}
@@ -7384,23 +7393,38 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 // each was seen ----------
 tx({
   hv_timeline: ["ไทม์ไลน์", "Timeline", "タイムライン"], hv_list: ["รายชื่อ", "List", "一覧"],
+  sort_sus: ["น่าสงสัยก่อน", "Suspicious first", "疑わしい順"], sort_level: ["บอทก่อน", "Bots first", "ボットが先"],
+  sort_time: ["เวลา", "Time", "時間順"], sort_name: ["ตัวอักษร", "Name (A–Z)", "名前順"],
   hv_person: ["คนปกติ", "Player", "プレイヤー"], hv_stay: ["อยู่", "stayed", "滞在"],
   hv_sec: [n => `${n} วินาที`, n => `${n} s`, n => `${n} 秒`],
   sus_where: ["เจอที่", "Seen in", "見かけた場所"],
 });
-Object.assign(UPD_I18N.ko, { hv_timeline: "타임라인", hv_list: "목록", hv_person: "플레이어", hv_stay: "머문 시간", hv_sec: n => `${n}초`, sus_where: "본 곳" });
-Object.assign(UPD_I18N.ru, { hv_timeline: "Хронология", hv_list: "Список", hv_person: "Игрок", hv_stay: "пробыл", hv_sec: n => `${n} с`, sus_where: "Где видели" });
-Object.assign(UPD_I18N.vi, { hv_timeline: "Dòng thời gian", hv_list: "Danh sách", hv_person: "Người chơi", hv_stay: "ở lại", hv_sec: n => `${n} giây`, sus_where: "Gặp ở" });
-Object.assign(UPD_I18N.zh, { hv_timeline: "时间线", hv_list: "列表", hv_person: "玩家", hv_stay: "停留", hv_sec: n => `${n} 秒`, sus_where: "出现过的地方" });
+Object.assign(UPD_I18N.ko, { sort_sus: "의심 먼저", sort_level: "봇 먼저", sort_time: "시간순", sort_name: "이름순", hv_timeline: "타임라인", hv_list: "목록", hv_person: "플레이어", hv_stay: "머문 시간", hv_sec: n => `${n}초`, sus_where: "본 곳" });
+Object.assign(UPD_I18N.ru, { sort_sus: "Сначала подозрительные", sort_level: "Сначала боты", sort_time: "По времени", sort_name: "По имени", hv_timeline: "Хронология", hv_list: "Список", hv_person: "Игрок", hv_stay: "пробыл", hv_sec: n => `${n} с`, sus_where: "Где видели" });
+Object.assign(UPD_I18N.vi, { sort_sus: "Đáng ngờ trước", sort_level: "Bot trước", sort_time: "Theo thời gian", sort_name: "Theo tên", hv_timeline: "Dòng thời gian", hv_list: "Danh sách", hv_person: "Người chơi", hv_stay: "ở lại", hv_sec: n => `${n} giây`, sus_where: "Gặp ở" });
+Object.assign(UPD_I18N.zh, { sort_sus: "可疑优先", sort_level: "机器人优先", sort_time: "按时间", sort_name: "按名称", hv_timeline: "时间线", hv_list: "列表", hv_person: "玩家", hv_stay: "停留", hv_sec: n => `${n} 秒`, sus_where: "出现过的地方" });
 Object.assign(DEFAULTS, { histView: "timeline" });
 
 const hvHms = d => d.toTimeString().slice(0, 8);
 const hvLen = ms => ms < 60000 ? t("hv_sec", Math.max(1, Math.round(ms / 1000))) : fmtDur(ms);
+// Sort menu: "Sort by: …"
+function sortSel(cur, keys, onchange) {
+  return `<label class="sort-sel" onclick="event.stopPropagation()">${icon("list")}<select class="field sm" onchange="${esc(onchange)}">${keys.map(k =>
+    `<option value="${k}" ${k === cur ? "selected" : ""}>${t("sort_" + k)}</option>`).join("")}</select></label>`;
+}
+const hvSortKey = () => ["sus", "time", "name"].includes(S.histSort) ? S.histSort : "sus";
+function hvSortPlayers(ps) {
+  const key = hvSortKey(), rank = p => p.sus === "confirmed" ? 0 : p.sus ? 1 : 2;
+  const byTime = (a, b) => (a.t || "").localeCompare(b.t || "");
+  ps.sort(key === "name" ? (a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })
+    : key === "sus" ? (a, b) => rank(a) - rank(b) || byTime(a, b) : byTime);
+}
+function hvSort(key, t) { S.histSort = key; save(); hvSet(S.histView || "timeline", t); }
 function hvSet(view, key) { S.histView = view; save(); const v = historyData?.find(x => x.t === key); const row = [...document.querySelectorAll("#v_history .hrow")].find(r => r.dataset.t === key); if (v && row) fillVisit(v, row); }
 // Ticks every 1 min … 1 day, so that a visit gets about 4–7 of them (a visit of a few minutes gets minute ticks)
 function hvTicks(t0, t1) {
   const span = (t1 - t0) / 60000;
-  const step = [1, 2, 5, 10,15, 30, 60, 120, 180, 360, 720, 1440].find(m => span / m <= 7) || 2880;
+  const step = [1, 2, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440].find(m => span / m <= 7) || 2880;
   const out = [], first = new Date(t0);
   first.setSeconds(0, 0);
   first.setMinutes(Math.ceil((first.getHours() * 60 + first.getMinutes()) / step) * step - first.getHours() * 60);
@@ -7422,19 +7446,25 @@ function hvTimeline(v, ps) {
     return `<div class="hv-row" data-u="${esc(p.u)}" data-n="${escA(p.name)}"><div class="hv-name ${cls}" title="${escA(p.name)}">${cls ? icon("shield-alert") : ""}<span>${esc(p.name)}</span></div>
       <div class="hv-track">${grid}${bars}</div></div>`;
   }).join("");
-  const kinds = new Set(ps.map(p => p.sus === "confirmed" ? "bot" : p.sus ? "sus" : ""));
-  const legend = `<div class="hv-legend"><span><i class="hv-key"></i>${t("hv_person")}</span>${kinds.has("bot") ? `<span><i class="hv-key bot"></i>${icon("shield-alert")}${t("sus_confirmed")}</span>` : ""}${kinds.has("sus") ? `<span><i class="hv-key sus"></i>${icon("shield-alert")}${t("sus_suspected")}</span>` : ""}</div>`;
+  const nBot = ps.filter(p => p.sus === "confirmed").length, nSus = ps.filter(p => p.sus && p.sus !== "confirmed").length;
+  const legend = `<div class="hv-legend"><span><i class="hv-key"></i>${t("hv_person")}</span>${nBot ? `<span><i class="hv-key bot"></i>${icon("shield-alert")}${t("sus_confirmed")} (${nBot})</span>` : ""}${nSus ? `<span><i class="hv-key sus"></i>${icon("shield-alert")}${t("sus_suspected")} (${nSus})</span>` : ""}</div>`;
   return `${legend}<div class="hv-axisbox"><div class="hv-axis"><div class="hv-name"></div><div class="hv-track">${ticks}</div></div></div><div class="hv-chart">${rows}</div>`;
 }
 const _fillVisitHv = fillVisit;
 fillVisit = async function (v, row) {
   row.dataset.t = v.t;
   const body = row.querySelector(".hbody");
-  if (!histPlayers[v.t]) { body.textContent = t("loading"); histPlayers[v.t] = (await api("visit_players", v.t, v.end, susNotBots())) || []; }
+  const ongoing = !v.end && v === historyData?.[0];
+  if (!histPlayers[v.t] || ongoing) {
+    if (!histPlayers[v.t]) body.textContent = t("loading");
+    histPlayers[v.t] = (await api("visit_players", v.t, v.end, susNotBots())) || [];
+  }
   const ps = histPlayers[v.t];
   if (!ps.length) return _fillVisitHv(v, row);
+  hvSortPlayers(ps);  // In place: the list view reads histPlayers too
   const view = S.histView === "list" ? "list" : "timeline";
-  const tabs = `<div class="segmented hv-tabs">${["timeline", "list"].map(k => `<button class="${view === k ? "on" : ""}" onclick="event.stopPropagation();hvSet('${k}','${esc(v.t)}')">${t("hv_" + k)}</button>`).join("")}</div>`;
+  const tabs = `<div class="hv-top"><div class="segmented hv-tabs">${["timeline", "list"].map(k => `<button class="${view === k ? "on" : ""}" onclick="event.stopPropagation();hvSet('${k}','${esc(v.t)}')">${t("hv_" + k)}</button>`).join("")}</div>
+    ${sortSel(hvSortKey(), ["sus", "time", "name"], `hvSort(this.value,'${esc(v.t)}')`)}</div>`;
   if (view === "list") {
     await _fillVisitHv(v, row);
     body.insertAdjacentHTML("afterbegin", tabs);
@@ -7481,7 +7511,11 @@ renderSuspects = function () {
 };
 VIEW_RENDER.suspects = renderSuspects;
 document.head.insertAdjacentHTML("beforeend", `<style>
-.hv-tabs { margin: 2px 0 8px; width: max-content; }
+.hv-tabs { margin: 0; width: max-content; }
+.hv-top { display: flex; align-items: center; gap: 10px; margin: 2px 0 8px; }
+.sort-sel { display: inline-flex; align-items: center; gap: 5px; color: var(--text2); }
+.sort-sel svg { width: 13px; height: 13px; }
+.sort-sel .field.sm { width: auto; padding: 3px 8px; font-size: 12px; }
 .hv-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--text2); margin: 0 0 6px; }
 .hv-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .hv-legend svg { width: 12px; height: 12px; }
