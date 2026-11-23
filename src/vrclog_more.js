@@ -4227,7 +4227,8 @@ function updStatus() {
   if (UPD.info?.newer) return t("upd_newer", UPD.info.latest);
   return UPD.info ? t("upd_latest") : t("upd_current", VERSION);
 }
-async function updCheck(manual) {
+async function updCheck(how) {
+  const manual = how === true;
   if (UPD.checking) return;
   UPD.checking = true; UPD.error = false;
   if (settingsOpen) buildSettings();
@@ -4236,7 +4237,15 @@ async function updCheck(manual) {
   if (!r || r.error) { UPD.error = true; if (manual) toast(t("upd_error")); }
   else {
     UPD.info = r;
-    if (r.newer && (manual || S.updSkip !== r.latest)) updPrompt();
+    if (r.newer && (manual || S.updSkip !== r.latest)) {
+      // Asked once per version: a later check doesn't put the window up again after "Later" (nor over another window)
+      const told = UPD.told === r.latest;
+      UPD.told = r.latest;
+      if (manual || (!told && !(how === "auto" && X))) {
+        updPrompt();
+        if (how === "auto") winNotify("VRC Nook", t("upd_newer", r.latest));  // Only shows when the app is hidden (in the tray)
+      }
+    }
     else if (manual) toast(t("upd_latest"));
   }
   if (settingsOpen) buildSettings();
@@ -4286,6 +4295,8 @@ window.onUpdateFailed = () => { UPD.pct = null; toast(t("upd_fail")); if (X) bui
 (function updAuto() {
   if (!ready) return setTimeout(updAuto, 1000);
   if (S.autoUpdate !== false) setTimeout(() => updCheck(false), 4000);
+  // And every hour while it stays open: many leave VRC Nook running in the tray for days
+  setInterval(() => { if (S.autoUpdate !== false && UPD.pct == null) updCheck("auto"); }, 3600 * 1000);
 })();
 
 document.head.insertAdjacentHTML("beforeend", `<style>
@@ -7229,7 +7240,7 @@ function susOscCount() {
   susOscRoom = S.susOsc ? n : -1;
 }
 
-const SUS = { room: {}, alerted: new Set(), list: null, loading: false, timer: 0, queue: Promise.resolve(), bulk: null };
+const SUS = { room: {}, brief: {}, alerted: new Set(), list: null, loading: false, timer: 0, queue: Promise.resolve(), bulk: null };
 const susNotBots = () => S.notBots || [];
 const susName = uid => PROFILES[uid]?.displayName || (lastBatch?.players || []).find(p => p[0] === uid)?.[1] || SUS.list?.find(x => x.id === uid)?.name || uid;
 const susLive = h => h && h.why !== "nameOnly";  // A name alone waits for the profile (loaded for everyone in the room)
@@ -7237,11 +7248,18 @@ function susCheckSoon() { clearTimeout(SUS.timer); SUS.timer = setTimeout(susChe
 async function susCheck() {
   if (!AUTH.loggedIn) return;
   const ids = (lastBatch?.players || []).map(p => p[0]).filter(u => u && u !== AUTH.id);
-  SUS.room = ids.length ? await api("suspects_check", ids, susNotBots()) || {} : {};
+  // Also those in and out within a second, no longer in the room: checked once their profile is in (or given up after 3 min)
+  for (const [u, [, at]] of Object.entries(SUS.brief)) if (Date.now() - at > 180000) delete SUS.brief[u];
+  const brief = Object.keys(SUS.brief).filter(u => u !== AUTH.id && !ids.includes(u));
+  const names = brief.length ? Object.fromEntries([...(lastBatch?.players || []), ...brief.map(u => [u, SUS.brief[u][0]])]) : null;
+  const all = [...ids, ...brief];
+  const res = all.length ? await api("suspects_check", all, susNotBots(), names) || {} : {};
+  SUS.room = Object.fromEntries(Object.entries(res).filter(([u]) => ids.includes(u)));
   const loc = myLoc();
-  for (const [uid, h] of Object.entries(SUS.room)) {
+  for (const [uid, h] of Object.entries(res)) {
     if (!susLive(h) || SUS.alerted.has(loc + "|" + uid)) continue;
     SUS.alerted.add(loc + "|" + uid);
+    delete SUS.brief[uid];
     susAlert(uid, h);
   }
   susOscCount();
@@ -7273,6 +7291,7 @@ async function susBlock(uid, quiet) {
   const r = await vrc("moderateUser", { moderated: uid, type: "block" });
   if ("error" in r) { if (!quiet) apiError(r); return null; }
   MODS.list = [...(MODS.list || []), { type: "block", targetUserId: uid, targetDisplayName: susName(uid), created: new Date().toISOString() }];
+  logBlocks();
   repaint();
   await new Promise(res => setTimeout(res, 1200));  // Several bots often arrive together: don't fire blocks back to back
   return "new";
@@ -7767,3 +7786,89 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .sus-done { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text2); }
 .sus-done svg { width: 13px; height: 13px; }
 </style>`);
+
+// ---------- Players the game began letting in who left within a second (ripper bots): the log never says they joined ----------
+// VRC Nook adds that join (marked "brief"); one just now is checked for bots like the players in the room
+{
+  const base = window.onBatch;
+  window.onBatch = b => {
+    base(b);
+    let any = false;
+    for (const e of b.events || []) if (e.k === "join" && e.p?.[2] === "brief" && e.u && Date.now() - +tsDate(e.t) < 120000) { SUS.brief[e.u] = [e.p[0] || e.v, Date.now()]; any = true; }
+    if (any) susCheckSoon();
+  };
+}
+
+// ---------- Game Log: who you blocked, and when ----------
+// The game writes a line only for blocks made in the game; blocks from VRC Nook or the website come from the block list
+// (with the time VRChat keeps), for the time the log covers. One block = one row: a log line for it is not shown twice
+const logTs = d => { const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
+function logBlocks() {
+  if (!MODS.list || !events.length) return;
+  const from = events[0].t, have = events.filter(e => e.k === "blocked");
+  const near = (a, b) => Math.abs(+tsDate(a) - +tsDate(b)) <= 60000;
+  let added = 0;
+  for (const m of MODS.list) {
+    if (m.type !== "block" || !m.created) continue;
+    const t = logTs(new Date(m.created)), name = m.targetDisplayName || m.targetUserId;
+    if (t < from || have.some(e => (e.u === m.targetUserId || e.v === name) && near(e.t, t))) continue;
+    const e = { t, k: "blocked", v: name, u: m.targetUserId, p: [name] };
+    have.push(e); events.push(e); added++;
+  }
+  if (!added) return;
+  events.sort((a, b) => a.t < b.t ? -1 : a.t > b.t ? 1 : 0);
+  if (view === "log" && !paused) render();
+}
+{
+  const base = loadMods;
+  loadMods = async function (force) { await base(force); logBlocks(); };
+  const batchBase = window.onBatch;
+  window.onBatch = b => {  // A block made in the game names the player only: give the row their ID when they're in the room
+    for (const e of b.events || []) if ((e.k === "blocked" || e.k === "mod_action") && !e.u) e.u = (b.players || []).find(p => p[1] === e.v)?.[0] || "";
+    batchBase(b);
+    if (b.events?.some(e => e.k === "blocked")) logBlocks();
+  };
+}
+for (const [l, kind, fmt] of [["th", "บล็อก", n => `บล็อก ${n}`], ["en", "Blocked", n => `Blocked ${n}`], ["ja", "ブロック", n => `${n} をブロック`],
+  ["ko", "차단", n => `${n} 차단`], ["ru", "Блокировка", n => `Заблокирован ${n}`], ["vi", "Đã chặn", n => `Đã chặn ${n}`], ["zh", "屏蔽", n => `已屏蔽 ${n}`]]) {
+  const L_ = I18N[l];
+  if (!L_) continue;
+  (L_.kinds ||= {}).blocked = kind;
+  (L_.fmt ||= {}).blocked = fmt;
+}
+// The game's words for each action, in each language
+{
+  const ACT = { "is now Muted": "muted", "is no longer Muted": "unmuted", "is no longer Blocked": "unblocked", "avatar is enabled": "avShown",
+    "avatar is hidden": "avHidden", "Avatar will follow Safety Settings": "avSafety" };
+  const W = {
+    th: ["การจัดการผู้เล่น", { muted: "ปิดเสียง", unmuted: "เลิกปิดเสียง", unblocked: "เลิกบล็อก", avShown: "แสดงอวตาร", avHidden: "ซ่อนอวตาร", avSafety: "อวตารตามการตั้งค่าความปลอดภัย" }],
+    en: ["Player moderation", { muted: "Muted", unmuted: "Unmuted", unblocked: "Unblocked", avShown: "Showed avatar of", avHidden: "Hid avatar of", avSafety: "Safety Settings for avatar of" }],
+    ja: ["プレイヤー管理", { muted: "ミュート", unmuted: "ミュート解除", unblocked: "ブロック解除", avShown: "アバター表示", avHidden: "アバター非表示", avSafety: "アバターは安全設定に従う" }],
+    ko: ["플레이어 관리", { muted: "음소거", unmuted: "음소거 해제", unblocked: "차단 해제", avShown: "아바타 표시", avHidden: "아바타 숨김", avSafety: "아바타 안전 설정 따름" }],
+    ru: ["Действия с игроками", { muted: "Заглушён", unmuted: "Звук включён", unblocked: "Разблокирован", avShown: "Аватар показан", avHidden: "Аватар скрыт", avSafety: "Аватар по настройкам безопасности" }],
+    vi: ["Quản lý người chơi", { muted: "Đã tắt tiếng", unmuted: "Bỏ tắt tiếng", unblocked: "Bỏ chặn", avShown: "Hiện avatar", avHidden: "Ẩn avatar", avSafety: "Avatar theo cài đặt an toàn" }],
+    zh: ["玩家管理", { muted: "已静音", unmuted: "取消静音", unblocked: "取消屏蔽", avShown: "显示模型", avHidden: "隐藏模型", avSafety: "模型按安全设置" }],
+  };
+  for (const [l, [kind, words]] of Object.entries(W)) {
+    const L_ = I18N[l];
+    if (!L_) continue;
+    (L_.kinds ||= {}).mod_action = kind;
+    (L_.fmt ||= {}).mod_action = (n, a) => l === "en" || l === "th" || l === "vi" || l === "ru" ? `${words[ACT[a]] || a} ${n}` : `${n} ${words[ACT[a]] || a}`;
+  }
+}
+// Each action with its own icon: mic for mute, eye for the avatar, shield for block and safety
+{
+  const MOD_ICON = { "is now Muted": ["mic-off", "orange"], "is no longer Muted": ["mic", "green"], "is no longer Blocked": ["shield-check", "green"],
+    "avatar is enabled": ["eye", "blue"], "avatar is hidden": ["eye-off", "gray"], "Avatar will follow Safety Settings": ["shield", "teal"] };
+  const base = makeRow;
+  makeRow = function (e) {
+    const d = base(e), s = e.k === "mod_action" && MOD_ICON[e.p?.[1]], tile = s && d.querySelector(".tile");
+    if (tile) { tile.innerHTML = icon(s[0]); tile.style.setProperty("--c", `var(--${s[1]})`); }
+    return d;
+  };
+}
+tx({ upd_autoHint: ["ตรวจตอนเปิดแอป และทุก 1 ชั่วโมงระหว่างที่แอปเปิดอยู่", "When the app starts, and every hour while it's open", "起動時と、起動中は 1 時間ごとに確認"] });
+Object.assign(UPD_I18N.ko, { upd_autoHint: "앱 시작 시, 그리고 실행 중에는 1시간마다 확인" });
+Object.assign(UPD_I18N.ru, { upd_autoHint: "При запуске и каждый час, пока приложение открыто" });
+Object.assign(UPD_I18N.vi, { upd_autoHint: "Khi mở ứng dụng và mỗi 1 giờ khi đang chạy" });
+Object.assign(UPD_I18N.zh, { upd_autoHint: "启动时检查，运行期间每小时检查一次" });

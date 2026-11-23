@@ -114,6 +114,9 @@ KINDS = [
       default=False, desc="Avatar loaded + author"),
     K("store", "🛒", "90", r"\[EconomyStoreManager\] .*Fetch World Store Success: .*\((\d+) Listings\)",
       lambda m: (f"This world has a store ({m[1]} items)", ""), default=False, desc="World store"),
+    K("blocked", "🚫", "91", r"\[ModerationManager\] (.+) is now Blocked$", desc="You blocked someone"),
+    K("mod_action", "🛡️", "94", r"\[ModerationManager\] (.+?) (is now Muted|is no longer Muted|is no longer Blocked|avatar is enabled|"
+      r"avatar is hidden|Avatar will follow Safety Settings)$", lambda m: (f"{m[1]} {m[2]}", ""), desc="What you did to a player (mute, avatar)"),
     K("moderation", "🔒", "90", r"\[ModerationManager\] (.+)", default=False, desc="Show/hide avatar moderation"),
     K("pickup", "✋", "90", r"\[Behaviour\] Pickup object: '([^']+)'", default=False, desc="Picked up an object"),
     K("error", "❗", "31", r"(.+)", default=False, desc="All other Error-level lines"),
@@ -146,6 +149,35 @@ def parse_line(line: str):
             value, uid = built
             return Event(ts, k.name, value.strip(), uid, pm.groups())
     return None
+
+
+INIT_RE = re.compile(r"\[Behaviour\] Initialized player (.+)$")
+
+
+class Brief:
+    """Players the game started letting in who left again before it wrote OnPlayerJoined — ripper bots do this, in and out
+    within a second. The log then has only their leave; this gives back the join it never wrote, at the time loading began.
+    Leaves after you leave a room (or the game closes) aren't these: those players joined, or are dropped with the room"""
+
+    def __init__(self):
+        self.loading = {}  # Name -> time the game began loading them, until they join
+
+    def events(self, line):
+        ev = parse_line(line)
+        if ev is None:
+            m = INIT_RE.search(line)
+            lm = m and LINE_RE.match(line)
+            if lm:
+                self.loading[m[1].strip()] = lm.group(1)
+            return []
+        if ev.kind in ("world", "left", "quit"):
+            self.loading.clear()
+        elif ev.kind == "join":
+            self.loading.pop(ev.value, None)
+        elif ev.kind == "leave" and ev.value in self.loading:
+            t0 = self.loading.pop(ev.value)
+            return [Event(t0, "join", ev.value, ev.user_id, (ev.value, ev.user_id, "brief")), ev]
+        return [ev]
 
 
 def newest_log():

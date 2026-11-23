@@ -57,6 +57,7 @@ class Store:
     def import_logs(self, skip=None):
         """Import every old log file not imported yet (skipping the file currently being read live)"""
         self._backfill_quits(skip)
+        self._backfill_brief(skip)
         done = dict(self._query("SELECT file, size FROM imported"))
         for f in vrclog.LOG_DIR.glob("output_log_*.txt"):
             if f == skip:
@@ -64,11 +65,9 @@ class Store:
             size = f.stat().st_size
             if done.get(f.name) == size:
                 continue
-            batch = []
+            batch, brief = [], vrclog.Brief()
             for line in vrclog.read_lines(f):
-                ev = vrclog.parse_line(line)
-                if ev:
-                    batch.append(ev)
+                batch += brief.events(line)
                 if len(batch) >= 2000:
                     self.add_events(batch)
                     batch = []
@@ -90,6 +89,17 @@ class Store:
                         events.append(ev)
             self.add_events(events)
         self._exec("INSERT OR REPLACE INTO imported VALUES (?,?)", ("#quits", 0))
+
+    def _backfill_brief(self, skip=None):
+        """Once: the joins the log never wrote for players who left within a second (see vrclog.Brief), in logs read before"""
+        if self._query("SELECT 1 FROM imported WHERE file = '#brief'"):
+            return
+        for f in vrclog.LOG_DIR.glob("output_log_*.txt"):
+            if f == skip:
+                continue
+            brief = vrclog.Brief()
+            self.add_events([e for line in vrclog.read_lines(f) for e in brief.events(line) if len(e.parts) > 2])
+        self._exec("INSERT OR REPLACE INTO imported VALUES (?,?)", ("#brief", 0))
 
     def encounters(self, uid):
         first, last, count = self._query(
@@ -139,7 +149,7 @@ class Store:
             args.append(end)
         players = [{"u": u, "name": n, "t": t} for u, n, t in self._query(sql + " GROUP BY uid ORDER BY MIN(t)", args)]
         # When each one was there: [join, leave] pairs (a leave missing = still there at the end of the visit)
-        sql = "SELECT t, kind, uid FROM gamelog WHERE kind IN ('join', 'leave') AND t >= ?" + (" AND t < ?" if end else "") + " ORDER BY t"
+        sql = "SELECT t, kind, uid FROM gamelog WHERE kind IN ('join', 'leave') AND t >= ?" + (" AND t < ?" if end else "") + " ORDER BY t, kind"
         spans, open_ = {}, {}
         for t, kind, uid in self._query(sql, args):
             if kind == "join":

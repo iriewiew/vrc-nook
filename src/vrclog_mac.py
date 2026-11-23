@@ -37,7 +37,7 @@ from vrclog import KINDS, Room, parse_line
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w", encoding="utf-8")
 
-VERSION = "0.9.8"
+VERSION = "0.9.9"
 log = logging.getLogger("vrclog")
 UPLOAD_FIELDS = ("animationStyle", "maskTag", "frames", "framesOverTime", "loopStyle")
 RANK_MAX = 1000  # Most users one trust-rank request may queue (the page asks for at most 100 at a time)
@@ -1005,6 +1005,7 @@ class Pump:
         self.started = False
         self.path = None
         self.avatars = {}  # Player name -> the avatar the log last named for them, in this room
+        self.brief = vrclog.Brief()
 
     def start(self):
         if self.started:
@@ -1025,20 +1026,21 @@ class Pump:
         def switched(p):
             self.path = p
         for line in vrclog.follow_lines(path, on_switch=switched):
-            ev = parse_line(line)
-            if not ev:
-                continue
-            with self.lock:
-                self.room.update(ev)
-                changed = self._avatar_changed(ev)
-                parts = list(ev.parts)
-                if ev.kind == "item":  # The log only has the user ID — send the player's name instead
-                    parts = [self.room.players.get(ev.user_id, ev.user_id)]
-                self.pending.append({"t": ev.time, "k": ev.kind, "v": ev.value, "u": ev.user_id,
-                                     "p": parts, "c": len(self.room.players)})
-                self.to_store.append(ev)
-            if changed:
-                self.api._social.feed_avatar(*changed)
+            for ev in self.brief.events(line):
+                self._take(ev)
+
+    def _take(self, ev):
+        with self.lock:
+            self.room.update(ev)
+            changed = self._avatar_changed(ev)
+            parts = list(ev.parts)
+            if ev.kind == "item":  # The log only has the user ID — send the player's name instead
+                parts = [self.room.players.get(ev.user_id, ev.user_id)]
+            self.pending.append({"t": ev.time, "k": ev.kind, "v": ev.value, "u": ev.user_id,
+                                 "p": parts, "c": len(self.room.players)})
+            self.to_store.append(ev)
+        if changed:
+            self.api._social.feed_avatar(*changed)
 
     def _avatar_changed(self, ev):
         """The log names every player's avatar as it loads; a second, different one for the same player means they switched.
@@ -1081,6 +1083,9 @@ class Pump:
             self.js("onBatch", batch)
             # Images from cache for everyone in the log / fetch from the network only for players currently in the room
             self.api._users.want({e["u"] for e in batch["events"] if e["u"]}, network=False)
+            brief = {e["u"] for e in batch["events"] if e["k"] == "join" and len(e["p"]) > 2 and _recent(e["t"])}
+            if brief:
+                self.api._users.want(brief, network=True)
             room = tuple(uid for uid, _ in batch["players"])
             if room != last_room:
                 last_room = room
@@ -1089,6 +1094,13 @@ class Pump:
             if locs:
                 self.api._worlds.want(locs[-1:], network=True)
                 self.api._worlds.want(locs, network=False)
+
+
+def _recent(t, secs=120):
+    try:
+        return time.time() - time.mktime(time.strptime(t, "%Y.%m.%d %H:%M:%S")) <= secs
+    except ValueError:
+        return False
 
 
 def round_corners(window):
