@@ -1653,7 +1653,7 @@ async function loadN2(force) {
 const _buildNav = buildNav;
 buildNav = function () {
   _buildNav();
-  const n2 = (N2.list || []).filter(n => !n.seen).length;
+  const n2 = (N2.list || []).length;  // All of them, as the tabs count them (seen ones stay until cleared, as in the game)
   if (n2) {
     const b = document.querySelector(`.nav-item[onclick*="'notifs'"]`);
     const badge = b?.querySelector(".nav-badge");
