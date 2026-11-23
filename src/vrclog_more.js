@@ -4250,7 +4250,8 @@ function updPrompt() {
       <div class="upd-head"><div class="upd-logo">${LOGO_SVG}</div>
         <div><b>VRC Nook ${esc(i.latest)}${i.nightly ? ` <span class="badge nightly">Nightly</span>` : ""}</b><span>${t("upd_current", VERSION)}${i.size ? ` · ${(i.size / 1048576).toFixed(1)} MB` : ""}</span></div></div>
       <div class="upd-notes-t">${t("upd_notes")}</div>
-      <div class="upd-notes">${esc(i.notes.trim()) || `<i>${t("upd_noNotes")}</i>`}</div>
+      <div class="upd-notes">${i.history?.length ? i.history.map(h => `<div class="upd-ver"><b>${esc(h.v)}</b>${h.date ? `<span>${esc(h.date)}</span>` : ""}</div>${updMd(h.notes) || `<i>${t("upd_noNotes")}</i>`}`).join("")
+        : esc(i.notes.trim()) || `<i>${t("upd_noNotes")}</i>`}</div>
       ${busy ? `<div class="upd-bar"><i style="width:${UPD.pct}%"></i></div>
         <div class="upd-prog">${UPD.pct >= 100 ? t("upd_restarting") : t("upd_downloading", UPD.pct)}</div>`
       : `${i.canSelf ? "" : `<div class="upd-prog">${t("upd_manual")}</div>`}
@@ -4263,6 +4264,16 @@ function updPrompt() {
         </div>`}
     </div>`;
   });
+}
+// Release notes (GitHub Markdown) → a little HTML: ### headings, - bullets (indented ones nested), **bold**, `code`
+function updMd(md) {
+  const inline = x => esc(x).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/`([^`]+)`/g, "<code>$1</code>");
+  return String(md || "").split("\n").map(l => {
+    const h = l.match(/^#+\s*(.+)/), li = l.match(/^(\s*)[-*]\s+(.+)/);
+    if (h) return `<div class="upd-h">${inline(h[1])}</div>`;
+    if (li) return `<div class="upd-li${li[1].length ? " sub" : ""}">${inline(li[2])}</div>`;
+    return l.trim() ? `<div>${inline(l)}</div>` : "";
+  }).join("");
 }
 function updSkip() { S.updSkip = UPD.info?.latest; save(); closeX(); }
 async function updInstall() {
@@ -4286,6 +4297,15 @@ document.head.insertAdjacentHTML("beforeend", `<style>
             background: #111; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
 .upd-logo svg { width: 28px; height: 28px; }
 .badge.nightly { margin: 0 0 0 4px; vertical-align: 1px; background: color-mix(in srgb, var(--purple) 18%, transparent); color: var(--purple); }
+.upd-notes:has(.upd-ver) { white-space: normal; }
+.upd-ver { display: flex; align-items: baseline; gap: 8px; margin: 12px 0 2px; font-size: 13.5px; }
+.upd-ver:first-child { margin-top: 0; }
+.upd-ver span { font-size: 11px; color: var(--text2); }
+.upd-h { font-weight: 600; margin: 6px 0 2px; color: var(--text2); font-size: 12px; }
+.upd-li { position: relative; padding-left: 14px; margin: 2px 0; }
+.upd-li::before { content: "•"; position: absolute; left: 3px; color: var(--text2); }
+.upd-li.sub { margin-left: 14px; }
+.upd-notes code { font-size: 11.5px; padding: 0 4px; border-radius: 4px; background: var(--hover); }
 .upd-notes-t { font-weight: 600; font-size: 12px; color: var(--text2); margin-top: 4px; }
 .upd-notes { white-space: pre-wrap; font-size: 12.5px; line-height: 1.55; max-height: 240px; overflow: auto; padding: 10px 12px;
              border-radius: 10px; background: var(--hover); }

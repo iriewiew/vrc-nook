@@ -53,6 +53,28 @@ def _ver(s):
     return (int(a), int(b), int(c), 0 if n else 1, int(n or 0))
 
 
+def _trim(body):
+    """Release notes for the update window: no Install / update section (they're updating already), no disclaimer"""
+    out, skip = [], False
+    for line in (body or "").replace("\r", "").split("\n"):
+        h = re.match(r"#+\s*(.+)", line)
+        if h:
+            skip = "install" in h.group(1).lower()
+        if skip or line.startswith(">"):
+            continue
+        out.append(line)
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
+
+
+def _since(rels, current, latest, nightly):
+    """Notes of every version between the one running and the newest, newest first — so nobody misses what came out
+    in releases they skipped. Nightly builds only count on the nightly channel."""
+    keep = [r for r in rels if not r.get("draft") and (nightly or not r.get("prerelease"))
+            and _ver(current) < _ver(r.get("tag_name")) <= _ver(latest)]
+    keep.sort(key=lambda r: _ver(r.get("tag_name")), reverse=True)
+    return [{"v": r["tag_name"].lstrip("v"), "date": (r.get("published_at") or "")[:10], "notes": _trim(r.get("body"))[:6000]} for r in keep[:15]]
+
+
 def exe_path():
     """The running exe (None = running from .py, can't self-update)"""
     return Path(sys.executable) if getattr(sys, "frozen", False) else None
@@ -79,10 +101,21 @@ def check(current, nightly=False):
         if e.code != 404:
             raise
         rel = {}  # No release yet
+    every = None
     if nightly:
+        every = rel
         rels = [x for x in rel if not x.get("draft") and any(a.get("name") == ASSET for a in x.get("assets", []))]
         rel = max(rels, key=lambda x: _ver(x.get("tag_name")), default={})
     tag = rel.get("tag_name", "")
+    history = []
+    if tag and _ver(tag) > _ver(current):
+        try:
+            if every is None:
+                with _get(API_ALL) as r:
+                    every = json.load(r)
+            history = _since(every, current, tag, nightly)
+        except Exception:
+            pass  # Only the newest release's notes, as before
     assets = {a["name"]: a for a in rel.get("assets", [])}
     a = assets.get(ASSET)
     sha = ""
@@ -94,7 +127,7 @@ def check(current, nightly=False):
             with _get(side["browser_download_url"], "application/octet-stream") as r:
                 m = re.search(r"\b[0-9a-fA-F]{64}\b", r.read(4096).decode("ascii", "ignore"))
                 sha = m.group(0).lower() if m else ""
-    return {"latest": tag.lstrip("v"), "newer": _ver(tag) > _ver(current), "notes": (rel.get("body") or "")[:4000],
+    return {"latest": tag.lstrip("v"), "newer": _ver(tag) > _ver(current), "notes": (rel.get("body") or "")[:4000], "history": history,
             "url": a["browser_download_url"] if a else "", "size": a.get("size", 0) if a else 0,
             "sha256": sha, "page": rel.get("html_url", f"https://github.com/{REPO}/releases"), "nightly": bool(rel.get("prerelease"))}
 
