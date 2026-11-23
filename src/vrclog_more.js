@@ -5395,24 +5395,40 @@ function vrWrap(g, s, w, max) {
 const vrImg = src => new Promise(res => { if (!src) return res(null); const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; setTimeout(() => res(null), 800); });
 const vrColor = name => getComputedStyle(document.documentElement).getPropertyValue("--" + name).trim() || "#0a84ff";
 
-// A notice: picture (profile picture, or an icon on a coloured tile), a title and one line under it
-async function vrToast(title, body, { uid, ic = "bell", color = "blue" } = {}) {
+// A white line icon as an image
+async function vrIcon(ic) {
+  const svg = new Blob([`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[ic] || ""}</svg>`], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(svg), im = await vrImg(url);
+  URL.revokeObjectURL(url);
+  return im;
+}
+// A notice: picture (profile picture, or an icon on a coloured tile), a title and one line under it.
+// warn: a warning — the card is tinted and edged in `color`, and a profile picture gets the icon as a badge
+async function vrToast(title, body, { uid, ic = "bell", color = "blue", warn = false } = {}) {
   const W = 840, H = 180, P = 26, A = H - P * 2;
   const [cv, g] = vrCanvas(W, H);
   vrTheme();
+  const c = vrColor(color);
   g.fillStyle = VRT.dark ? "rgba(28,28,32,0.94)" : "rgba(246,246,250,0.96)"; vrRound(g, 0, 0, W, H, 44); g.fill();
-  g.strokeStyle = VRT.dark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.08)"; g.lineWidth = 3; vrRound(g, 1.5, 1.5, W - 3, H - 3, 42); g.stroke();
+  if (warn) { g.save(); g.globalAlpha = VRT.dark ? 0.22 : 0.14; g.fillStyle = c; vrRound(g, 0, 0, W, H, 44); g.fill(); g.restore(); }
+  g.strokeStyle = warn ? c : VRT.dark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.08)"; g.lineWidth = warn ? 6 : 3;
+  vrRound(g, g.lineWidth / 2, g.lineWidth / 2, W - g.lineWidth, H - g.lineWidth, 44 - g.lineWidth / 2); g.stroke();
   const pic = uid && await vrImg(PROFILES[uid]?.img);
   g.save(); g.beginPath(); g.arc(P + A / 2, P + A / 2, A / 2, 0, Math.PI * 2); g.clip();
   if (pic) g.drawImage(pic, P, P, A, A);
   else {
-    g.fillStyle = vrColor(color); g.fillRect(P, P, A, A);
-    const svg = new Blob([`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[ic] || ""}</svg>`], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(svg), im = await vrImg(url);
+    g.fillStyle = c; g.fillRect(P, P, A, A);
+    const im = await vrIcon(ic);
     if (im) g.drawImage(im, P + A * 0.22, P + A * 0.22, A * 0.56, A * 0.56);
-    URL.revokeObjectURL(url);
   }
   g.restore();
+  if (warn && pic) {
+    const r = 27, bx = P + A - r + 8, by = P + A - r + 8;
+    g.fillStyle = VRT.dark ? "rgb(28,28,32)" : "rgb(246,246,250)"; vrDisc(g, bx, by, r + 5); g.fill();
+    g.fillStyle = c; vrDisc(g, bx, by, r); g.fill();
+    const im = await vrIcon(ic);
+    if (im) g.drawImage(im, bx - r * 0.6, by - r * 0.6, r * 1.2, r * 1.2);
+  }
   const x = P * 2 + A, tw = W - x - P;
   g.fillStyle = vrInk(1); g.font = `600 46px ${VR_FONT}`; g.textBaseline = "alphabetic";
   g.fillText(vrFit(g, title, tw), x, P + 56);
@@ -7116,7 +7132,10 @@ tx({
   sus_notBotDone: [n => `${n} จะไม่ถูกนับเป็นบุคคลน่าสงสัยอีก`, n => `${n} won't be flagged again`, n => `${n} は今後表示しません`],
   sus_notBotN: [n => `ทำเครื่องหมายว่าไม่ใช่บอท ${n} คน`, n => `${n} marked as not a bot`, n => `ボットではない: ${n} 人`],
   sus_notBotReset: ["ล้างรายการ", "Clear list", "リセット"],
-  sus_blockAll: [n => `บล็อกบอทแน่นอนทั้งหมด (${n})`, n => `Block all bots (${n})`, n => `ボット確定を全てブロック（${n}）`],
+  sus_blockAll: [n => `บล็อกทั้งหมด (${n})`, n => `Block all (${n})`, n => `全てブロック（${n}）`],
+  sus_vrJoined: ["เข้ามาในห้องคุณ", "joined your room", "ルームに参加しました"], sus_vrBlocked: ["บล็อกอัตโนมัติแล้ว", "blocked automatically", "自動でブロックしました"],
+  sus_blockBots: [n => `บล็อกเฉพาะบอท (${n})`, n => `Block bots only (${n})`, n => `ボットのみブロック（${n}）`],
+  sus_tabOpen: ["น่าสงสัย", "Suspicious", "未対応"], sus_noneBlocked: ["ยังไม่ได้บล็อกใคร", "No one blocked yet", "まだ誰もブロックしていません"],
   sus_blockingAll: [(a, b) => `กำลังบล็อก ${a}/${b}…`, (a, b) => `Blocking ${a}/${b}…`, (a, b) => `ブロック中 ${a}/${b}…`],
   sus_notify: ["แจ้งเตือนเมื่อบุคคลน่าสงสัยเข้าห้อง", "Alert when a suspicious person joins your room", "不審なユーザーが参加したら通知"],
   sus_notifyHint: ["ในแอป, การแจ้งเตือนของ Windows และใน VR (ถ้าเปิด VR overlay)", "In the app, as a Windows notification, and in VR when the VR overlay is on",
@@ -7127,10 +7146,10 @@ tx({
   sus_autoOff: ["ปิด", "Off", "オフ"], sus_autoConfirmed: ["เฉพาะบอทแน่นอน", "Bots only", "ボット確定のみ"], sus_autoAll: ["ทั้งหมด", "Bots + suspected", "疑わしいも含む"],
   sus_none: ["ยังไม่เจอบุคคลน่าสงสัย", "No suspicious people found", "不審なユーザーは見つかっていません"],
 });
-Object.assign(UPD_I18N.ko, { nav_suspects: "의심 사용자", sus_confirmed: "봇 확실", sus_suspected: "의심", sus_whyAd: "프로필에서 치트·아바타 도용 광고", sus_whyName: "Visitor + 봇 같은 이름", sus_whyNameOnly: "봇 같은 이름 (프로필 미확인)", sus_seen: (n, d) => `같은 방 ${n}회 · 마지막 ${d}`, sus_notSeen: "같은 방에 있었던 적 없음", sus_join: n => `${n} 님이 방에 들어옴`, sus_autoBlocked: n => `${n} 자동 차단함`, sus_block: "차단", sus_blocked: "차단됨", sus_unblock: "차단 해제", sus_notBot: "봇 아님", sus_notBotDone: n => `${n} 님은 다시 표시하지 않음`, sus_notBotN: n => `봇 아님 ${n}명`, sus_notBotReset: "초기화", sus_blockAll: n => `봇 모두 차단 (${n})`, sus_blockingAll: (a, b) => `차단 중 ${a}/${b}…`, sus_notify: "의심 사용자가 방에 들어오면 알림", sus_notifyHint: "앱 안, Windows 알림, VR (VR 오버레이 켰을 때)", sus_auto: "자동 차단", sus_autoHint: "같은 방에 오면 바로 차단 · '의심'은 실제 사람을 잘못 잡을 수 있음", sus_autoOff: "끄기", sus_autoConfirmed: "봇만", sus_autoAll: "의심 포함", sus_none: "의심 사용자 없음" });
-Object.assign(UPD_I18N.ru, { nav_suspects: "Подозрительные", sus_confirmed: "Бот", sus_suspected: "Подозрение", sus_whyAd: "В профиле реклама читов или кражи аватаров", sus_whyName: "Visitor с именем как у ботов", sus_whyNameOnly: "Имя как у ботов (профиль не загружен)", sus_seen: (n, d) => `В вашей комнате ${n}× · последний раз ${d}`, sus_notSeen: "Не был в вашей комнате", sus_join: n => `${n} зашёл в вашу комнату`, sus_autoBlocked: n => `${n} заблокирован автоматически`, sus_block: "Заблокировать", sus_blocked: "Заблокирован", sus_unblock: "Разблокировать", sus_notBot: "Не бот", sus_notBotDone: n => `${n} больше не будет отмечен`, sus_notBotN: n => `Отмечено «не бот»: ${n}`, sus_notBotReset: "Сбросить", sus_blockAll: n => `Заблокировать всех ботов (${n})`, sus_blockingAll: (a, b) => `Блокировка ${a}/${b}…`, sus_notify: "Оповещать, когда подозрительный заходит в комнату", sus_notifyHint: "В приложении, уведомлением Windows и в VR (если включён VR-оверлей)", sus_auto: "Блокировать автоматически", sus_autoHint: "Блокирует сразу при входе в вашу комнату · «Подозрение» может ошибиться на живом человеке", sus_autoOff: "Выкл", sus_autoConfirmed: "Только боты", sus_autoAll: "И подозрительные", sus_none: "Подозрительных нет" });
-Object.assign(UPD_I18N.vi, { nav_suspects: "Người đáng ngờ", sus_confirmed: "Bot chắc chắn", sus_suspected: "Đáng ngờ", sus_whyAd: "Hồ sơ quảng cáo hack hoặc trộm avatar", sus_whyName: "Visitor có tên kiểu bot", sus_whyNameOnly: "Tên kiểu bot (chưa tải hồ sơ)", sus_seen: (n, d) => `Ở phòng bạn ${n} lần · gần nhất ${d}`, sus_notSeen: "Chưa từng ở phòng bạn", sus_join: n => `${n} vào phòng bạn`, sus_autoBlocked: n => `Đã tự động chặn ${n}`, sus_block: "Chặn", sus_blocked: "Đã chặn", sus_unblock: "Bỏ chặn", sus_notBot: "Không phải bot", sus_notBotDone: n => `${n} sẽ không bị đánh dấu nữa`, sus_notBotN: n => `Đã đánh dấu không phải bot: ${n}`, sus_notBotReset: "Xóa danh sách", sus_blockAll: n => `Chặn tất cả bot (${n})`, sus_blockingAll: (a, b) => `Đang chặn ${a}/${b}…`, sus_notify: "Báo khi người đáng ngờ vào phòng", sus_notifyHint: "Trong ứng dụng, thông báo Windows và trong VR (khi bật VR overlay)", sus_auto: "Tự động chặn", sus_autoHint: "Chặn ngay khi vào phòng bạn · 'Đáng ngờ' có thể bắt nhầm người thật", sus_autoOff: "Tắt", sus_autoConfirmed: "Chỉ bot", sus_autoAll: "Cả đáng ngờ", sus_none: "Không có người đáng ngờ" });
-Object.assign(UPD_I18N.zh, { nav_suspects: "可疑用户", sus_confirmed: "确定是机器人", sus_suspected: "可疑", sus_whyAd: "简介在推销外挂或盗模", sus_whyName: "Visitor + 机器人式名字", sus_whyNameOnly: "机器人式名字（未加载资料）", sus_seen: (n, d) => `同房间 ${n} 次 · 最近 ${d}`, sus_notSeen: "未曾同房间", sus_join: n => `${n} 进入了你的房间`, sus_autoBlocked: n => `已自动屏蔽 ${n}`, sus_block: "屏蔽", sus_blocked: "已屏蔽", sus_unblock: "取消屏蔽", sus_notBot: "不是机器人", sus_notBotDone: n => `不再标记 ${n}`, sus_notBotN: n => `已标记不是机器人：${n} 人`, sus_notBotReset: "清空", sus_blockAll: n => `屏蔽所有机器人（${n}）`, sus_blockingAll: (a, b) => `正在屏蔽 ${a}/${b}…`, sus_notify: "可疑用户进入房间时提醒", sus_notifyHint: "应用内、Windows 通知、VR（开启 VR 叠加层时）", sus_auto: "自动屏蔽", sus_autoHint: "进入你的房间就屏蔽 ·「可疑」可能误判真人", sus_autoOff: "关", sus_autoConfirmed: "仅机器人", sus_autoAll: "含可疑", sus_none: "没有可疑用户" });
+Object.assign(UPD_I18N.ko, { nav_suspects: "의심 사용자", sus_confirmed: "봇 확실", sus_suspected: "의심", sus_whyAd: "프로필에서 치트·아바타 도용 광고", sus_whyName: "Visitor + 봇 같은 이름", sus_whyNameOnly: "봇 같은 이름 (프로필 미확인)", sus_seen: (n, d) => `같은 방 ${n}회 · 마지막 ${d}`, sus_notSeen: "같은 방에 있었던 적 없음", sus_join: n => `${n} 님이 방에 들어옴`, sus_autoBlocked: n => `${n} 자동 차단함`, sus_block: "차단", sus_blocked: "차단됨", sus_unblock: "차단 해제", sus_notBot: "봇 아님", sus_notBotDone: n => `${n} 님은 다시 표시하지 않음`, sus_notBotN: n => `봇 아님 ${n}명`, sus_notBotReset: "초기화", sus_blockAll: n => `모두 차단 (${n})`, sus_blockBots: n => `봇만 차단 (${n})`, sus_vrJoined: "방에 들어옴", sus_vrBlocked: "자동 차단함", sus_tabOpen: "의심", sus_noneBlocked: "아직 차단한 사람 없음", sus_blockingAll: (a, b) => `차단 중 ${a}/${b}…`, sus_notify: "의심 사용자가 방에 들어오면 알림", sus_notifyHint: "앱 안, Windows 알림, VR (VR 오버레이 켰을 때)", sus_auto: "자동 차단", sus_autoHint: "같은 방에 오면 바로 차단 · '의심'은 실제 사람을 잘못 잡을 수 있음", sus_autoOff: "끄기", sus_autoConfirmed: "봇만", sus_autoAll: "의심 포함", sus_none: "의심 사용자 없음" });
+Object.assign(UPD_I18N.ru, { nav_suspects: "Подозрительные", sus_confirmed: "Бот", sus_suspected: "Подозрение", sus_whyAd: "В профиле реклама читов или кражи аватаров", sus_whyName: "Visitor с именем как у ботов", sus_whyNameOnly: "Имя как у ботов (профиль не загружен)", sus_seen: (n, d) => `В вашей комнате ${n}× · последний раз ${d}`, sus_notSeen: "Не был в вашей комнате", sus_join: n => `${n} зашёл в вашу комнату`, sus_autoBlocked: n => `${n} заблокирован автоматически`, sus_block: "Заблокировать", sus_blocked: "Заблокирован", sus_unblock: "Разблокировать", sus_notBot: "Не бот", sus_notBotDone: n => `${n} больше не будет отмечен`, sus_notBotN: n => `Отмечено «не бот»: ${n}`, sus_notBotReset: "Сбросить", sus_blockAll: n => `Заблокировать всех (${n})`, sus_blockBots: n => `Только ботов (${n})`, sus_vrJoined: "зашёл в вашу комнату", sus_vrBlocked: "заблокирован автоматически", sus_tabOpen: "Подозрительные", sus_noneBlocked: "Пока никто не заблокирован", sus_blockingAll: (a, b) => `Блокировка ${a}/${b}…`, sus_notify: "Оповещать, когда подозрительный заходит в комнату", sus_notifyHint: "В приложении, уведомлением Windows и в VR (если включён VR-оверлей)", sus_auto: "Блокировать автоматически", sus_autoHint: "Блокирует сразу при входе в вашу комнату · «Подозрение» может ошибиться на живом человеке", sus_autoOff: "Выкл", sus_autoConfirmed: "Только боты", sus_autoAll: "И подозрительные", sus_none: "Подозрительных нет" });
+Object.assign(UPD_I18N.vi, { nav_suspects: "Người đáng ngờ", sus_confirmed: "Bot chắc chắn", sus_suspected: "Đáng ngờ", sus_whyAd: "Hồ sơ quảng cáo hack hoặc trộm avatar", sus_whyName: "Visitor có tên kiểu bot", sus_whyNameOnly: "Tên kiểu bot (chưa tải hồ sơ)", sus_seen: (n, d) => `Ở phòng bạn ${n} lần · gần nhất ${d}`, sus_notSeen: "Chưa từng ở phòng bạn", sus_join: n => `${n} vào phòng bạn`, sus_autoBlocked: n => `Đã tự động chặn ${n}`, sus_block: "Chặn", sus_blocked: "Đã chặn", sus_unblock: "Bỏ chặn", sus_notBot: "Không phải bot", sus_notBotDone: n => `${n} sẽ không bị đánh dấu nữa`, sus_notBotN: n => `Đã đánh dấu không phải bot: ${n}`, sus_notBotReset: "Xóa danh sách", sus_blockAll: n => `Chặn tất cả (${n})`, sus_blockBots: n => `Chỉ chặn bot (${n})`, sus_vrJoined: "vào phòng bạn", sus_vrBlocked: "đã tự động chặn", sus_tabOpen: "Đáng ngờ", sus_noneBlocked: "Chưa chặn ai", sus_blockingAll: (a, b) => `Đang chặn ${a}/${b}…`, sus_notify: "Báo khi người đáng ngờ vào phòng", sus_notifyHint: "Trong ứng dụng, thông báo Windows và trong VR (khi bật VR overlay)", sus_auto: "Tự động chặn", sus_autoHint: "Chặn ngay khi vào phòng bạn · 'Đáng ngờ' có thể bắt nhầm người thật", sus_autoOff: "Tắt", sus_autoConfirmed: "Chỉ bot", sus_autoAll: "Cả đáng ngờ", sus_none: "Không có người đáng ngờ" });
+Object.assign(UPD_I18N.zh, { nav_suspects: "可疑用户", sus_confirmed: "确定是机器人", sus_suspected: "可疑", sus_whyAd: "简介在推销外挂或盗模", sus_whyName: "Visitor + 机器人式名字", sus_whyNameOnly: "机器人式名字（未加载资料）", sus_seen: (n, d) => `同房间 ${n} 次 · 最近 ${d}`, sus_notSeen: "未曾同房间", sus_join: n => `${n} 进入了你的房间`, sus_autoBlocked: n => `已自动屏蔽 ${n}`, sus_block: "屏蔽", sus_blocked: "已屏蔽", sus_unblock: "取消屏蔽", sus_notBot: "不是机器人", sus_notBotDone: n => `不再标记 ${n}`, sus_notBotN: n => `已标记不是机器人：${n} 人`, sus_notBotReset: "清空", sus_blockAll: n => `全部屏蔽（${n}）`, sus_blockBots: n => `仅屏蔽机器人（${n}）`, sus_vrJoined: "进入了你的房间", sus_vrBlocked: "已自动屏蔽", sus_tabOpen: "可疑", sus_noneBlocked: "还没有屏蔽任何人", sus_blockingAll: (a, b) => `正在屏蔽 ${a}/${b}…`, sus_notify: "可疑用户进入房间时提醒", sus_notifyHint: "应用内、Windows 通知、VR（开启 VR 叠加层时）", sus_auto: "自动屏蔽", sus_autoHint: "进入你的房间就屏蔽 ·「可疑」可能误判真人", sus_autoOff: "关", sus_autoConfirmed: "仅机器人", sus_autoAll: "含可疑", sus_none: "没有可疑用户" });
 Object.assign(DEFAULTS, { susNotify: true, susAuto: "off" });
 
 const SUS = { room: {}, alerted: new Set(), list: null, loading: false, timer: 0, queue: Promise.resolve(), bulk: null };
@@ -7152,13 +7171,15 @@ async function susCheck() {
 }
 function susAlert(uid, h) {
   const auto = S.susAuto === "all" || (S.susAuto === "confirmed" && h.level === "confirmed");
-  const say = msg => {
+  const color = h.level === "confirmed" ? "red" : "orange";
+  const say = (msg, vr, ic) => {
     toast(msg);
     winNotify("VRC Nook", msg);
-    if (vrOn()) vrToast(susName(uid), msg, { uid, ic: "shield-alert", color: "red" });
+    if (vrOn()) vrToast(susName(uid), vr, { uid, ic, color, warn: true });
   };
-  if (auto) SUS.queue = SUS.queue.then(async () => { if (await susBlock(uid, true) === "new") say(t("sus_autoBlocked", susName(uid))); });
-  else if (S.susNotify) say(`${t(h.level === "confirmed" ? "sus_confirmed" : "sus_suspected")}: ${t("sus_join", susName(uid))}`);
+  const lvl = t(h.level === "confirmed" ? "sus_confirmed" : "sus_suspected");
+  if (auto) SUS.queue = SUS.queue.then(async () => { if (await susBlock(uid, true) === "new") say(t("sus_autoBlocked", susName(uid)), `${lvl} · ${t("sus_vrBlocked")}`, "shield-ban"); });
+  else if (S.susNotify) say(`${lvl}: ${t("sus_join", susName(uid))}`, `${lvl} · ${t("sus_vrJoined")}`, "shield-alert");
   SUS.list = null;  // The page re-reads its list (a new sighting)
 }
 // Block one user: "new" = blocked now, "had" = already blocked, null = failed
@@ -7173,8 +7194,8 @@ async function susBlock(uid, quiet) {
   return "new";
 }
 async function susBlockOne(uid) { if (await susBlock(uid) === "new") toast(t("sus_blocked")); }
-async function susBlockAll() {
-  const ids = (SUS.list || []).filter(x => x.level === "confirmed" && !modsOf(x.id).has("block")).map(x => x.id);
+async function susBlockAll(botsOnly) {
+  const ids = susShown("open").filter(x => !botsOnly || x.level === "confirmed").map(x => x.id);
   SUS.bulk = [0, ids.length];
   repaint();
   for (const uid of ids) {
@@ -7220,6 +7241,12 @@ async function susLoad() {
   repaint();
 }
 VIEW_REFRESH.suspects = () => { SUS.list = null; susLoad(); };
+// Two tabs: "open" = not blocked yet, "blocked"; the search box filters both
+const susMatch = x => (!query || (x.name || "").toLowerCase().includes(query) || x.id.includes(query))
+  && (!SUS.world || (x.worlds || []).some(([w]) => w === SUS.world));
+function susWorld(i) { const w = SUS.worldsTop?.[i]; SUS.world = SUS.world === w ? null : w; repaint(); }
+const susShown = tab => (SUS.list || []).filter(x => susMatch(x) && modsOf(x.id).has("block") === (tab === "blocked"));
+function susTab(tab) { SUS.tab = tab; repaint(); }
 function renderSuspects() {
   const el = $("v_suspects");
   if (!AUTH.loggedIn) return needLogin(el);
@@ -7227,30 +7254,32 @@ function renderSuspects() {
   if (!SUS.list && !SUS.loading) susLoad();
   const opts = "";
   if (!SUS.list) return el.innerHTML = opts + stateHtml({ loading: true }, "", 160);
-  const list = SUS.list.filter(x => !query || (x.name || "").toLowerCase().includes(query) || x.id.includes(query));
-  const toBlock = SUS.list.filter(x => x.level === "confirmed" && !modsOf(x.id).has("block")).length;
+  const tab = SUS.tab === "blocked" ? "blocked" : "open", list = susShown(tab);
+  const nOpen = susShown("open").length, nBots = susShown("open").filter(x => x.level === "confirmed").length, nBlocked = susShown("blocked").length;
   const nb = susNotBots().length;
-  const bar = `<div class="toolbar"><span class="sus-count">${list.length.toLocaleString()} ${t("nav_suspects").toLowerCase()}</span><span class="grow"></span>
+  const bar = `<div class="toolbar">${tabsHtml({ open: `${t("sus_tabOpen")} <b class="sus-n">${nOpen.toLocaleString()}</b>`, blocked: `${t("sus_blocked")} <b class="sus-n">${nBlocked.toLocaleString()}</b>` }, tab, "susTab")}
+    <span class="grow"></span>
     ${nb ? `<span class="sus-nb">${t("sus_notBotN", nb)} · <span class="link" onclick="susNotBotReset()">${t("sus_notBotReset")}</span></span>` : ""}
     ${list.length ? `<button class="btn sm" onclick="susExport()">${icon("download")}CSV</button>` : ""}
     ${SUS.bulk ? `<button class="btn sm" onclick="SUS.bulk=null">${icon("x")}${t("sus_blockingAll", SUS.bulk[0], SUS.bulk[1])}</button>`
-      : toBlock ? `<button class="btn sm danger" onclick="confirmBtn(this,()=>susBlockAll())">${icon("shield-ban")}${t("sus_blockAll", toBlock)}</button>` : ""}</div>`;
-  const pg = paged("suspects", list);
+      : tab === "open" && nOpen ? (nBots ? `<button class="btn sm danger" onclick="confirmBtn(this,()=>susBlockAll(true))">${icon("shield-ban")}${t("sus_blockBots", nBots)}</button>` : "")
+        + `<button class="btn sm danger" onclick="confirmBtn(this,()=>susBlockAll())">${icon("shield-ban")}${t("sus_blockAll", nOpen)}</button>` : ""}</div>`;
+  const pg = paged("suspects:" + tab, list);
   const rows = pg.items.map(x => {
     const blocked = modsOf(x.id).has("block");
     const sub = `<span class="sus-pill ${x.level}">${t(x.level === "confirmed" ? "sus_confirmed" : "sus_suspected")}</span> ${t({ ad: "sus_whyAd", name: "sus_whyName", nameOnly: "sus_whyNameOnly" }[x.why])}
       · ${x.last ? t("sus_seen", x.times, fmtDate(x.last)) : t("sus_notSeen")}${x.bio ? `<div class="sus-bio">${esc(x.bio)}</div>` : ""}`;
     const acts = (blocked ? btn(t("sus_unblock"), `modToggle('${esc(x.id)}','block')`, "sm")
       : btn(t("sus_block"), `susBlockOne('${esc(x.id)}')`, "sm danger", "shield-ban")) + btn(t("sus_notBot"), `susNotBot('${esc(x.id)}')`, "sm", "user-check");
-    return lrow({ uid: x.id, name: x.name, sub, acts, onclick: `showProfile('${esc(x.id)}')`, cls: blocked ? "sus-done" : "" });
+    return lrow({ uid: x.id, name: x.name, sub, acts, onclick: `showProfile('${esc(x.id)}')` });
   }).join("");
-  el.innerHTML = opts + bar + (list.length ? rows + pg.bar : `<div class="empty-state" style="height:160px">${t("sus_none")}</div>`);
+  el.innerHTML = opts + bar + (list.length ? rows + pg.bar : `<div class="empty-state" style="height:160px">${t(tab === "open" ? "sus_none" : "sus_noneBlocked")}</div>`);
   fillSlots(el);
 }
 VIEW_RENDER.suspects = renderSuspects;
 // The list as shown (search applied) as a CSV file, e.g. to report them to VRChat or share with other group moderators
 async function susExport() {
-  const list = (SUS.list || []).filter(x => !query || (x.name || "").toLowerCase().includes(query) || x.id.includes(query));
+  const list = susShown(SUS.tab === "blocked" ? "blocked" : "open");
   const cell = v => { const s = String(v ?? ""); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const why = { ad: "bio advertises cheats / avatar ripping", name: "Visitor with a bot-style name", nameOnly: "bot-style name (profile not loaded)" };
   const cols = ["level", "displayName", "userId", "reason", "rank", "blocked", "bio", "seenInRoom", "firstSeen", "lastSeen", "worlds", "profile"];
@@ -7280,7 +7309,7 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .sus-pill { display: inline-block; padding: 0 7px; border-radius: 99px; font-size: 11px; font-weight: 600; margin-right: 2px;
             background: color-mix(in srgb, currentColor 14%, transparent); }
 .sus-bio { margin-top: 2px; font-size: 11.5px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lrow.sus-done { opacity: .6; }
+.sus-n { font-weight: 600; margin-left: 4px; opacity: .7; }
 .sus-count { font-size: 12.5px; font-weight: 600; color: var(--text2); }
 .sus-nb { font-size: 12px; color: var(--text2); }
 </style>`);
@@ -7380,8 +7409,9 @@ renderSuspects = function () {
   const total = {};
   for (const x of SUS.list) for (const [w, n] of x.worlds || []) total[w] = (total[w] || 0) + n;
   const top = Object.entries(total).sort((a, b) => b[1] - a[1]);
-  if (top.length) el.querySelector(".toolbar").insertAdjacentHTML("afterend", `<div class="sus-worlds">${icon("map-pin")}<span>${t("sus_where")}:</span>${top.map(([w, n]) =>
-    `<span class="chip sus-w"><span>${esc(w)}</span><b>${n}</b></span>`).join("")}</div>`);
+  SUS.worldsTop = top.map(([w]) => w);
+  if (top.length) el.querySelector(".toolbar").insertAdjacentHTML("afterend", `<div class="sus-worlds">${icon("map-pin")}<span>${t("sus_where")}:</span>${top.map(([w, n], i) =>
+    `<span class="chip sus-w${SUS.world === w ? " on" : ""}" onclick="susWorld(${i})"><span>${esc(w)}</span><b>${n}</b>${SUS.world === w ? icon("x") : ""}</span>`).join("")}</div>`);
   el.querySelectorAll(".lrow").forEach(r => {
     const id = r.querySelector("[data-uid]")?.dataset.uid || r.getAttribute("onclick")?.match(/usr_[\w-]+/)?.[0];
     const x = SUS.list.find(s => s.id === id);
@@ -7424,7 +7454,10 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .chip.sus { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--orange) 55%, transparent); }
 .sus-worlds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -2px 0 12px; font-size: 12px; color: var(--text2); }
 .sus-worlds > svg { width: 13px; height: 13px; }
-.sus-w { cursor: default; padding: 3px 10px; gap: 6px; }
+.sus-w { cursor: pointer; padding: 3px 10px; gap: 6px; }
+.sus-w:hover { filter: brightness(1.06); }
+.sus-w.on { background: var(--accent); color: #fff; } .sus-w.on b { color: #fff; }
+.sus-w svg { width: 11px; height: 11px; }
 .sus-w b { font-weight: 700; color: var(--text); }
 .sus-bio svg { display: inline-block; width: 11px; height: 11px; vertical-align: -1px; }
 </style>`);
