@@ -37,7 +37,7 @@ from vrclog import KINDS, Room, parse_line
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w", encoding="utf-8")
 
-VERSION = "0.9.7"
+VERSION = "0.9.8"
 log = logging.getLogger("vrclog")
 UPLOAD_FIELDS = ("animationStyle", "maskTag", "frames", "framesOverTime", "loopStyle")
 RANK_MAX = 1000  # Most users one trust-rank request may queue (the page asks for at most 100 at a time)
@@ -765,6 +765,15 @@ class Api:
         room = self._pump.room if self._pump else None
         world = room.world if room and room.location else ""
         return self._store.add_chat(text, world)
+
+    def osc_param(self, name, value):
+        """Set one of VRC Nook's own avatar parameters (VRCNook/…) over OSC"""
+        if not re.fullmatch(r"VRCNook/[A-Za-z]+", str(name)) or not isinstance(value, (bool, int, float)):
+            return
+        try:
+            osc.param(name, value)
+        except OSError as e:
+            log.debug("osc param failed: %s", e)
 
     def chat_typing(self, on):
         try:

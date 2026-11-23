@@ -7211,7 +7211,23 @@ Object.assign(UPD_I18N.ko, { nav_suspects: "의심 사용자", sus_confirmed: "�
 Object.assign(UPD_I18N.ru, { nav_suspects: "Подозрительные", sus_confirmed: "Бот", sus_suspected: "Подозрение", sus_whyAd: "В профиле реклама читов или кражи аватаров", sus_whyName: "Visitor с именем как у ботов", sus_whyNameOnly: "Имя как у ботов (профиль не загружен)", sus_seen: (n, d) => `В вашей комнате ${n}× · последний раз ${d}`, sus_notSeen: "Не был в вашей комнате", sus_join: n => `${n} зашёл в вашу комнату`, sus_autoBlocked: n => `${n} заблокирован автоматически`, sus_block: "Заблокировать", sus_blocked: "Заблокирован", sus_unblock: "Разблокировать", sus_notBot: "Не бот", sus_notBotDone: n => `${n} больше не будет отмечен`, sus_notBotN: n => `Отмечено «не бот»: ${n}`, sus_notBotReset: "Сбросить", sus_blockAll: n => `Заблокировать всех (${n})`, sus_blockBots: n => `Только ботов (${n})`, sus_vrJoined: "зашёл в вашу комнату", sus_vrBlocked: "заблокирован автоматически", sus_tabOpen: "Подозрительные", sus_noneBlocked: "Пока никто не заблокирован", sus_blockingAll: (a, b) => `Блокировка ${a}/${b}…`, sus_notify: "Оповещать, когда подозрительный заходит в комнату", sus_notifyHint: "В приложении, уведомлением Windows и в VR (если включён VR-оверлей)", sus_auto: "Блокировать автоматически", sus_autoHint: "Блокирует сразу при входе в вашу комнату · «Подозрение» может ошибиться на живом человеке", sus_autoOff: "Выкл", sus_autoConfirmed: "Только боты", sus_autoAll: "И подозрительные", sus_none: "Подозрительных нет" });
 Object.assign(UPD_I18N.vi, { nav_suspects: "Người đáng ngờ", sus_confirmed: "Bot chắc chắn", sus_suspected: "Đáng ngờ", sus_whyAd: "Hồ sơ quảng cáo hack hoặc trộm avatar", sus_whyName: "Visitor có tên kiểu bot", sus_whyNameOnly: "Tên kiểu bot (chưa tải hồ sơ)", sus_seen: (n, d) => `Ở phòng bạn ${n} lần · gần nhất ${d}`, sus_notSeen: "Chưa từng ở phòng bạn", sus_join: n => `${n} vào phòng bạn`, sus_autoBlocked: n => `Đã tự động chặn ${n}`, sus_block: "Chặn", sus_blocked: "Đã chặn", sus_unblock: "Bỏ chặn", sus_notBot: "Không phải bot", sus_notBotDone: n => `${n} sẽ không bị đánh dấu nữa`, sus_notBotN: n => `Đã đánh dấu không phải bot: ${n}`, sus_notBotReset: "Xóa danh sách", sus_blockAll: n => `Chặn tất cả (${n})`, sus_blockBots: n => `Chỉ chặn bot (${n})`, sus_vrJoined: "vào phòng bạn", sus_vrBlocked: "đã tự động chặn", sus_tabOpen: "Đáng ngờ", sus_noneBlocked: "Chưa chặn ai", sus_blockingAll: (a, b) => `Đang chặn ${a}/${b}…`, sus_notify: "Báo khi người đáng ngờ vào phòng", sus_notifyHint: "Trong ứng dụng, thông báo Windows và trong VR (khi bật VR overlay)", sus_auto: "Tự động chặn", sus_autoHint: "Chặn ngay khi vào phòng bạn · 'Đáng ngờ' có thể bắt nhầm người thật", sus_autoOff: "Tắt", sus_autoConfirmed: "Chỉ bot", sus_autoAll: "Cả đáng ngờ", sus_none: "Không có người đáng ngờ" });
 Object.assign(UPD_I18N.zh, { nav_suspects: "可疑用户", sus_confirmed: "确定是机器人", sus_suspected: "可疑", sus_whyAd: "简介在推销外挂或盗模", sus_whyName: "Visitor + 机器人式名字", sus_whyNameOnly: "机器人式名字（未加载资料）", sus_seen: (n, d) => `同房间 ${n} 次 · 最近 ${d}`, sus_notSeen: "未曾同房间", sus_join: n => `${n} 进入了你的房间`, sus_autoBlocked: n => `已自动屏蔽 ${n}`, sus_block: "屏蔽", sus_blocked: "已屏蔽", sus_unblock: "取消屏蔽", sus_notBot: "不是机器人", sus_notBotDone: n => `不再标记 ${n}`, sus_notBotN: n => `已标记不是机器人：${n} 人`, sus_notBotReset: "清空", sus_blockAll: n => `全部屏蔽（${n}）`, sus_blockBots: n => `仅屏蔽机器人（${n}）`, sus_vrJoined: "进入了你的房间", sus_vrBlocked: "已自动屏蔽", sus_tabOpen: "可疑", sus_noneBlocked: "还没有屏蔽任何人", sus_blockingAll: (a, b) => `正在屏蔽 ${a}/${b}…`, sus_notify: "可疑用户进入房间时提醒", sus_notifyHint: "应用内、Windows 通知、VR（开启 VR 叠加层时）", sus_auto: "自动屏蔽", sus_autoHint: "进入你的房间就屏蔽 ·「可疑」可能误判真人", sus_autoOff: "关", sus_autoConfirmed: "仅机器人", sus_autoAll: "含可疑", sus_none: "没有可疑用户" });
-Object.assign(DEFAULTS, { susNotify: true, susAuto: "off" });
+Object.assign(DEFAULTS, { susNotify: true, susAuto: "off", susOsc: false });
+// OSC (Settings → Suspicious people): VRCNook/BotAlert = true for 3 s, VRCNook/BotLevel = 2 bot / 1 suspected (0 after),
+// VRCNook/BotsInRoom = how many flagged people are in the room now. Only an avatar (or tool) with those parameters reacts
+let susOscTimer = 0;
+function susOsc(level) {
+  if (!S.susOsc) return;
+  api("osc_param", "VRCNook/BotAlert", true);
+  api("osc_param", "VRCNook/BotLevel", level === "confirmed" ? 2 : 1);
+  clearTimeout(susOscTimer);
+  susOscTimer = setTimeout(() => { api("osc_param", "VRCNook/BotAlert", false); api("osc_param", "VRCNook/BotLevel", 0); }, 3000);
+}
+let susOscRoom = -1;
+function susOscCount() {
+  const n = S.susOsc ? Object.values(SUS.room || {}).filter(susLive).length : 0;
+  if (S.susOsc && n !== susOscRoom) api("osc_param", "VRCNook/BotsInRoom", n);
+  susOscRoom = S.susOsc ? n : -1;
+}
 
 const SUS = { room: {}, alerted: new Set(), list: null, loading: false, timer: 0, queue: Promise.resolve(), bulk: null };
 const susNotBots = () => S.notBots || [];
@@ -7228,6 +7244,7 @@ async function susCheck() {
     SUS.alerted.add(loc + "|" + uid);
     susAlert(uid, h);
   }
+  susOscCount();
   susMark();
 }
 function susAlert(uid, h) {
@@ -7239,7 +7256,13 @@ function susAlert(uid, h) {
     if (vrOn()) vrToast(susName(uid), vr, { uid, ic, color, warn: true });
   };
   const lvl = t(h.level === "confirmed" ? "sus_confirmed" : "sus_suspected");
-  if (auto) SUS.queue = SUS.queue.then(async () => { if (await susBlock(uid, true) === "new") say(t("sus_autoBlocked", susName(uid)), `${lvl} · ${t("sus_vrBlocked")}`, "shield-ban"); });
+  susOsc(h.level);
+  const entry = susLogAdd(uid, h.level, auto ? "blocking" : "alert");
+  if (auto) SUS.queue = SUS.queue.then(async () => {
+    const r = await susBlock(uid, true);
+    entry.act = r === "new" ? "blocked" : r === "had" ? "had" : "failed"; susLogSaved();
+    if (r === "new") say(t("sus_autoBlocked", susName(uid)), `${lvl} · ${t("sus_vrBlocked")}`, "shield-ban");
+  });
   else if (S.susNotify) say(`${lvl}: ${t("sus_join", susName(uid))}`, `${lvl} · ${t("sus_vrJoined")}`, "shield-alert");
   SUS.list = null;  // The page re-reads its list (a new sighting)
 }
@@ -7306,12 +7329,11 @@ VIEW_REFRESH.suspects = () => { SUS.list = null; susLoad(); };
 const susMatch = x => (!query || (x.name || "").toLowerCase().includes(query) || x.id.includes(query))
   && (!SUS.world || (x.worlds || []).some(([w]) => w === SUS.world));
 function susWorld(i) { const w = SUS.worldsTop?.[i]; SUS.world = SUS.world === w ? null : w; repaint(); }
-const susSortKey = () => ["level", "time", "name"].includes(S.susSort) ? S.susSort : "level";
+const susSortKey = () => S.susSort === "name" ? "name" : "time";
 const susShown = tab => {
   const list = (SUS.list || []).filter(x => susMatch(x) && modsOf(x.id).has("block") === (tab === "blocked"));
-  const key = susSortKey();  // "level": the order it comes in (bots first, then newest sighting)
-  if (key === "time") list.sort((a, b) => (b.last || "").localeCompare(a.last || ""));
-  else if (key === "name") list.sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
+  if (susSortKey() === "time") list.sort((a, b) => (b.last || "").localeCompare(a.last || ""));
+  else list.sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
   return list;
 };
 function susSort(key) { S.susSort = key; save(); repaint(); }
@@ -7327,7 +7349,7 @@ function renderSuspects() {
   const nOpen = susShown("open").length, nBots = susShown("open").filter(x => x.level === "confirmed").length, nBlocked = susShown("blocked").length;
   const nb = susNotBots().length;
   const bar = `<div class="toolbar">${tabsHtml({ open: `${t("sus_tabOpen")} <b class="sus-n">${nOpen.toLocaleString()}</b>`, blocked: `${t("sus_blocked")} <b class="sus-n">${nBlocked.toLocaleString()}</b>` }, tab, "susTab")}
-    ${sortSel(susSortKey(), ["level", "time", "name"], "susSort(this.value)")}
+    ${sortSel(susSortKey(), ["time", "name"], "susSort(this.value)")}
     <span class="grow"></span>
     ${nb ? `<span class="sus-nb">${t("sus_notBotN", nb)} · <span class="link" onclick="susNotBotReset()">${t("sus_notBotReset")}</span></span>` : ""}
     ${list.length ? `<button class="btn sm" onclick="susExport()">${icon("download")}CSV</button>` : ""}
@@ -7367,6 +7389,7 @@ buildSettings = function () {
   const anchor = [...$("sheet").querySelectorAll(".sec-title")].find(el => el.textContent === t("data"));
   anchor?.insertAdjacentHTML("beforebegin", `<div class="sec-title" id="secSuspects">${t("nav_suspects")}</div><div class="card">
     ${srow("bell", "orange", t("sus_notify"), sw("susNotify"), t("sus_notifyHint"))}
+    ${srow("radio", "purple", t("sus_osc"), sw("susOsc"), t("sus_oscHint"))}
     ${srow("shield-ban", "red", t("sus_auto"), seg("susAuto", { off: t("sus_autoOff"), confirmed: t("sus_autoConfirmed"), all: t("sus_autoAll") }), t("sus_autoHint"))}</div>`);
 };
 const _setSSus = setS;
@@ -7393,16 +7416,21 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 // each was seen ----------
 tx({
   hv_timeline: ["ไทม์ไลน์", "Timeline", "タイムライン"], hv_list: ["รายชื่อ", "List", "一覧"],
-  sort_sus: ["น่าสงสัยก่อน", "Suspicious first", "疑わしい順"], sort_level: ["บอทก่อน", "Bots first", "ボットが先"],
+  sort_sus: ["น่าสงสัยก่อน", "Suspicious first", "疑わしい順"],
   sort_time: ["เวลา", "Time", "時間順"], sort_name: ["ตัวอักษร", "Name (A–Z)", "名前順"],
-  hv_person: ["คนปกติ", "Player", "プレイヤー"], hv_stay: ["อยู่", "stayed", "滞在"],
+  hv_person: ["คนปกติ", "Player", "プレイヤー"], hv_stay: ["อยู่", "stayed", "滞在"], hv_inRoom: [n => `ในห้อง ${n} คน`, n => `${n} in the room`, n => `ルームに ${n} 人`],
   hv_sec: [n => `${n} วินาที`, n => `${n} s`, n => `${n} 秒`],
   sus_where: ["เจอที่", "Seen in", "見かけた場所"],
 });
-Object.assign(UPD_I18N.ko, { sort_sus: "의심 먼저", sort_level: "봇 먼저", sort_time: "시간순", sort_name: "이름순", hv_timeline: "타임라인", hv_list: "목록", hv_person: "플레이어", hv_stay: "머문 시간", hv_sec: n => `${n}초`, sus_where: "본 곳" });
-Object.assign(UPD_I18N.ru, { sort_sus: "Сначала подозрительные", sort_level: "Сначала боты", sort_time: "По времени", sort_name: "По имени", hv_timeline: "Хронология", hv_list: "Список", hv_person: "Игрок", hv_stay: "пробыл", hv_sec: n => `${n} с`, sus_where: "Где видели" });
-Object.assign(UPD_I18N.vi, { sort_sus: "Đáng ngờ trước", sort_level: "Bot trước", sort_time: "Theo thời gian", sort_name: "Theo tên", hv_timeline: "Dòng thời gian", hv_list: "Danh sách", hv_person: "Người chơi", hv_stay: "ở lại", hv_sec: n => `${n} giây`, sus_where: "Gặp ở" });
-Object.assign(UPD_I18N.zh, { sort_sus: "可疑优先", sort_level: "机器人优先", sort_time: "按时间", sort_name: "按名称", hv_timeline: "时间线", hv_list: "列表", hv_person: "玩家", hv_stay: "停留", hv_sec: n => `${n} 秒`, sus_where: "出现过的地方" });
+tx({ hv_visits: [n => `เข้า ${n} ครั้ง`, n => n === 1 ? "1 visit" : `${n} visits`, n => `${n} 回入室`], hv_total: ["รวม", "total", "合計"] });
+Object.assign(UPD_I18N.ko, { hv_visits: n => `${n}회 입장`, hv_total: "합계" });
+Object.assign(UPD_I18N.ru, { hv_visits: n => `заходов: ${n}`, hv_total: "всего" });
+Object.assign(UPD_I18N.vi, { hv_visits: n => `vào ${n} lần`, hv_total: "tổng" });
+Object.assign(UPD_I18N.zh, { hv_visits: n => `进入 ${n} 次`, hv_total: "共" });
+Object.assign(UPD_I18N.ko, { hv_inRoom: n => `방에 ${n}명`, sort_sus: "의심 먼저", sort_time: "시간순", sort_name: "이름순", hv_timeline: "타임라인", hv_list: "목록", hv_person: "플레이어", hv_stay: "머문 시간", hv_sec: n => `${n}초`, sus_where: "본 곳" });
+Object.assign(UPD_I18N.ru, { hv_inRoom: n => `в комнате: ${n}`, sort_sus: "Сначала подозрительные", sort_time: "По времени", sort_name: "По имени", hv_timeline: "Хронология", hv_list: "Список", hv_person: "Игрок", hv_stay: "пробыл", hv_sec: n => `${n} с`, sus_where: "Где видели" });
+Object.assign(UPD_I18N.vi, { hv_inRoom: n => `${n} người trong phòng`, sort_sus: "Đáng ngờ trước", sort_time: "Theo thời gian", sort_name: "Theo tên", hv_timeline: "Dòng thời gian", hv_list: "Danh sách", hv_person: "Người chơi", hv_stay: "ở lại", hv_sec: n => `${n} giây`, sus_where: "Gặp ở" });
+Object.assign(UPD_I18N.zh, { hv_inRoom: n => `房间里 ${n} 人`, sort_sus: "可疑优先", sort_time: "按时间", sort_name: "按名称", hv_timeline: "时间线", hv_list: "列表", hv_person: "玩家", hv_stay: "停留", hv_sec: n => `${n} 秒`, sus_where: "出现过的地方" });
 Object.assign(DEFAULTS, { histView: "timeline" });
 
 const hvHms = d => d.toTimeString().slice(0, 8);
@@ -7435,7 +7463,7 @@ function hvTimeline(v, ps) {
   const t0 = +tsDate(v.t), ongoing = !v.end && v === historyData?.[0], t1 = v.end ? +tsDate(v.end) : ongoing ? Date.now() : Math.max(t0 + 60000, ...ps.flatMap(p => p.spans.map(s => +tsDate(s[1] || s[0]))));
   const W = Math.max(1, t1 - t0), pct = x => Math.min(100, Math.max(0, (x - t0) / W * 100));
   const multiDay = new Date(t0).toDateString() !== new Date(t1).toDateString();
-  const ticks = hvTicks(t0, t1).map(x => `<span class="hv-tick${pct(x) > 88 ? " end" : ""}" style="left:${pct(x)}%"><i>${multiDay && new Date(x).getHours() === 0 ? new Date(x).toLocaleDateString(S.lang, { day: "numeric", month: "short" }) : new Date(x).toTimeString().slice(0, 5)}</i></span>`).join("");
+  const ticks = hvTicks(t0, t1).map(x => `<span class="hv-tick${pct(x) > 96 ? " end" : ""}" style="left:${pct(x)}%"><i>${multiDay && new Date(x).getHours() === 0 ? new Date(x).toLocaleDateString(S.lang, { day: "numeric", month: "short" }) : new Date(x).toTimeString().slice(0, 5)}</i></span>`).join("");
   const grid = hvTicks(t0, t1).map(x => `<span class="hv-grid" style="left:${pct(x)}%"></span>`).join("");
   const rows = ps.map(p => {
     const cls = p.sus === "confirmed" ? "bot" : p.sus ? "sus" : "";
@@ -7443,12 +7471,12 @@ function hvTimeline(v, ps) {
       const A = +tsDate(a), B = b ? +tsDate(b) : t1;
       return `<span class="hv-bar ${cls}" style="left:${pct(A)}%;width:max(4px,${pct(B) - pct(A)}%)" data-a="${A}" data-b="${B}"></span>`;
     }).join("");
-    return `<div class="hv-row" data-u="${esc(p.u)}" data-n="${escA(p.name)}"><div class="hv-name ${cls}" title="${escA(p.name)}">${cls ? icon("shield-alert") : ""}<span>${esc(p.name)}</span></div>
+    return `<div class="hv-row" data-u="${esc(p.u)}" data-n="${escA(p.name)}"><div class="hv-name ${cls}">${cls ? icon("shield-alert") : ""}<span>${esc(p.name)}</span></div>
       <div class="hv-track">${grid}${bars}</div></div>`;
   }).join("");
   const nBot = ps.filter(p => p.sus === "confirmed").length, nSus = ps.filter(p => p.sus && p.sus !== "confirmed").length;
   const legend = `<div class="hv-legend"><span><i class="hv-key"></i>${t("hv_person")}</span>${nBot ? `<span><i class="hv-key bot"></i>${icon("shield-alert")}${t("sus_confirmed")} (${nBot})</span>` : ""}${nSus ? `<span><i class="hv-key sus"></i>${icon("shield-alert")}${t("sus_suspected")} (${nSus})</span>` : ""}</div>`;
-  return `${legend}<div class="hv-axisbox"><div class="hv-axis"><div class="hv-name"></div><div class="hv-track">${ticks}</div></div></div><div class="hv-chart">${rows}</div>`;
+  return `${legend}<div class="hv-wrap"><div class="hv-axisbox"><div class="hv-axis"><div class="hv-name"></div><div class="hv-track">${ticks}</div></div></div><div class="hv-chart" data-t0="${t0}" data-t1="${t1}">${rows}</div><div class="hv-cross"></div></div>`;
 }
 const _fillVisitHv = fillVisit;
 fillVisit = async function (v, row) {
@@ -7477,16 +7505,51 @@ fillVisit = async function (v, row) {
   body.innerHTML = tabs + hvTimeline(v, ps);
   body.querySelectorAll(".hv-row").forEach(r => r.onclick = () => showProfile(r.dataset.u, r.dataset.n));
   const tip = $("hvTip") || document.body.appendChild(Object.assign(document.createElement("div"), { id: "hvTip", className: "hv-tip" }));
-  body.querySelectorAll(".hv-bar").forEach(b => {
-    b.onmousemove = e => {
-      const a = +b.dataset.a, z = +b.dataset.b, n = b.closest(".hv-row").dataset.n;
-      tip.innerHTML = `<b>${esc(n)}</b><span>${hvHms(new Date(a))} – ${hvHms(new Date(z))}</span><span>${t("hv_stay")} ${hvLen(z - a)}</span>`;
-      tip.style.display = "grid";
-      const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8), y = e.clientY + 16 + tip.offsetHeight > innerHeight ? e.clientY - tip.offsetHeight - 10 : e.clientY + 16;
-      tip.style.left = x + "px"; tip.style.top = y + "px";
-    };
-    b.onmouseleave = () => tip.style.display = "none";
-  });
+  const wrap = body.querySelector(".hv-wrap"), chart = body.querySelector(".hv-chart"), cross = body.querySelector(".hv-cross");
+  const t0 = +chart.dataset.t0, t1 = +chart.dataset.t1;
+  const spanEnd = b => b ? +tsDate(b) : t1;
+  const hide = () => { tip.style.display = "none"; cross.style.display = "none"; };
+  const place = e => {
+    tip.style.display = "grid";
+    const x = e.clientX + 16 + tip.offsetWidth > innerWidth ? e.clientX - tip.offsetWidth - 12 : e.clientX + 16;
+    const y = Math.max(8, Math.min(e.clientY + 16, innerHeight - tip.offsetHeight - 8));
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  };
+  // Pointing at a name: how many times that person came in during this visit, how long each time, and in all
+  const nameTip = (e, r) => {
+    const p = ps.find(x => x.u === r.dataset.u);
+    if (!p) return hide();
+    cross.style.display = "none";
+    const stays = p.spans.map(([a, b]) => [+tsDate(a), spanEnd(b)]).sort((x, y) => x[0] - y[0]);
+    const total = stays.reduce((n, [a, z]) => n + Math.max(0, z - a), 0);
+    const cls = p.sus === "confirmed" ? "bot" : p.sus ? "sus" : "";
+    const MAX = 12;
+    tip.innerHTML = `<span class="hv-tip-stay"><b class="${cls}">${cls ? icon("shield-alert") : ""}${esc(p.name)}</b></span>
+      <b>${t("hv_visits", stays.length)} · ${t("hv_total")} ${hvLen(total)}</b>
+      <div class="hv-tip-stays">${stays.slice(0, MAX).map(([a, z], i) => `<span><i>${i + 1}.</i>${hvHms(new Date(a))} – ${hvHms(new Date(z))}</span><em>${hvLen(z - a)}</em>`).join("")}
+      ${stays.length > MAX ? `<span class="more">+${stays.length - MAX}</span>` : ""}</div>`;
+    place(e);
+  };
+  wrap.onmousemove = e => {
+    const nm = e.target.closest(".hv-name"), nr = nm?.closest(".hv-row");
+    if (nr) return nameTip(e, nr);
+    const tr = chart.querySelector(".hv-track")?.getBoundingClientRect();
+    if (!tr || e.clientX < tr.left || e.clientX > tr.right) return hide();
+    const at = t0 + (e.clientX - tr.left) / tr.width * (t1 - t0);
+    cross.style.left = (e.clientX - wrap.getBoundingClientRect().left) + "px"; cross.style.display = "block";
+    const tol = 3 / tr.width * (t1 - t0);  // A few pixels either way: a stay of seconds is a dot, hard to point at exactly
+    const inside = (A, B) => A <= at && at <= B || B - A < 2 * tol && A - tol <= at && at <= B + tol;  // Leeway only for those dots
+    const here = ps.filter(p => p.spans.some(([a, b]) => inside(+tsDate(a), spanEnd(b))));
+    const rank = p => p.sus === "confirmed" ? 0 : p.sus ? 1 : 2;
+    here.sort((a, b) => rank(a) - rank(b));
+    const MAX = 20, mark = p => p.sus ? `<i class="${p.sus === "confirmed" ? "bot" : "sus"}">${icon("shield-alert")}</i>` : "";
+    const bar = e.target.closest(".hv-bar");
+    const stay = bar ? (() => { const a = +bar.dataset.a, z = +bar.dataset.b; return `<span class="hv-tip-stay"><b>${esc(bar.closest(".hv-row").dataset.n)}</b> ${hvHms(new Date(a))} – ${hvHms(new Date(z))} · ${t("hv_stay")} ${hvLen(z - a)}</span>`; })() : "";
+    tip.innerHTML = `${stay}<b>${hvHms(new Date(at))} · ${t("hv_inRoom", here.length)}</b><div class="hv-tip-list">${here.slice(0, MAX).map(p =>
+      `<span class="${p.sus ? (p.sus === "confirmed" ? "bot" : "sus") : ""}">${mark(p)}${esc(p.name)}</span>`).join("")}${here.length > MAX ? `<span class="more">+${here.length - MAX}</span>` : ""}</div>`;
+    place(e);
+  };
+  wrap.onmouseleave = hide;
 };
 // The tooltip belongs to a timeline: gone when the page changes under it
 const _renderViewHv = renderView;
@@ -7544,6 +7607,19 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .hv-tip { position: fixed; z-index: 9999; display: none; gap: 1px; padding: 7px 10px; border-radius: 10px; font-size: 11.5px; pointer-events: none;
           background: var(--sheet); backdrop-filter: blur(20px); color: var(--text2); border: 1px solid var(--sep); box-shadow: 0 6px 18px rgba(0,0,0,.18); font-variant-numeric: tabular-nums; }
 .hv-tip b { color: var(--text); font-weight: 600; }
+.hv-wrap { position: relative; }
+.hv-cross { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1.5px solid var(--accent); pointer-events: none; display: none; z-index: 2; }
+.hv-tip-stay { padding-bottom: 4px; margin-bottom: 3px; border-bottom: 1px solid var(--sep); }
+.hv-tip-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 1px 12px; max-width: 420px; margin-top: 2px; }
+.hv-tip-list span { display: flex; align-items: center; gap: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.hv-tip-list span.bot { color: var(--red); font-weight: 600; } .hv-tip-list span.sus { color: var(--orange); font-weight: 600; }
+.hv-tip-list i { display: inline-flex; } .hv-tip-list svg { width: 11px; height: 11px; }
+.hv-tip-list .more { color: var(--text2); }
+.hv-tip-stay b { display: inline-flex; align-items: center; gap: 4px; } .hv-tip-stay svg { width: 12px; height: 12px; }
+.hv-tip-stay b.bot { color: var(--red); } .hv-tip-stay b.sus { color: var(--orange); }
+.hv-tip-stays { display: grid; grid-template-columns: auto auto; gap: 1px 14px; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.hv-tip-stays span { color: var(--text); white-space: nowrap; } .hv-tip-stays i { font-style: normal; color: var(--text2); display: inline-block; min-width: 20px; }
+.hv-tip-stays em { font-style: normal; color: var(--text2); text-align: right; white-space: nowrap; } .hv-tip-stays .more { color: var(--text2); }
 .chip.bot svg:last-child { color: var(--red); width: 12px; height: 12px; } .chip.sus svg:last-child { color: var(--orange); width: 12px; height: 12px; }
 .chip.bot { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--red) 55%, transparent); }
 .chip.sus { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--orange) 55%, transparent); }
@@ -7566,4 +7642,109 @@ document.head.insertAdjacentHTML("beforeend", `<style>
 .btn-spin { display: inline-flex; animation: rkspin 1s linear infinite; }
 .btn.busy, .mini-btn.busy { cursor: progress; opacity: .75; }
 .mini-btn:disabled { opacity: .35; pointer-events: none; }
+</style>`);
+
+// ---------- Bot alerts, kept: the toast is gone in seconds and Windows only shows one when the app is hidden ----------
+// Saved with the settings (newest first, the last 200); a count on Notifications until that page is opened
+const SUSLOG_MAX = 200;
+const susLog = () => Array.isArray(S.susLog) ? S.susLog : (S.susLog = []);
+function susLogNow() {
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+function susLogAdd(uid, level, act) {
+  const e = { t: susLogNow(), u: uid, n: susName(uid), lvl: level, w: lastBatch?.world && lastBatch.world !== "-" ? lastBatch.world : "", act };
+  susLog().unshift(e);
+  S.susLog = susLog().slice(0, SUSLOG_MAX);
+  susLogSaved();
+  return e;
+}
+function susLogSaved() { save(); buildNav(); if (view === "notifs") renderView(); }
+const susLogUnread = () => susLog().filter(e => e.t > (S.susLogSeen || "")).length;
+function susLogClear() { S.susLog = []; save(); buildNav(); renderView(); }
+{
+  const navBase = buildNav;
+  buildNav = function () {
+    navBase();
+    const n = susLogUnread();
+    if (!n) return;
+    const b = document.querySelector(`.nav-item[onclick*="'notifs'"]`), badge = b?.querySelector(".nav-badge");
+    if (badge) badge.textContent = +badge.textContent + n;
+    else b?.insertAdjacentHTML("beforeend", `<span class="nav-badge hot">${n}</span>`);
+  };
+  // Tabs like the game's notifications menu (Invites / Friend Requests / Group / Other), plus the bot alerts
+  const NTABS = ["invites", "friends", "group", "other", "bots"];
+  const v1Kind = n => ["invite", "requestInvite", "inviteResponse", "requestInviteResponse"].includes(n.type) ? "invites" : n.type === "friendRequest" ? "friends" : "other";
+  const v2Kind = n => /group/i.test(n.type || "") || /^group:/.test(n.link || "") ? "group" : "other";
+  window.notifTab = k => { S.notifTab = k; save(); renderView(); };
+  // Like the game's "Clear All": every VRChat notification (both kinds)
+  window.notifClearAll = async () => {
+    if (NOTIFS.length) await vrcDo("clearNotifications", {}, "done");
+    if ((N2.list || []).length) await n2DeleteAll();
+  };
+  renderNotifs = function () {
+    const el = $("v_notifs");
+    if (!AUTH.loggedIn) return needLogin(el);
+    if (!N2.list && !N2.loading) loadN2();
+    const scroll = el.scrollTop;
+    // Coming to the page with new bot alerts opens their tab; the new ones stay marked while you're here
+    if (!SUS.hlOn) { SUS.hl = S.susLogSeen || ""; SUS.hlOn = true; if (susLogUnread()) S.notifTab = "bots"; }
+    const items = { invites: [], friends: [], group: [], other: [] }, log = susLog();
+    [...NOTIFS].sort((a, b) => (b.t || "").localeCompare(a.t || "")).forEach(n => items[v1Kind(n)].push([1, n]));
+    (N2.list || []).forEach(n => items[v2Kind(n)].push([2, n]));
+    const tab = NTABS.includes(S.notifTab) ? S.notifTab : "invites";
+    const count = k => k === "bots" ? log.length : items[k].length;
+    const tabs = tabsHtml(Object.fromEntries(NTABS.map(k => [k, `${k === "bots" ? icon("shield-alert") : ""}${t("nt_" + k)} <b class="sus-n">${count(k)}</b>${k === "bots" && susLogUnread() ? `<span class="nt-dot"></span>` : ""}`])), tab, "notifTab");
+    const clear = tab === "bots" ? (log.length ? `<button class="btn sm" onclick="confirmBtn(this,()=>susLogClear())">${t("n_clearAll")}</button>` : "")
+      : NOTIFS.length || (N2.list || []).length ? `<button class="btn sm" title="${escA(t("nt_clearHint"))}" onclick="confirmBtn(this,()=>notifClearAll())">${t("n_clearAll")}</button>` : "";
+    el.innerHTML = `<div class="toolbar nt-bar">${tabs}<span class="grow"></span>${clear}</div>`;
+    if (tab === "bots") {
+      const actTxt = { blocked: "sus_actBlocked", had: "sus_actHad", failed: "sus_actFailed", blocking: "sus_actBlocking", alert: "sus_actAlert" };
+      const pg = paged("notifs:sus", log);
+      el.insertAdjacentHTML("beforeend", log.length ? pg.items.map(e => {
+        const sub = `<span class="sus-pill ${e.lvl}">${t(e.lvl === "confirmed" ? "sus_confirmed" : "sus_suspected")}</span> ${fmtDate(e.t, true)}${e.w ? ` · ${esc(e.w)}` : ""}
+          <span class="sus-act ${e.act}">· ${t(actTxt[e.act] || "sus_actAlert")}</span>`;
+        const acts = modsOf(e.u).has("block") ? `<span class="sus-done">${icon("shield-ban")}${t("sus_blocked")}</span>` : btn(t("sus_block"), `susBlockOne('${esc(e.u)}')`, "sm danger", "shield-ban");
+        return lrow({ uid: e.u, name: e.n, sub, acts, onclick: `showProfile('${esc(e.u)}')`, cls: e.t > SUS.hl ? "sus-new" : "" });
+      }).join("") + pg.bar : `<div class="empty-state" style="height:120px">${t("sus_noAlerts")}</div>`);
+      if (log.length && log[0].t > (S.susLogSeen || "")) { S.susLogSeen = log[0].t; save(); buildNav(); }
+    } else {
+      const list = items[tab];
+      if (!list.length) el.insertAdjacentHTML("beforeend", `<div class="empty-state" style="height:120px">${N2.loading && !N2.list && tab !== "invites" && tab !== "friends" ? t("loading") : t("noNotifs")}</div>`);
+      const pg = paged("notifs:" + tab, list);
+      pg.items.forEach(([v, n]) => el.appendChild(v === 1 ? notifCard(n) : notif2Card(n)));
+      el.insertAdjacentHTML("beforeend", pg.bar);
+    }
+    fillSlots(el);
+    el.scrollTop = scroll;
+  };
+  const viewBase = setView;
+  setView = function (v, ...rest) { if (v !== "notifs") SUS.hlOn = false; return viewBase(v, ...rest); };
+}
+tx({
+  n_sus: ["การเตือนบอท", "Bot alerts", "ボット警告"],
+  nt_invites: ["คำเชิญ", "Invites", "招待"], nt_friends: ["คำขอเป็นเพื่อน", "Friend Requests", "フレンド申請"], nt_group: ["กลุ่ม", "Group", "グループ"],
+  nt_other: ["อื่นๆ", "Other", "その他"], nt_bots: ["การเตือนบอท", "Bot alerts", "ボット警告"],
+  nt_clearHint: ["ล้างแจ้งเตือนของ VRChat ทุกแท็บ เหมือนปุ่ม Clear All ในเกม", "Clears every VRChat notification in all tabs, like Clear All in the game", "ゲーム内の Clear All と同じく、全タブの VRChat 通知を消去"],
+  sus_osc: ["ส่ง OSC เมื่อเจอบอท", "Send OSC when a bot is found", "ボットを見つけたら OSC を送信"],
+  sus_oscHint: ["พารามิเตอร์อวตาร VRCNook/BotAlert (bool, 3 วินาที), VRCNook/BotLevel (int: 2 บอท, 1 น่าสงสัย), VRCNook/BotsInRoom (int) — ใช้กับอวตารหรือ HUD ที่มีพารามิเตอร์เหล่านี้",
+    "Avatar parameters VRCNook/BotAlert (bool, 3 s), VRCNook/BotLevel (int: 2 bot, 1 suspected), VRCNook/BotsInRoom (int) — for an avatar or HUD that has them",
+    "アバターパラメーター VRCNook/BotAlert (bool, 3 秒), VRCNook/BotLevel (int: 2 ボット, 1 疑わしい), VRCNook/BotsInRoom (int) — これらを持つアバターや HUD 用"],
+  sus_actAlert: ["เตือนแล้ว", "alerted", "通知済み"], sus_actBlocked: ["บล็อกอัตโนมัติแล้ว", "blocked automatically", "自動でブロック"],
+  sus_actHad: ["บล็อกไว้ก่อนแล้ว", "already blocked", "ブロック済みだった"], sus_actFailed: ["บล็อกไม่สำเร็จ", "block failed", "ブロック失敗"],
+  sus_actBlocking: ["กำลังบล็อก…", "blocking…", "ブロック中…"], sus_noAlerts: ["ยังไม่มีการเตือน", "No alerts yet", "まだ警告はありません"],
+});
+Object.assign(UPD_I18N.ko, { nt_invites: "초대", nt_friends: "친구 요청", nt_group: "그룹", nt_other: "기타", nt_bots: "봇 경고", nt_clearHint: "게임의 Clear All처럼 모든 탭의 VRChat 알림을 지웁니다", sus_osc: "봇 발견 시 OSC 보내기", sus_oscHint: "아바타 파라미터 VRCNook/BotAlert (bool, 3초), VRCNook/BotLevel (int: 2 봇, 1 의심), VRCNook/BotsInRoom (int)", n_sus: "봇 경고", sus_actAlert: "알림", sus_actBlocked: "자동 차단됨", sus_actHad: "이미 차단됨", sus_actFailed: "차단 실패", sus_actBlocking: "차단 중…", sus_noAlerts: "아직 경고 없음" });
+Object.assign(UPD_I18N.ru, { nt_invites: "Приглашения", nt_friends: "Заявки в друзья", nt_group: "Группы", nt_other: "Другое", nt_bots: "Боты", nt_clearHint: "Удаляет все уведомления VRChat во всех вкладках, как Clear All в игре", sus_osc: "Отправлять OSC при обнаружении бота", sus_oscHint: "Параметры аватара VRCNook/BotAlert (bool, 3 с), VRCNook/BotLevel (int: 2 бот, 1 подозрение), VRCNook/BotsInRoom (int)", n_sus: "Оповещения о ботах", sus_actAlert: "оповещение", sus_actBlocked: "заблокирован автоматически", sus_actHad: "уже был заблокирован", sus_actFailed: "не удалось заблокировать", sus_actBlocking: "блокировка…", sus_noAlerts: "Пока нет оповещений" });
+Object.assign(UPD_I18N.vi, { nt_invites: "Lời mời", nt_friends: "Lời mời kết bạn", nt_group: "Nhóm", nt_other: "Khác", nt_bots: "Cảnh báo bot", nt_clearHint: "Xóa mọi thông báo VRChat ở tất cả các tab, như Clear All trong game", sus_osc: "Gửi OSC khi thấy bot", sus_oscHint: "Tham số avatar VRCNook/BotAlert (bool, 3 giây), VRCNook/BotLevel (int: 2 bot, 1 đáng ngờ), VRCNook/BotsInRoom (int)", n_sus: "Cảnh báo bot", sus_actAlert: "đã báo", sus_actBlocked: "đã tự động chặn", sus_actHad: "đã chặn từ trước", sus_actFailed: "chặn thất bại", sus_actBlocking: "đang chặn…", sus_noAlerts: "Chưa có cảnh báo" });
+Object.assign(UPD_I18N.zh, { nt_invites: "邀请", nt_friends: "好友请求", nt_group: "群组", nt_other: "其他", nt_bots: "机器人警报", nt_clearHint: "像游戏里的 Clear All 一样清除所有标签页的 VRChat 通知", sus_osc: "发现机器人时发送 OSC", sus_oscHint: "模型参数 VRCNook/BotAlert (bool, 3 秒), VRCNook/BotLevel (int: 2 机器人, 1 可疑), VRCNook/BotsInRoom (int)", n_sus: "机器人警报", sus_actAlert: "已提醒", sus_actBlocked: "已自动屏蔽", sus_actHad: "之前已屏蔽", sus_actFailed: "屏蔽失败", sus_actBlocking: "正在屏蔽…", sus_noAlerts: "还没有警报" });
+document.head.insertAdjacentHTML("beforeend", `<style>
+.nt-bar .segmented button { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.nt-bar .segmented svg { width: 13px; height: 13px; color: var(--red); flex-shrink: 0; }
+.nt-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--red); margin-left: 5px; vertical-align: 1px; }
+#v_notifs .sec-head svg { width: 14px; height: 14px; margin-right: 4px; vertical-align: -2px; color: var(--red); }
+.lrow.sus-new { border-left: 3px solid var(--red); }
+.sus-act.blocked, .sus-act.had { color: var(--green); } .sus-act.failed { color: var(--red); }
+.sus-done { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text2); }
+.sus-done svg { width: 13px; height: 13px; }
 </style>`);
