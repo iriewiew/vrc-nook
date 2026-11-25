@@ -606,14 +606,15 @@ const KIND_STYLE = {  // [icon, color]
   avatar: ["shirt", "indigo"], avatar_load: ["package", "indigo"], perf: ["shield-alert", "orange"], moderation: ["shield-check", "gray"], blocked: ["shield-ban", "red"], mod_action: ["shield-check", "indigo"],
   video: ["clapperboard", "purple"], video_title: ["music", "pink"], video_err: ["triangle-alert", "orange"], download: ["download", "gray"],
   screenshot: ["camera", "blue"], sticker: ["sticker", "pink"], item: ["gift", "purple"], pickup: ["hand", "brown"], store: ["shopping-bag", "mint"],
-  notify: ["bell", "orange"], login: ["key-round", "green"], net: ["wifi-off", "yellow"], mic: ["mic", "gray"], udon_err: ["bug", "red"], error: ["circle-alert", "red"],
+  notify: ["bell", "orange"], login: ["key-round", "green"], net: ["wifi-off", "yellow"], mic: ["mic", "gray"], udon_err: ["bug", "red"], udon: ["scroll-text", "purple"], error: ["circle-alert", "red"],
 };
 const GROUPS = [
   ["g_room", ["world", "instance", "join", "leave", "blocked", "mod_action", "left", "quit", "disconnect", "travel", "world_load"]],
   ["g_avatar", ["avatar", "avatar_load", "perf", "moderation"]],
   ["g_media", ["video", "video_title", "video_err", "download"]],
   ["g_activity", ["screenshot", "sticker", "item", "pickup", "store"]],
-  ["g_system", ["notify", "login", "net", "mic", "udon_err", "error"]],
+  ["g_udon", ["udon", "udon_err"]],
+  ["g_system", ["notify", "login", "net", "mic", "error"]],
 ];
 const DIM = new Set(["instance", "travel", "world_load", "download", "mic", "moderation", "pickup", "avatar_load"]);
 

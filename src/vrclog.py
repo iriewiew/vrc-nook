@@ -67,6 +67,24 @@ class Kind:
     desc: str = ""
 
 
+# Tags VRChat itself writes; any other "[Tag] message" line comes from a world's (or avatar's) scripts — Udon Debug.Log
+CORE_TAGS = ("Behaviour", "AssetBundleDownloadManager", "TextureManagement", "EOSManager", "AVProVideo", "AVProMovieCapture",
+             "SettingsManager", "LoadingScreenManager", "GC", "Image Download", "String Download", "Video Playback", "VRCItems",
+             "UdonBehaviour", "Authentication", "WebsocketPipeline", "Performance Stats", "AvatarScalingSettings", "ModerationManager",
+             "PortalManager", "StickersManager", "VRC Stacked Camera System", "UserInfoLogger", "Purchasing", "LOADER",
+             "VRCVrIkController", "SteamManager", "DebugUI", "UIColorPaletteManager", "EconomyStoreManager",
+             "AvatarInteractionManager", "API", "AnalysisReport", "VRC Station", "VRC Camera", "Always", "Network", "VRCApplication",
+             "SDFCreator")
+_TAGS = re.compile(r"</?color[^>]*>|</?[bi]>|</?size[^>]*>")
+
+
+_CORE = "|".join(re.escape(t) for t in CORE_TAGS)
+
+
+def _udon(m):
+    return f"[{_TAGS.sub('', m[1]).strip()}] {_TAGS.sub('', m[2]).strip()}", ""
+
+
 def K(name, icon, color, rx, build=lambda m: (m[1], ""), default=True, desc=""):
     return Kind(name, icon, color, re.compile(rx), build, default, desc)
 
@@ -119,6 +137,7 @@ KINDS = [
       r"avatar is hidden|Avatar will follow Safety Settings)$", lambda m: (f"{m[1]} {m[2]}", ""), desc="What you did to a player (mute, avatar)"),
     K("moderation", "🔒", "90", r"\[ModerationManager\] (.+)", default=False, desc="Show/hide avatar moderation"),
     K("pickup", "✋", "90", r"\[Behaviour\] Pickup object: '([^']+)'", default=False, desc="Picked up an object"),
+    K("udon", "📜", "35", r"^\[(?!(?:<[^>]+>)?(?:" + _CORE + r")(?:</[^>]+>)?[\] ])((?:<[^>]+>)?[^\]\[<]{1,60}(?:</[^>]+>)?)\]\s*(.*)$", _udon, desc="World scripts (Udon logs)"),
     K("error", "❗", "31", r"(.+)", default=False, desc="All other Error-level lines"),
 ]
 KIND_BY_NAME = {k.name: k for k in KINDS}

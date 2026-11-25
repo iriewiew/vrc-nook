@@ -7872,3 +7872,11 @@ Object.assign(UPD_I18N.ko, { upd_autoHint: "앱 시작 시, 그리고 실행 중
 Object.assign(UPD_I18N.ru, { upd_autoHint: "При запуске и каждый час, пока приложение открыто" });
 Object.assign(UPD_I18N.vi, { upd_autoHint: "Khi mở ứng dụng và mỗi 1 giờ khi đang chạy" });
 Object.assign(UPD_I18N.zh, { upd_autoHint: "启动时检查，运行期间每小时检查一次" });
+// Game Log: what the world's scripts write to the log (Udon Debug.Log lines tagged "[Name] …"), in a group of their own
+for (const [l, g, kind] of [["th", "สคริปต์ของโลก (Udon)", "log จากสคริปต์ของโลก"], ["en", "World scripts (Udon)", "World script log"], ["ja", "ワールドのスクリプト (Udon)", "ワールドのスクリプトログ"],
+  ["ko", "월드 스크립트 (Udon)", "월드 스크립트 로그"], ["ru", "Скрипты мира (Udon)", "Лог скриптов мира"], ["vi", "Script của world (Udon)", "Log script của world"], ["zh", "世界脚本 (Udon)", "世界脚本日志"]]) {
+  const L_ = I18N[l];
+  if (!L_) continue;
+  L_.g_udon = g;
+  (L_.kinds ||= {}).udon = kind;
+}
